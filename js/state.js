@@ -90,6 +90,7 @@ export const state = {
     aimAngle: 0,
     animId: null,
     lastTime: 0,
-    aiTimer: null
+    aiTimer: null,
+    shake: 0
   }
 };

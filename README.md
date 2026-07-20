@@ -54,7 +54,7 @@ Detailed status for the games that have been started.
 
 ### 3. Fort Archers Battle
 - **Idea:** Two Omani forts face each other across the screen; each player controls an archer and tries to destroy the enemy fort first.
-- **Achieved:** Drag-to-aim (works outside the canvas) and keyboard controls, arrow physics with gravity, destructible fort blocks, wind that bends arrow flight, AI opponent in single-player, online 1v1 with shot and damage synchronization, fullscreen support, mobile virtual aim controls.
+- **Achieved:** Drag-to-aim (works outside the canvas) and keyboard controls, arrow physics with gravity, destructible fort blocks, wind that bends arrow flight, AI opponent in single-player, online 1v1 with shot and damage synchronization, fullscreen support, mobile virtual aim controls, angry archer expressions, screen shake and danger vignette when health is low.
 - **Pending:** Power-ups.
 
 ### Coming Soon Games

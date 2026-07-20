@@ -70,6 +70,7 @@ function destroyBlocks(side, count, hitX, hitY) {
     alive[i].alive = false;
   }
   updateHealthFromBlocks();
+  state.archery.shake = Math.min(state.archery.shake + 10, 20);
 }
 
 function getFortHealth(side) {
@@ -200,12 +201,16 @@ function drawFort(ctx, side) {
 }
 
 function drawArcher(ctx, x, y, side) {
+  const faceDir = side === 'left' ? 1 : -1;
+
+  // Body
   ctx.fillStyle = '#1e6f7a';
   ctx.beginPath();
   ctx.arc(x, y - 18, 14, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillRect(x - 10, y - 18, 20, 38);
 
+  // Bow
   ctx.strokeStyle = '#5d4037';
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -215,6 +220,33 @@ function drawArcher(ctx, x, y, side) {
     ctx.arc(x - 8, y - 8, 22, Math.PI / 2, 3 * Math.PI / 2, false);
   }
   ctx.stroke();
+
+  // Angry face — eyebrows
+  ctx.strokeStyle = '#2f2f2f';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  // left eyebrow
+  ctx.moveTo(x - 7 * faceDir, y - 24);
+  ctx.lineTo(x - 2 * faceDir, y - 20);
+  // right eyebrow
+  ctx.moveTo(x + 2 * faceDir, y - 20);
+  ctx.lineTo(x + 7 * faceDir, y - 24);
+  ctx.stroke();
+
+  // Eyes
+  ctx.fillStyle = '#2f2f2f';
+  ctx.beginPath();
+  ctx.arc(x - 4 * faceDir, y - 17, 2.5, 0, Math.PI * 2);
+  ctx.arc(x + 4 * faceDir, y - 17, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Fierce mouth
+  ctx.beginPath();
+  ctx.moveTo(x - 4 * faceDir, y - 10);
+  ctx.lineTo(x + 4 * faceDir, y - 10);
+  ctx.lineTo(x, y - 6);
+  ctx.fill();
 }
 
 function drawArrow(ctx, arr) {
@@ -292,6 +324,16 @@ function getArcheryOverText() {
 
 function drawArchery() {
   const ctx = dom.archeryCanvas.getContext('2d');
+  const a = state.archery;
+
+  ctx.save();
+  if (a.shake > 0) {
+    const intensity = a.shake * 0.6;
+    ctx.translate((Math.random() - 0.5) * intensity, (Math.random() - 0.5) * intensity);
+    a.shake -= 0.5;
+    if (a.shake < 0) a.shake = 0;
+  }
+
   ctx.clearRect(0, 0, ARCHERY.WIDTH, ARCHERY.HEIGHT);
 
   const grad = ctx.createLinearGradient(0, 0, 0, ARCHERY.HEIGHT);
@@ -309,7 +351,6 @@ function drawArchery() {
 
   drawWind(ctx);
 
-  const a = state.archery;
   if (a.active && !a.over) {
     const archer = ARCHER_POS[a.mySide];
     if (a.dragging) {
@@ -350,6 +391,19 @@ function drawArchery() {
       ctx.fillText('Waiting for host to start a new battle...', ARCHERY.WIDTH / 2, ARCHERY.HEIGHT / 2 + 50);
     }
   }
+
+  // Danger vignette when player's fort is badly damaged
+  const myHealth = a.mySide === 'left' ? a.leftHealth : a.rightHealth;
+  if (myHealth <= 30 && !a.over) {
+    const pulse = 0.25 + 0.15 * Math.sin(performance.now() / 120);
+    const rg = ctx.createRadialGradient(ARCHERY.WIDTH / 2, ARCHERY.HEIGHT / 2, ARCHERY.HEIGHT * 0.35, ARCHERY.WIDTH / 2, ARCHERY.HEIGHT / 2, ARCHERY.HEIGHT);
+    rg.addColorStop(0, 'rgba(192, 57, 43, 0)');
+    rg.addColorStop(1, `rgba(192, 57, 43, ${pulse})`);
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, ARCHERY.WIDTH, ARCHERY.HEIGHT);
+  }
+
+  ctx.restore();
 }
 
 function archeryLoop(timestamp) {
