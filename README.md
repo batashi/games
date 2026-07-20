@@ -54,8 +54,8 @@ Detailed status for the games that have been started.
 
 ### 3. Fort Archers Battle
 - **Idea:** Two Omani forts face each other across the screen; each player controls an archer and tries to destroy the enemy fort first.
-- **Achieved:** Drag-to-aim (works outside the canvas) and keyboard controls, arrow physics with gravity, fort visuals and health bars, AI opponent in single-player, online 1v1 with shot and damage synchronization, fullscreen support.
-- **Pending:** Destructible fort blocks, wind/obstacles, power-ups, mobile virtual aim controls.
+- **Achieved:** Drag-to-aim (works outside the canvas) and keyboard controls, arrow physics with gravity, destructible fort blocks, wind that bends arrow flight, AI opponent in single-player, online 1v1 with shot and damage synchronization, fullscreen support, mobile virtual aim controls.
+- **Pending:** Power-ups.
 
 ### Coming Soon Games
 The remaining 17 games are listed in the catalogue above. Each will get its own development note once work starts.
@@ -76,7 +76,7 @@ For child safety, there is **no free text chat**. Players can only send quick em
 
 - **Runner:** Arrow Up / Space to jump, Arrow Down to duck. Touch buttons appear on tablets.
 - **Tic Tac Toe:** Click or tap a cell to place your mark.
-- **Fort Archers:** Drag from your archer toward the enemy fort to aim, then release to shoot. You can drag outside the canvas. Arrow keys + Space work too.
+- **Fort Archers:** Drag from your archer toward the enemy fort to aim, then release to shoot. You can drag outside the canvas. Arrow keys + Space work too. On phones/tablets use ▲ / ▼ to aim and 🎯 to shoot.
 - **Fullscreen:** Use the ⛶ button in the header.
 - **Mute:** Use the 🔊 button in the header.
 

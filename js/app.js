@@ -161,6 +161,10 @@ function setupEventListeners() {
     FortBattleGame.startNewBattle();
   });
 
+  dom.archeryAngleUp.addEventListener('click', () => FortBattleGame.adjustAim(-0.06));
+  dom.archeryAngleDown.addEventListener('click', () => FortBattleGame.adjustAim(0.06));
+  dom.archeryShootBtn.addEventListener('click', () => FortBattleGame.shoot());
+
   const onArcheryMouseMove = e => {
     FortBattleGame.handlePointerMove(e.clientX, e.clientY);
   };

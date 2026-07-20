@@ -660,3 +660,43 @@ main {
   color: var(--sea-dark);
   font-size: 1.1rem;
 }
+
+/* Archery mobile controls */
+.archery-mobile-controls {
+  display: none;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.archery-mobile-controls .touch-btn {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  border: 2px solid var(--sea);
+  background: rgba(30, 111, 122, 0.12);
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.archery-mobile-controls .touch-btn:active {
+  transform: scale(0.95);
+  background: rgba(30, 111, 122, 0.25);
+}
+
+.archery-mobile-controls .shoot-btn {
+  width: 5rem;
+  height: 5rem;
+  font-size: 2rem;
+  background: var(--sun);
+  border-color: var(--sun-dark);
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .archery-mobile-controls {
+    display: flex;
+  }
+}

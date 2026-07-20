@@ -15,10 +15,71 @@ function addArrow(owner, x, y, vx, vy) {
   state.archery.arrows.push({ owner, x, y, vx, vy });
 }
 
+function createBlocks(side) {
+  const fortX = side === 'left' ? ARCHERY.LEFT_FORT_X : ARCHERY.RIGHT_FORT_X;
+  const bw = ARCHERY.FORT_WIDTH / ARCHERY.BLOCK_COLS;
+  const bh = ARCHERY.FORT_HEIGHT / ARCHERY.BLOCK_ROWS;
+  const startX = fortX - ARCHERY.FORT_WIDTH / 2;
+  const startY = ARCHERY.GROUND_Y - ARCHERY.FORT_HEIGHT;
+  const blocks = [];
+  for (let r = 0; r < ARCHERY.BLOCK_ROWS; r++) {
+    for (let c = 0; c < ARCHERY.BLOCK_COLS; c++) {
+      blocks.push({
+        x: startX + c * bw,
+        y: startY + r * bh,
+        w: bw,
+        h: bh,
+        alive: true
+      });
+    }
+  }
+  return blocks;
+}
+
+function getAliveBlocks(side) {
+  return state.archery.blocks[side].filter(b => b.alive);
+}
+
+function updateHealthFromBlocks() {
+  const total = ARCHERY.BLOCK_COLS * ARCHERY.BLOCK_ROWS;
+  state.archery.leftHealth = Math.round((getAliveBlocks('left').length / total) * 100);
+  state.archery.rightHealth = Math.round((getAliveBlocks('right').length / total) * 100);
+}
+
+function destroyBlocks(side, count, hitX, hitY) {
+  const blocks = state.archery.blocks[side];
+  let alive = blocks.filter(b => b.alive);
+  if (alive.length === 0) return;
+
+  if (hitX != null && hitY != null) {
+    alive.sort((a, b) => {
+      const da = (a.x + a.w / 2 - hitX) ** 2 + (a.y + a.h / 2 - hitY) ** 2;
+      const db = (b.x + b.w / 2 - hitX) ** 2 + (b.y + b.h / 2 - hitY) ** 2;
+      return da - db;
+    });
+  } else {
+    // shuffle
+    for (let i = alive.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [alive[i], alive[j]] = [alive[j], alive[i]];
+    }
+  }
+
+  const toDestroy = Math.min(count, alive.length);
+  for (let i = 0; i < toDestroy; i++) {
+    alive[i].alive = false;
+  }
+  updateHealthFromBlocks();
+}
+
+function getFortHealth(side) {
+  return side === 'left' ? state.archery.leftHealth : state.archery.rightHealth;
+}
+
 function dealDamage(side, amount, shouldSend) {
-  const a = state.archery;
-  if (side === 'left') a.leftHealth = Math.max(0, a.leftHealth - amount);
-  else a.rightHealth = Math.max(0, a.rightHealth - amount);
+  const total = ARCHERY.BLOCK_COLS * ARCHERY.BLOCK_ROWS;
+  const blockCount = Math.max(1, Math.round(total * (amount / 100)));
+  destroyBlocks(side, blockCount, null, null);
 
   playSound('score');
   if (shouldSend) {
@@ -70,20 +131,35 @@ function updateArchery(dt) {
   for (let i = a.arrows.length - 1; i >= 0; i--) {
     const arr = a.arrows[i];
     arr.vy += gravity * dt;
+    arr.vx += a.wind * dt;
     arr.x += arr.vx * dt;
     arr.y += arr.vy * dt;
 
     const targetSide = arr.owner === 'left' ? 'right' : 'left';
-    const fortX = targetSide === 'left' ? ARCHERY.LEFT_FORT_X : ARCHERY.RIGHT_FORT_X;
-    const hit = rectContainsPoint(fortX - ARCHERY.FORT_WIDTH / 2, ARCHERY.GROUND_Y - ARCHERY.FORT_HEIGHT, ARCHERY.FORT_WIDTH, ARCHERY.FORT_HEIGHT, arr.x, arr.y);
+    const blocks = a.blocks[targetSide];
+    let hitBlock = null;
+    for (const block of blocks) {
+      if (block.alive && rectContainsPoint(block.x, block.y, block.w, block.h, arr.x, arr.y)) {
+        hitBlock = block;
+        break;
+      }
+    }
+
     const offScreen = arr.x < -100 || arr.x > ARCHERY.WIDTH + 100 || arr.y < -100 || arr.y > ARCHERY.HEIGHT + 100;
 
-    if (hit) {
+    if (hitBlock) {
       a.arrows.splice(i, 1);
       const canDealDamage = a.mode === 'single' || arr.owner === a.mySide;
       if (canDealDamage) {
         const shouldSend = a.mode === 'online';
-        dealDamage(targetSide, ARCHERY.ARROW_DAMAGE, shouldSend);
+        const total = ARCHERY.BLOCK_COLS * ARCHERY.BLOCK_ROWS;
+        const blockCount = Math.max(1, Math.round(total * (ARCHERY.ARROW_DAMAGE / 100)));
+        destroyBlocks(targetSide, blockCount, arr.x, arr.y);
+        playSound('score');
+        if (shouldSend) {
+          sendToPeer({ type: 'archeryDamage', side: targetSide, damage: ARCHERY.ARROW_DAMAGE });
+        }
+        checkArcheryGameOver();
       }
       continue;
     }
@@ -97,20 +173,28 @@ function drawFort(ctx, side) {
   const x = side === 'left' ? ARCHERY.LEFT_FORT_X : ARCHERY.RIGHT_FORT_X;
   const y = ARCHERY.GROUND_Y - ARCHERY.FORT_HEIGHT;
 
-  ctx.fillStyle = '#8d6e63';
+  // Foundation shown behind destroyed blocks
+  ctx.fillStyle = '#5d4037';
   ctx.fillRect(x - ARCHERY.FORT_WIDTH / 2, y, ARCHERY.FORT_WIDTH, ARCHERY.FORT_HEIGHT);
 
-  ctx.fillStyle = '#6d4c41';
-  const cw = ARCHERY.FORT_WIDTH / 3;
-  for (let i = 0; i < 3; i++) {
-    ctx.fillRect(x - ARCHERY.FORT_WIDTH / 2 + i * cw, y - 15, cw - 4, 15);
+  // Individual blocks
+  const blocks = state.archery.blocks[side];
+  for (const block of blocks) {
+    if (!block.alive) continue;
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(block.x + 1, block.y + 1, block.w - 2, block.h - 2);
+    ctx.strokeStyle = '#6d4c41';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(block.x + 1, block.y + 1, block.w - 2, block.h - 2);
   }
 
+  // Gate
   ctx.fillStyle = '#4e342e';
   ctx.beginPath();
   ctx.arc(x, ARCHERY.GROUND_Y, 24, Math.PI, 0, true);
   ctx.fill();
 
+  // Archer
   const archer = ARCHER_POS[side];
   drawArcher(ctx, archer.x, archer.y, side);
 }
@@ -172,6 +256,33 @@ function drawHealthBar(ctx, side) {
   ctx.fillText(health + '%', x, y - 8);
 }
 
+function drawWind(ctx) {
+  const wind = state.archery.wind;
+  const cx = ARCHERY.WIDTH / 2;
+  const y = 40;
+  const len = Math.min(60, Math.abs(wind) / 3);
+  const dir = wind >= 0 ? 1 : -1;
+
+  ctx.fillStyle = '#2f2f2f';
+  ctx.font = 'bold 18px Cairo, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('الريح', cx, y - 12);
+
+  ctx.strokeStyle = wind === 0 ? '#888' : (wind > 0 ? '#27ae60' : '#c0392b');
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(cx - len * dir, y + 5);
+  ctx.lineTo(cx + len * dir, y + 5);
+  ctx.stroke();
+
+  // Arrow head
+  ctx.beginPath();
+  ctx.moveTo(cx + len * dir, y + 5);
+  ctx.lineTo(cx + (len - 10) * dir, y - 4);
+  ctx.lineTo(cx + (len - 10) * dir, y + 14);
+  ctx.fill();
+}
+
 function getArcheryOverText() {
   const a = state.archery;
   if (a.mode === 'single') return a.leftHealth > 0 ? 'Victory! 🏆' : 'Defeat! 💥';
@@ -195,6 +306,8 @@ function drawArchery() {
 
   drawFort(ctx, 'left');
   drawFort(ctx, 'right');
+
+  drawWind(ctx);
 
   const a = state.archery;
   if (a.active && !a.over) {
@@ -272,10 +385,17 @@ function startAiLoop() {
   a.aiTimer = setTimeout(shootAi, 1500);
 }
 
-export function startRound() {
+function generateWind() {
+  return ARCHERY.WIND_MIN + Math.random() * (ARCHERY.WIND_MAX - ARCHERY.WIND_MIN);
+}
+
+export function startRound(windValue = null) {
   const a = state.archery;
   a.active = true;
   a.over = false;
+  a.wind = windValue !== null ? windValue : generateWind();
+  a.blocks.left = createBlocks('left');
+  a.blocks.right = createBlocks('right');
   a.leftHealth = 100;
   a.rightHealth = 100;
   a.arrows = [];
@@ -304,9 +424,11 @@ function init(mode, seed = null) {
   a.active = false;
   a.over = false;
   a.mySide = mode === 'online' ? (state.isHost ? 'left' : 'right') : 'left';
+  a.arrows = [];
+  a.blocks.left = createBlocks('left');
+  a.blocks.right = createBlocks('right');
   a.leftHealth = 100;
   a.rightHealth = 100;
-  a.arrows = [];
   a.dragging = false;
   a.aimAngle = a.mySide === 'left' ? 0 : Math.PI;
   a.lastTime = performance.now();
@@ -317,7 +439,7 @@ function init(mode, seed = null) {
   dom.archeryWaiting.classList.add('hidden');
 
   if (mode === 'online') {
-    if (seed) {
+    if (seed !== null && seed !== undefined) {
       startRound();
       return;
     }
@@ -405,10 +527,10 @@ export function handleKey(e) {
   const a = state.archery;
   if (e.code === 'ArrowLeft') {
     e.preventDefault();
-    a.aimAngle -= 0.06;
+    adjustAim(-0.06);
   } else if (e.code === 'ArrowRight') {
     e.preventDefault();
-    a.aimAngle += 0.06;
+    adjustAim(0.06);
   } else if (e.code === 'Space') {
     e.preventDefault();
     if (a.over && a.mode !== 'online') {
@@ -419,12 +541,28 @@ export function handleKey(e) {
   }
 }
 
+export function adjustAim(delta) {
+  const a = state.archery;
+  a.aimAngle += delta;
+  if (a.mySide === 'left') {
+    a.aimAngle = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, a.aimAngle));
+  } else {
+    if (a.aimAngle < Math.PI / 2) a.aimAngle = Math.PI / 2;
+    if (a.aimAngle > 3 * Math.PI / 2) a.aimAngle = 3 * Math.PI / 2;
+  }
+}
+
+export function shoot() {
+  shootArcheryArrow();
+}
+
 export function startNewBattle() {
   const a = state.archery;
   if (a.mode === 'online') {
     if (state.isHost) {
-      sendToPeer({ type: 'archeryStart', seed: 0 });
-      startRound();
+      const wind = generateWind();
+      sendToPeer({ type: 'archeryStart', seed: 0, wind });
+      startRound(wind);
     }
   } else {
     startRound();
@@ -434,13 +572,16 @@ export function startNewBattle() {
 export function onMessage(type, data) {
   const a = state.archery;
   if (type === 'archeryStart') {
-    startRound();
+    startRound(data.wind != null ? data.wind : 0);
   } else if (type === 'archeryShot') {
-    if (data && data.owner && data.x != null && data.y != null && data.vx != null && data.vy != null) {
+    if (data && data.owner != null && data.x != null && data.y != null && data.vx != null && data.vy != null) {
       addArrow(data.owner, data.x, data.y, data.vx, data.vy);
     }
   } else if (type === 'archeryDamage') {
-    dealDamage(data.side, data.damage, false);
+    const total = ARCHERY.BLOCK_COLS * ARCHERY.BLOCK_ROWS;
+    const blockCount = Math.max(1, Math.round(total * (data.damage / 100)));
+    destroyBlocks(data.side, blockCount, null, null);
+    checkArcheryGameOver();
   } else if (type === 'archeryEnd') {
     if (!a.over && data.winner) {
       endArcheryBattle(data.winner);
@@ -460,5 +601,7 @@ export const FortBattleGame = {
   handlePointerMove,
   handlePointerUp,
   handleKey,
+  adjustAim,
+  shoot,
   onMessage
 };
