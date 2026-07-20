@@ -1,0 +1,9 @@
+.kimi-code/
+.ssh/
+.bash_logout
+.bash_profile
+.bashrc
+.cshrc
+.tcshrc
+.wget-hsts
+*.log
