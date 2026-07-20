@@ -38,6 +38,28 @@ Then open `http://localhost:8080` in your browser.
 | 19 | Muttrah Fishing Challenge | 🔜 Coming Soon | — |
 | 20 | Pottery Maker | 🔜 Coming Soon | — |
 
+## 🎮 Game Development Notes
+
+Detailed status for the games that have been started.
+
+### 1. Frankincense Collector Adventure
+- **Idea:** An endless runner where a child collects frankincense while jumping over desert obstacles in an Omani valley.
+- **Achieved:** Full game loop, keyboard (Arrow Up / Space) and touch controls, scoring, increasing speed, restart after game over, sound effects.
+- **Pending:** Online multiplayer, power-ups, themed biomes.
+
+### 2. Omani Tic Tac Toe (X-O)
+- **Idea:** Classic X-O with an Omani dagger-and-sword theme, playable against AI or a friend online.
+- **Achieved:** Single-player vs simple AI, online 1v1 via PeerJS, 4-digit room codes, quick emoji reactions, turn handling, win/draw detection, restart.
+- **Pending:** Move animations, AI difficulty levels, match history.
+
+### 3. Fort Archers Battle
+- **Idea:** Two Omani forts face each other across the screen; each player controls an archer and tries to destroy the enemy fort first.
+- **Achieved:** Drag-to-aim (works outside the canvas) and keyboard controls, arrow physics with gravity, fort visuals and health bars, AI opponent in single-player, online 1v1 with shot and damage synchronization, fullscreen support.
+- **Pending:** Destructible fort blocks, wind/obstacles, power-ups, mobile virtual aim controls.
+
+### Coming Soon Games
+The remaining 17 games are listed in the catalogue above. Each will get its own development note once work starts.
+
 ## 🌐 Online Multiplayer
 
 Online games use **PeerJS (WebRTC)** through the public `0.peerjs.com` broker — no dedicated server is required.
