@@ -7,3 +7,4 @@
 .tcshrc
 .wget-hsts
 *.log
+.bash_history
