@@ -69,7 +69,7 @@ Build a safe, performant, and culturally authentic browser-based game platform f
 | Build Tool | **Vite** | Fast HMR, simple config, PWA plugin, excellent TypeScript support. |
 | Language | **TypeScript** | Type safety for game logic, network messages, and state. Reduces bugs as the catalogue grows. |
 | App Shell | **Svelte 5** or **Vue 3** | Lightweight, reactive, excellent RTL/i18n support, small bundle size. |
-| Game Engine | **Phaser 3** | Mature 2D engine with physics, scenes, input abstraction, audio, camera effects, and proven mobile performance. |
+| Game Engine | **Babylon.js** | Mature web 3D engine with physics, animation, particles, GUI, audio, input abstraction, and proven browser/tablet performance. Supports both low-poly and advanced PBR workflows. |
 | Styling | CSS custom properties + optional **Tailwind CSS** | Preserve the existing Gulf palette; add utility classes for faster UI development. |
 
 ### 2.2 Backend & Multiplayer
@@ -90,9 +90,9 @@ Build a safe, performant, and culturally authentic browser-based game platform f
 | PWA | **Vite PWA plugin** |
 | Asset Pipeline | Vite built-in + Aseprite/Figma for art |
 
-### 2.4 3D-Ready Alternative Stack
+### 2.4 Alternative Engines
 
-The default stack is 2D-first with Phaser 3. If the studio later decides to build true 3D games, the following alternatives are approved. Do **not** mix Phaser 3 and a 3D engine in the same game scene unless there is a dedicated rendering bridge.
+Babylon.js is the studio's default 3D engine. The following alternatives are approved only if a specific game or team constraint demands them.
 
 | Engine | Best For | Bundle Size | Mobile Performance | Learning Curve | Licensing |
 |--------|----------|-------------|-------------------|----------------|-----------|
@@ -102,10 +102,11 @@ The default stack is 2D-first with Phaser 3. If the studio later decides to buil
 | **Unity WebGL** | High-fidelity 3D, native-mobile fallback | Very large | Poor on low-end tablets; long load times | High | Proprietary / subscription |
 
 **Aldoolab guidance:**
-- Choose **Babylon.js** or **PlayCanvas** for a future 3D pilot.
-- Use **Three.js** only if the team needs custom rendering and has time to build its own tooling.
-- Avoid **Unity WebGL** for this platform unless the game is also shipping as a native mobile app.
-- Backend (Colyseus/Supabase), state management, and deployment patterns remain the same in 3D.
+- Default to **Babylon.js** for all new games.
+- Use **PlayCanvas** if the team needs a lighter engine and faster iteration for a specific title.
+- Use **Three.js** only if the project needs custom rendering and the team can afford to build its own tooling.
+- Avoid **Unity WebGL** unless the game is also shipping as a native mobile app.
+- Backend (Colyseus/Supabase), state management, and deployment patterns remain the same regardless of engine.
 
 ---
 
@@ -115,8 +116,8 @@ The default stack is 2D-first with Phaser 3. If the studio later decides to buil
 ┌─────────────────────────────────────────────┐
 │              Browser Client                 │
 │  ┌─────────────┐      ┌─────────────────┐  │
-│  │  App Shell  │      │  Phaser Game    │  │
-│  │ (Svelte/Vue)│◄────►│    Manager      │  │
+│  │  App Shell  │      │  Babylon.js     │  │
+│  │ (Svelte/Vue)│◄────►│  Game Manager   │  │
 │  └─────────────┘      └────────┬────────┘  │
 │                                │           │
 │                       ┌────────┴────────┐  │
@@ -139,8 +140,8 @@ The default stack is 2D-first with Phaser 3. If the studio later decides to buil
 ### 3.1 Separation of Concerns
 
 - **App Shell** handles routing, navigation, modals, user profile, audio settings, and online lobby.
-- **Game Manager** instantiates Phaser scenes, handles pause/resume, cleanup, and communication between shell and game.
-- **Game Scenes** contain only game logic, rendering, and local input.
+- **Game Manager** owns the Babylon.js engine instance and instantiates/destroys game scenes, cameras, lights, and render loops. It handles pause/resume, cleanup, and communication between shell and game.
+- **Game Scenes** contain only game logic, 3D scene graph, rendering, and local input.
 - **Network Layer** (Colyseus client) is injected into scenes that need online play; scenes never talk to the server directly.
 - **Server** validates all moves and owns authoritative state.
 
@@ -154,7 +155,8 @@ The default stack is 2D-first with Phaser 3. If the studio later decides to buil
 │   ├── assets/
 │   │   ├── images/
 │   │   ├── audio/
-│   │   ├── sprites/
+│   │   ├── models/               # 3D models (GLB/GLTF)
+│   │   ├── textures/             # 3D textures (KTX2/WebP/PNG)
 │   │   └── fonts/
 │   └── manifest.json
 ├── src/
@@ -170,6 +172,7 @@ The default stack is 2D-first with Phaser 3. If the studio later decides to buil
 │   │   ├── ModeModal.svelte
 │   │   └── OnlinePanel.svelte
 │   ├── core/                   # Shared game infrastructure
+│   │   ├── EngineManager.ts    # Babylon.js engine singleton
 │   │   ├── GameManager.ts
 │   │   ├── AudioManager.ts
 │   │   ├── InputManager.ts
@@ -177,14 +180,14 @@ The default stack is 2D-first with Phaser 3. If the studio later decides to buil
 │   │   └── NetworkManager.ts
 │   ├── games/                  # One folder per game
 │   │   ├── runner/
-│   │   │   ├── RunnerScene.ts
+│   │   │   ├── RunnerGame.ts   # Babylon scene + game logic
 │   │   │   ├── Obstacle.ts
 │   │   │   └── config.ts
 │   │   ├── tictactoe/
-│   │   │   ├── TicTacToeScene.ts
+│   │   │   ├── TicTacToeGame.ts
 │   │   │   └── ai.ts
 │   │   └── fortBattle/
-│   │       ├── FortBattleScene.ts
+│   │       ├── FortBattleGame.ts
 │   │       ├── Arrow.ts
 │   │       └── Fort.ts
 │   ├── server/                 # Colyseus server (can be separate repo)
@@ -216,12 +219,12 @@ To keep the platform maintainable by a small team or a single developer, every g
 **File isolation:**
 - One folder per game under `src/games/[game-id]/`.
 - Each game exports a single `GameConfig` object consumed by the Game Manager.
-- Game logic lives inside the game's Phaser scene; shared helpers live in `src/core/`.
+- Game logic lives inside the game's Babylon scene; shared helpers live in `src/core/`.
 - Do not import between `src/games/*` folders.
 
 **Runtime isolation:**
 - The Game Manager creates and destroys the scene when entering or leaving a game.
-- Scenes clean up their own event listeners, timers, tweens, and audio in `shutdown()`.
+- Scenes clean up their own meshes, materials, textures, lights, cameras, observables, and audio in `dispose()`.
 - Global state (audio, user, online status) is read-only inside scenes; scenes emit events for the shell to handle.
 
 **Asset isolation:**
@@ -238,23 +241,28 @@ To keep the platform maintainable by a small team or a single developer, every g
 
 ## 5. Game Development Guidelines
 
-### 5.1 Every Game Is a Phaser Scene
+### 5.1 Every Game Is a Babylon Scene
 
 ```ts
-// src/games/runner/RunnerScene.ts
-import { Scene } from 'phaser';
+// src/games/runner/RunnerGame.ts
+import { Scene, UniversalCamera, Vector3, HemisphericLight } from '@babylonjs/core';
 
-export class RunnerScene extends Scene {
-  constructor() {
-    super({ key: 'RunnerScene' });
+export class RunnerGame {
+  scene: Scene;
+
+  constructor(engine, canvas) {
+    this.scene = new Scene(engine);
+    const camera = new UniversalCamera('camera', new Vector3(0, 5, -10), this.scene);
+    camera.setTarget(Vector3.Zero());
+    new HemisphericLight('light', new Vector3(0, 1, 0), this.scene);
   }
 
-  create() {
-    // Initialize world, player, obstacles
+  update() {
+    // Game loop; called by the render loop
   }
 
-  update(time: number, delta: number) {
-    // Game loop
+  dispose() {
+    this.scene.dispose();
   }
 }
 ```
@@ -270,95 +278,111 @@ export const runnerConfig: GameConfig = {
   icon: '🏃‍♂️',
   supportsSingle: true,
   supportsOnline: false,
-  sceneKey: 'RunnerScene',
+  gameKey: 'RunnerGame',
   preloadAssets: [...],
 };
 ```
 
 ### 5.3 Design Principles
 
-1. **Cultural authenticity:** Use Gulf visuals, shared colors, and country-specific motifs in sprites, backgrounds, and sound effects.
+1. **Cultural authenticity:** Use Gulf visuals, shared colors, and country-specific motifs in 3D models, materials, environments, and sound effects.
 2. **Accessible difficulty:** Target age 7–12. Avoid twitch mechanics that require adult reflexes.
 3. **Short sessions:** Aim for 1–3 minute play sessions.
 4. **Clear feedback:** Every action should have visual and audio feedback.
 5. **Touch-first:** All games must be fully playable on a 10-inch tablet without a keyboard.
 
-### 5.4 Phaser 3 Standards & Constraints
+### 5.4 Babylon.js Standards & Constraints
 
-Phaser 3 is the studio's chosen 2D game engine. The following rules keep the catalogue consistent, performant, and maintainable.
+Babylon.js is the studio's chosen 3D game engine. The following rules keep the catalogue consistent, performant, and maintainable across both simple low-poly and advanced PBR workflows.
 
 #### 5.4.1 Version & Dependency Policy
 
-- Pin Phaser to a specific version in `package.json` (e.g., `"phaser": "3.80.1"`).
-- Do not upgrade Phaser mid-sprint. Schedule upgrades during dedicated refactoring weeks.
-- Only approved plugins may be used. Current approved list:
-  - `phaser3-rex-plugins` for UI components.
-  - `phaser-spine` or `phaser-plugin-dragonbones` for skeletal animation if required.
+- Pin Babylon.js to a specific version in `package.json` (e.g., `"@babylonjs/core": "7.x.x"`).
+- Use tree-shakable `@babylonjs/core` imports to keep bundle size down.
+- Do not upgrade Babylon.js mid-sprint. Schedule upgrades during dedicated refactoring weeks.
+- Only approved packages may be used:
+  - `@babylonjs/core`, `@babylonjs/gui`, `@babylonjs/loaders` for core, UI, and model loading.
+  - `@babylonjs/materials` or `@babylonjs/procedural-textures` when a game explicitly needs them.
+  - `@babylonjs/inspector` for development only; exclude from production builds.
 
 #### 5.4.2 Bundle Size Targets
 
 | Budget | Target |
 |--------|--------|
-| Phaser core (gzipped) | < 900 KB |
-| Per-game scene code | < 50 KB |
-| Per-game asset bundle | < 5 MB |
-| Total initial app load | < 3 MB |
+| Babylon.js core (gzipped) | < 1.5 MB |
+| Per-game code | < 50 KB |
+| Per-game asset bundle | < 8 MB for 3D |
+| Total initial app load | < 4 MB |
 
 Lazy-load game-specific assets when a game is selected, not at app startup.
 
 #### 5.4.3 Scene Architecture
 
-Every Phaser game must follow this structure:
+Every Babylon game must follow this structure:
 
 ```ts
-// src/games/[game-id]/[Game]Scene.ts
-export class ExampleScene extends Phaser.Scene {
-  constructor() {
-    super({ key: 'ExampleScene' });
+// src/games/[game-id]/[Game]Game.ts
+import { Scene, Engine } from '@babylonjs/core';
+
+export class ExampleGame {
+  scene: Scene;
+
+  constructor(private engine: Engine, private canvas: HTMLCanvasElement) {
+    this.scene = new Scene(engine);
+    this.setupCamera();
+    this.setupLights();
+    this.loadAssets();
   }
 
-  preload() {
+  setupCamera() {
+    // Configure camera for the game type
+  }
+
+  setupLights() {
+    // Configure lighting and environment
+  }
+
+  async loadAssets() {
     // Load only this game's assets
   }
 
-  create() {
-    // Setup world, input, and initial state
-  }
-
-  update(time: number, delta: number) {
+  update() {
     // Game loop (keep lightweight)
   }
 
-  shutdown() {
-    // Clean up event listeners, timers, and tweens
+  dispose() {
+    this.scene.dispose();
   }
 }
 ```
 
 Rules:
-- One scene per game.
-- Destroy the scene completely when returning to the home screen.
-- Do not leak event listeners or timers between scenes.
+- One Babylon `Scene` per game.
+- Dispose the scene, meshes, materials, textures, lights, and observables completely when returning to the home screen.
+- Do not leak observables, render loops, or event listeners between scenes.
 
 #### 5.4.4 Performance Rules
 
 - Target 60 FPS on a mid-range tablet (e.g., iPad 8th gen, Samsung Galaxy Tab A8).
-- Keep draw calls under 50 per scene on mobile.
-- Use object pooling for bullets, obstacles, collectibles, and particles.
-- Disable off-screen game objects (`active = false`, `visible = false`).
-- Avoid creating new objects inside `update()`; reuse or pool instead.
-- Use `texture atlases` to reduce draw calls.
+- Keep draw calls under 100 per scene on mobile; under 200 on desktop.
+- Use mesh LODs (Level of Detail) for complex models.
+- Share materials across meshes where possible; avoid unique materials per instance.
+- Use object pooling for projectiles, collectibles, and particle systems.
+- FreezeWorldMatrix on static meshes after placement.
+- Avoid creating/disposing meshes inside `update()`; reuse or pool instead.
+- Use KTX2/Basis texture compression and Draco mesh compression.
+- Use texture atlases for UI and sprite-based elements only.
 
 #### 5.4.5 Input Handling
 
-- Use Phaser's input manager; do not attach raw DOM event listeners inside scenes.
-- Support both touch and keyboard for every action.
-- Provide on-screen controls for tablet users when keyboard is not available.
+- Use Babylon's input system (`ActionManager`, `PointerEvents`, `Observable`) or the shared `InputManager`; do not attach raw DOM event listeners inside scenes.
+- Support both touch and keyboard/mouse for every action.
+- Provide on-screen controls for tablet/mobile users.
 - Debounce rapid inputs to prevent accidental double-actions.
 
-#### 5.4.6 Audio in Phaser
+#### 5.4.6 Audio in Babylon
 
-- Use Phaser's sound manager for game audio.
+- Use Babylon's sound engine or the shared `AudioManager` for game audio.
 - Keep SFX short (< 2s) and compressed.
 - Respect the global mute state from the app shell.
 - Provide per-game volume overrides only if the design explicitly requires it.
@@ -369,20 +393,20 @@ Rules:
 - Emit events to the app shell for UI updates:
 
 ```ts
-this.events.emit('score', { value: 120 });
-this.events.emit('gameOver', { winner: 'left', score: 450 });
+this.onScoreChange.notifyObservers({ value: 120 });
+this.onGameOver.notifyObservers({ winner: 'left', score: 450 });
 ```
 
 - For online games, send only player intents to Colyseus; never send score or health from the client.
 
 #### 5.4.8 Profiling Gate
 
-No game ships without passing the Phaser profiling gate:
+No game ships without passing the Babylon profiling gate:
 
 - [ ] Stable 60 FPS on Tier 1 tablet for 5 minutes.
 - [ ] Memory usage does not grow during a 10-minute session.
 - [ ] No console errors or warnings.
-- [ ] Scene transitions cleanly with no leaked listeners.
+- [ ] Scene disposes cleanly with no leaked meshes, materials, or observables.
 - [ ] Asset bundle size within budget.
 
 ---
@@ -447,11 +471,11 @@ Store only global UI state: current user, current game, audio settings, online s
 
 ### 7.2 Game-Level State
 
-Keep game state inside the Phaser scene. Expose only what the shell needs through events:
+Keep game state inside the Babylon scene. Expose only what the shell needs through events or observables:
 
 ```ts
-this.events.emit('score', { value: 120 });
-this.events.emit('gameOver', { winner: 'left' });
+this.onScoreChange.notifyObservers({ value: 120 });
+this.onGameOver.notifyObservers({ winner: 'left' });
 ```
 
 ### 7.3 Server State
@@ -498,8 +522,9 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 ### 9.2 Art Pipeline
 
 - Create a shared asset library: GCC forts and landmarks, desert dunes, palm trees, camels, falcons, dhows, traditional dress, etc.
-- Use texture atlases for performance.
-- Optimize images to WebP/AVIF where supported.
+- Produce assets as modular 3D models (GLB/GLTF) so they can be reused across games.
+- Use KTX2/Basis texture compression and Draco mesh compression.
+- Optimize images to WebP/AVIF where supported; use PNG fallback for alpha-critical textures.
 
 ---
 
@@ -566,48 +591,33 @@ Use the palette consistently across all games so the platform feels cohesive.
 
 #### 10.1.6 Recommended Art Style
 
-**Aldoolab recommendation: stylized 2D vector as the primary art direction.**
+**Aldoolab recommendation: stylized low-poly 3D as the primary art direction.**
 
-The platform is built on Phaser 3, a 2D engine, and is targeting tablets first. The art style must therefore be fast to render, easy to animate, and producible by a small team or solo developer without relying on rare 3D specialists.
+The platform is built on Babylon.js, a 3D engine, and targets tablets first. The art style must be readable on small screens, fast to render on mobile GPUs, and producible by a small team or solo developer.
 
 | Style | Verdict | Why |
 |-------|---------|-----|
-| **Stylized 2D vector (flat shapes, bold outlines, geometric)** | ✅ **Primary choice** | Native to Phaser 3; small file sizes; scales cleanly across devices; quick to iterate; RTL text friendly; easy to animate with tweens, spritesheets, or Spine/DragonBones. |
-| **Vector with painterly textures** | ✅ Good secondary look | Add subtle gradients, paper, or sand-grain textures to the flat vector base for warmth and Gulf atmosphere without sacrificing performance. |
-| **Pixel art** | ⚠️ Use selectively | Cheap to produce and nostalgic, but requires high-resolution sprites to read well on tablets; hard to render Arabic details cleanly at low resolutions. Use only if the artist is experienced with pixel art. |
-| **Low-poly 3D** | ⚠️ Deferred / standalone only | Visually appealing, but Phaser 3 is not a 3D engine. Implementing low-poly would require Three.js/Babylon.js hybrids or a separate 3D game. Reserve for a future dedicated 3D title or short intro/cinematic, not the core 2D catalogue. |
-| **Realistic 3D / high-fidelity illustration** | ❌ Avoid | Too expensive to produce for 20 games; hurts tablet performance; competes poorly with AAA mobile games; harder to keep culturally consistent. |
+| **Stylized low-poly 3D (flat shading, bold shapes, simple PBR)** | ✅ **Primary choice** | Native to Babylon.js; performs well on tablets; distinctive Gulf look; reusable models across games; scales from simple to advanced within the same engine. |
+| **Low-poly with hand-painted textures** | ✅ Good secondary look | Add warmth and cultural detail without heavy PBR complexity. |
+| **Advanced PBR 3D** | ⚠️ Use selectively | Richer lighting and materials for flagship titles; higher asset cost and performance budget. |
+| **2D vector / sprites** | ⚠️ Use only for UI or specific 2D mini-games | Not the default art language for the platform. |
+| **Realistic high-fidelity 3D** | ❌ Avoid | Too expensive to produce for 20 games; hurts tablet performance; competes poorly with AAA mobile games; harder to keep culturally consistent. |
+
+**Simple vs. advanced 3D within Babylon:**
+- **Simple 3D:** low-poly meshes, flat or lightly shaded materials, baked lighting, minimal particle effects. Best for fast iteration and broad device support.
+- **Advanced 3D:** PBR materials, real-time shadows, dynamic lighting, skeletal animation, post-processing. Reserve for games where the visual lift justifies the cost.
+- Both workflows share the same engine, asset formats, and pipeline; a game can start simple and advance later.
 
 **Visual rules for the chosen style:**
-- Use **flat, layered vector shapes** for characters and environments.
-- Keep outlines **thick and consistent** (2–4 px) so shapes read on small screens.
-- Use the unified palette from Section 10.1.2; avoid noisy gradients.
-- Build characters from simple parts so poses can be reused or tweened without redrawing.
-- Use parallax layers, particles, and camera effects to add depth instead of true 3D.
-- Export source art as SVG or high-resolution PNG, then output WebP/PNG atlases for Phaser.
+- Use **bold, readable silhouettes** for characters and landmarks.
+- Keep polygon counts low enough for 60 FPS on Tier 1 tablets.
+- Use the unified palette from Section 10.1.2; apply it through materials, not noisy textures.
+- Build modular assets (forts, palms, dhows, characters) so they can be reused and recombined across games.
+- Use camera movement, lighting, and particles to add depth and polish.
+- Export source models as GLB/GLTF with Draco compression and KTX2/Basis textures.
 
 **Production implication:**
-A single vector artist using Figma, Illustrator, or Aseprite can maintain the entire catalogue. Style consistency comes from the color palette, outline thickness, and proportion rules rather than from a single complex tool chain.
-
-#### 10.1.7 3D Migration Path
-
-True 3D is not blocked, but it is treated as a future track so the 2D platform can launch first.
-
-| Phase | Action | Trigger |
-|-------|--------|---------|
-| **1. Launch 2D** | Ship the full 2D catalogue on Phaser 3. | Day one — default plan. |
-| **2. 2.5D experiments** | Use isometric sprites, parallax, and fake depth inside Phaser 3. | When a game needs more visual depth without changing engines. |
-| **3. 3D pilot** | Build one standalone 3D game with Babylon.js or PlayCanvas. | After the 2D platform has users, revenue, or funding proof. |
-| **4. Full 3D catalogue** | Migrate or add more 3D games only after the pilot succeeds. | After the pilot proves performance and retention on target devices. |
-
-**Risks to manage before moving to 3D:**
-- **Asset cost:** 3D models, rigs, animations, and materials take significantly longer than 2D vector.
-- **Performance:** Tablets in Tier 1 must maintain stable frame rates with WebGL 2.0 content.
-- **Load times:** 3D asset bundles easily exceed the 5 MB per-game budget; compression and streaming become mandatory.
-- **Team skills:** Requires a 3D artist and a rendering/shader engineer.
-- **Compatibility:** Some school or low-end devices may not support WebGL 2.0 or may throttle GPU performance.
-
-**Decision gate:** Do not start Phase 3 until at least 10 of the planned 2D games are live and the platform has demonstrated retention.
+A single 3D artist using Blender (modeling) and Figma (UI/concepts) can maintain the core asset library. Style consistency comes from polygon density limits, material rules, and the shared Gulf palette rather than from a single complex tool chain.
 
 ---
 
@@ -617,11 +627,14 @@ True 3D is not blocked, but it is treated as a future track so the 2D platform c
 
 | Category | Examples |
 |----------|----------|
-| Sprites | Player characters, enemies, collectibles, projectiles |
-| Backgrounds | Parallax layers, static scenes, sky gradients |
+| 3D Models | Player characters, enemies, collectibles, props, landmarks |
+| Materials | Sand, stone, water, fabric, wood, metal, Gulf patterns |
+| Textures | Diffuse, normal, roughness, ambient occlusion, emission |
+| Animations | Idle, run, jump, attack, celebrate, hurt, facial expressions |
+| Environments | Desert dunes, wadis, coastlines, forts, city skylines |
 | UI | Buttons, panels, badges, icons, modals |
 | Particles | Dust, sparks, confetti, water splash, fire |
-| Effects | Flash, screen shake, vignette, transitions |
+| Effects | Camera shake, flash, vignette, post-processing, transitions |
 | Fonts | Cairo/Tajawal web fonts, numeric score fonts |
 
 #### 10.2.2 File Formats
@@ -632,7 +645,7 @@ True 3D is not blocked, but it is treated as a future track so the 2D platform c
 | Sprites with transparency | WebP (lossless) | PNG-8 |
 | Texture atlases | PNG + JSON | — |
 | Audio | OGG | MP3 |
-| Animation data | JSON (Phaser atlas/Spine/DragonBones) | — |
+| Animation data | GLB animation clips, Babylon animation groups | — |
 | Vector UI | SVG | — |
 | 3D models | GLB (GLTF 2.0 binary) | GLTF + bin |
 | 3D textures | KTX2 / Basis Universal | WebP / PNG |
@@ -640,24 +653,30 @@ True 3D is not blocked, but it is treated as a future track so the 2D platform c
 
 #### 10.2.3 Resolution & Sizing
 
-- **Internal canvas resolution:** Target 1920×1080 max; scale down for performance on tablets.
-- **Sprite sizes:** Design at 2× or 3× the in-game display size, then scale down.
-- **Max texture size:** 2048×2048 for broad device compatibility.
-- **Asset budget per game:** aim for < 5 MB total (images + audio).
+- **Internal canvas resolution:** Target 1920×1080 max; scale render quality for performance on tablets.
+- **Model polygon budget:**
+  - Hero characters: < 3,000 triangles on mobile.
+  - Environment props: < 1,000 triangles.
+  - Background clutter: < 500 triangles.
+- **Texture sizes:** Design at power-of-two resolutions (512×512, 1024×1024); max 2048×2048 for broad device compatibility.
+- **Asset budget per game:** aim for < 8 MB total (models + textures + audio) for 3D titles.
 
 #### 10.2.4 Naming Conventions
 
 ```
 assets/
+├── models/
+│   ├── char_boy.glb
+│   ├── prop_dallah.glb
+│   ├── env_fort_oman.glb
+│   └── veh_dhow.glb
+├── textures/
+│   ├── char_boy_diffuse.ktx2
+│   ├── prop_dallah_roughness.webp
+│   └── env_sand_normal.ktx2
 ├── images/
 │   ├── bg_desert_day.webp
-│   ├── bg_sea_sunset.webp
-│   ├── char_boy_run_01.webp
 │   └── ui_button_primary.webp
-├── spritesheets/
-│   ├── runner_player.json
-│   ├── runner_player.png
-│   └── fort_archer.json
 ├── particles/
 │   ├── confetti.png
 │   └── dust.png
@@ -668,11 +687,12 @@ assets/
 
 Use lowercase, underscores, and descriptive names.
 
-#### 10.2.5 Texture Atlases
+#### 10.2.5 Texture Atlases & Material Atlases
 
-- Pack sprites for each game into atlases to reduce draw calls.
-- Use tools like **TexturePacker**, **Shoebox**, or **Phaser 3 built-in atlas generation**.
-- Keep UI atlas separate from game atlas for memory management.
+- Pack UI sprites and 2D elements into atlases to reduce draw calls.
+- Use tools like **TexturePacker**, **Shoebox**, or custom pipelines.
+- For 3D, prefer material reuse and texture arrays over per-mesh unique textures.
+- Keep UI atlas separate from game material textures for memory management.
 
 ---
 
@@ -682,7 +702,7 @@ Use lowercase, underscores, and descriptive names.
 
 - **Actions:** 0.15–0.3s for UI feedback.
 - **Transitions:** 0.3–0.5s for screen/modal changes.
-- **Anticipation:** Use 2–4 frames of wind-up before big actions (jump, shoot).
+- **Anticipation:** Use 0.1–0.2s of wind-up before big actions (jump, shoot).
 - **Hold on win:** Celebrate for 1.5–2s so children notice victory.
 - **Avoid:** Strobing, rapid flashing, or motions that may cause discomfort.
 
@@ -703,10 +723,10 @@ Every interaction must provide immediate visual feedback:
 
 #### 10.3.3 Character Animation States
 
-Most player characters should support:
+Most player characters should support these animation states (exported as GLB animation clips or keyframe groups):
 
 - **Idle:** breathing/looping subtle motion.
-- **Run:** 6–10 frame cycle.
+- **Run:** looping locomotion cycle.
 - **Jump:** anticipation → launch → peak → land.
 - **Duck/Crouch:** compressed pose, quick transition.
 - **Attack/Shoot:** wind-up → action → recovery.
@@ -729,36 +749,43 @@ Most player characters should support:
 
 ### 10.4 Technical Implementation
 
-#### 10.4.1 Phaser 3 Animation Tools
+#### 10.4.1 Babylon.js Animation Tools
 
-- **Tweens:** for UI feedback, score counters, modal transitions.
-- **Animations:** for sprite-based character cycles.
-- **Particles:** for confetti, dust, sparks, water.
-- **Camera effects:** shake, fade, flash, zoom.
-- **Timers:** for delayed animations and sequence choreography.
+- **Animation groups:** for skeletal/GLB animation clips (idle, run, celebrate).
+- **Tweens / Animation class:** for UI feedback, score counters, modal transitions.
+- **Particle systems:** for confetti, dust, sparks, water.
+- **Camera effects:** shake, fade, flash, zoom via camera animation and post-processes.
+- **Render loop:** for per-frame game logic and sequence choreography.
 
 Example tween for a score pop:
 
 ```ts
-this.tweens.add({
-  targets: scoreText,
-  scale: { from: 1, to: 1.4 },
-  y: '-=30',
-  alpha: { from: 1, to: 0 },
-  duration: 800,
-  ease: 'Back.easeOut',
-});
+const anim = new Animation(
+  'scorePop',
+  'scaling',
+  30,
+  Animation.ANIMATIONTYPE_VECTOR3,
+  Animation.ANIMATIONLOOPMODE_CONSTANT
+);
+const keys = [
+  { frame: 0, value: new Vector3(1, 1, 1) },
+  { frame: 15, value: new Vector3(1.4, 1.4, 1.4) },
+  { frame: 30, value: new Vector3(1, 1, 1) },
+];
+anim.setKeys(keys);
+scoreText.animations.push(anim);
+this.scene.beginAnimation(scoreText, 0, 30, false);
 ```
 
 #### 10.4.2 Skeletal Animation
 
-For complex characters (e.g., running camel, dancing avatar), consider:
+For complex characters (e.g., running camel, dancing avatar), use skeletal animation exported inside GLB/GLTF:
 
-- **Spine** (premium, industry standard).
-- **DragonBones** (free, open-source).
-- Export to JSON + atlas and load in Phaser via plugins.
+- **Blender** with Rigify or custom armatures (free, full control).
+- **Maya/3ds Max** via GLTF exporters (studio pipelines).
+- Load GLB animation groups directly in Babylon.js.
 
-Use skeletal animation only when frame-by-frame is too expensive or rigid.
+Use skeletal animation for organic characters; use simple transforms/tweens for rigid props and UI.
 
 #### 10.4.3 Particle Effects
 
@@ -775,11 +802,12 @@ Keep particle counts reasonable:
 - Mobile: < 200 active particles.
 - Desktop: < 500 active particles.
 
-#### 10.4.4 Parallax & Layering
+#### 10.4.4 Depth & Layering
 
-- Use 2–4 parallax layers for runner/explorer games.
-- Layers closer to camera move faster than distant layers.
-- Cache static layers as single textures when possible.
+- Use real 3D depth: place foreground, midground, and background meshes at different Z distances.
+- For runner/explorer games, move the camera or world to create natural parallax.
+- Use fog and atmospheric scattering to blend distant background layers.
+- Cache static environment chunks and instance repeated objects (rocks, palms, buildings).
 
 #### 10.4.5 Screen Effects Rules
 
@@ -799,19 +827,23 @@ Keep particle counts reasonable:
 
 | Metric | Target |
 |--------|--------|
-| Draw calls per scene | < 50 on mobile |
-| Texture memory per game | < 32 MB |
-| Initial load time | < 3s on 3G |
-| Frame rate | Stable 60 FPS on mid-range tablet |
-| Asset bundle per game | < 5 MB |
+| Draw calls per scene | < 100 on mobile; < 200 on desktop |
+| Triangles per scene | < 80,000 on mobile; < 200,000 on desktop |
+| Texture memory per game | < 64 MB |
+| Initial load time | < 4s on 3G |
+| Frame rate | Stable 60 FPS on Tier 1 tablet; 30+ FPS on Tier 2 |
+| Asset bundle per game | < 8 MB for 3D titles |
 
 #### 10.5.2 Optimization Rules
 
-- Reuse textures across games where thematically appropriate.
-- Pool particles and sprites instead of creating/destroying constantly.
-- Disable off-screen updates (`active = false` for sprites outside camera).
+- Reuse materials and textures across games where thematically appropriate.
+- Pool meshes, particles, and projectiles instead of creating/destroying constantly.
+- Freeze world matrices on static meshes after placement.
+- Use LODs (Level of Detail) for complex models.
+- Instance repeated geometry (palms, rocks, buildings).
 - Use object pooling for bullets, obstacles, and collectibles.
 - Compress audio to 128 kbps or lower.
+- Compress textures with KTX2/Basis and meshes with Draco.
 
 #### 10.5.3 Accessibility
 
@@ -828,41 +860,45 @@ Keep particle counts reasonable:
 
 | Task | Tool |
 |------|------|
-| Pixel art / sprites | Aseprite, GraphicsGale |
+| 3D modeling / sculpting | Blender, ZBrushCore |
+| 3D texturing | Substance Painter, Blender, ArmorPaint |
 | Vector UI / icons | Figma, Adobe Illustrator |
-| Texture packing | TexturePacker, Free Texture Packer |
-| Skeletal animation | Spine, DragonBones |
-| 3D (if needed) | Blender |
+| Texture packing / compression | TexturePacker, Free Texture Packer, gltf-transform, toktx |
+| Skeletal animation | Blender, Maya |
+| Mesh compression | Draco, gltf-transform |
 | Audio | Bfxr, LMMS, Audacity |
 | Font subsetting | glyphhanger, fonttools |
 
 #### 10.6.2 Export & Optimization Workflow
 
-1. Create art at 2× or 3× target resolution.
-2. Export to PNG/OGG source files.
-3. Convert images to WebP with fallback PNG.
-4. Pack sprites into atlases.
-5. Compress audio.
-6. Run assets through an optimizer (e.g., `imagemin`, `ffmpeg`).
-7. Verify file sizes against the performance budget.
-8. Commit to `public/assets/`.
+1. Model, rig, and animate in Blender; export source `.blend` files to version control.
+2. Export final assets as GLB/GLTF.
+3. Compress meshes with Draco.
+4. Bake and compress textures to KTX2/Basis Universal with PNG/WebP fallback.
+5. Convert UI images to WebP with PNG fallback.
+6. Pack UI sprites into atlases.
+7. Compress audio.
+8. Run assets through optimizers (e.g., `gltf-transform`, `toktx`, `ffmpeg`).
+9. Verify file sizes against the performance budget.
+10. Commit to `public/assets/`.
 
 #### 10.6.3 Asset Review Checklist
 
 - [ ] Culturally accurate and appropriate for children.
-- [ ] Consistent with the platform color palette.
-- [ ] Readable at target resolution.
-- [ ] Optimized and within budget.
+- [ ] Consistent with the platform color palette and material rules.
+- [ ] Readable silhouette and proportions at target camera distance.
+- [ ] Optimized and within polygon/texture/memory budget.
 - [ ] Includes RTL-safe layout where text is involved.
 - [ ] Has fallback formats where required.
+- [ ] GLB/GLTF exports cleanly with no missing textures or broken rigs.
 
 ---
 
 ### 10.7 Game-Specific Animation Notes
 
-| Game | Required Animations |
-|------|---------------------|
-| Frankincense Collector | Run cycle, jump, duck, obstacle break, background parallax, score pop, game-over fade |
+| Game | Required Animations & Effects |
+|------|-------------------------------|
+| Frankincense Collector | Run cycle, jump, duck, obstacle break, camera follow, dust particles, score pop, game-over fade |
 | Tic-Tac-Toe | Mark pop-in, cell highlight, win-line draw, draw reaction, confetti on win |
 | Fort Battle | Bow draw/release, arrow flight, block crumble, fort shake, collapse, wind flag, victory/defeat pose |
 | Camel Race | Gallop cycle, dust clouds, crowd cheer, finish-line burst |
@@ -907,20 +943,22 @@ Use this table as a template when planning new games.
 3. Port global styles and CSS variables.
 4. Create the App Shell component.
 
-### 12.2 Phase 2: First Phaser Game (Weeks 3–4)
-1. Integrate Phaser 3.
-2. Migrate **Tic-Tac-Toe** to a Phaser scene.
-3. Add Svelte/Vue modals for mode selection.
+### 12.2 Phase 2: First Babylon.js Game (Weeks 3–6)
+1. Integrate Babylon.js with tree-shakable `@babylonjs/core`.
+2. Create the `EngineManager` and `GameManager` lifecycle.
+3. Build **Tic-Tac-Toe** as a 3D board game: 3D tokens, board, camera, and simple animations.
+4. Add Svelte/Vue modals for mode selection.
 
-### 12.3 Phase 3: Authoritative Multiplayer (Weeks 5–7)
+### 12.3 Phase 3: Authoritative Multiplayer (Weeks 7–9)
 1. Set up Colyseus server.
 2. Migrate Tic-Tac-Toe online play to Colyseus.
 3. Add Supabase auth and profiles.
 
-### 12.4 Phase 4: Migrate Remaining Games (Weeks 8–16)
-1. Migrate Runner and Fort Battle to Phaser.
+### 12.4 Phase 4: Build Remaining Games (Weeks 10–22)
+1. Build Runner and Fort Battle in Babylon.js.
 2. Implement online play for Fort Battle.
 3. Add one new game every 1–2 weeks.
+4. Establish the shared 3D asset library (models, materials, animations).
 
 ### 12.5 Phase 5: Polish & Launch (Weeks 17–20)
 1. Add PWA support.
@@ -966,7 +1004,7 @@ Use this table as a template when planning new games.
 
 | Decision | Choice | Reason |
 |----------|--------|--------|
-| Game engine | Phaser 3 | Best balance of features, maturity, and mobile performance for 2D games. |
+| Game engine | Babylon.js | Mature web 3D engine with strong TypeScript support, built-in physics/GUI/audio, and scalability from low-poly to advanced PBR. |
 | App framework | Svelte 5 / Vue 3 | Lightweight, reactive, excellent RTL support. |
 | Multiplayer | Colyseus | Authoritative server prevents cheating and supports child-safe room management. |
 | Backend data | Supabase | Integrated auth + PostgreSQL + realtime reduces backend work. |
@@ -1060,7 +1098,7 @@ These methods are similarly code-first and require little or no relationship man
 | **Affiliate links** | Low | Parent dashboard, emails | Promote kids' books, tablets, family products |
 | **In-app purchases (IAP)** | Medium | Child-facing store, parent-approved | App Store / Google Play billing or Stripe web checkout |
 | **Subscription / unlock** | Medium | Upgrade prompts, locked content | Stripe, Paddle, or RevenueCat |
-| **Asset/template sales** | Low-Medium | External marketplaces | Sell Phaser scenes, UI kits, starter templates |
+| **Asset/template sales** | Low-Medium | External marketplaces | Sell Babylon.js scenes, 3D asset packs, UI kits, starter templates |
 | **Referral program** | Medium | Share-link in parent dashboard | Reward free premium days or cosmetics |
 | **GitHub Sponsors / Ko-fi** | Low | Open-source framework repo | Optional reputation-based revenue |
 
@@ -1100,7 +1138,7 @@ The platform is Arabic-first, but design for future languages from the start.
 |-----------|---------|
 | Svelte | `svelte-i18n` |
 | Vue | `vue-i18n` |
-| Phaser | Load JSON locale files and resolve keys manually |
+| Babylon.js | Load JSON locale files and resolve keys manually |
 
 #### 16.3.3 GCC Localization Considerations
 
@@ -1136,7 +1174,7 @@ The platform is Arabic-first, but design for future languages from the start.
 #### 16.5.1 Global Error Boundaries
 
 - Catch unhandled errors in the app shell.
-- Catch errors inside Phaser scenes and return to the home screen gracefully.
+- Catch errors inside Babylon scenes and return to the home screen gracefully.
 - Never expose stack traces to children.
 
 #### 16.5.2 Graceful Degradation
@@ -1269,7 +1307,7 @@ Even with emoji-only chat, moderate anything user-facing:
 ### 16.11 Asset Licensing & Open Source
 
 - Decide on a license for the codebase (e.g., MIT, Apache-2.0, or proprietary).
-- Track licenses of third-party assets (fonts, audio, sprites).
+- Track licenses of third-party assets (fonts, audio, 3D models, textures).
 - Include an attribution file if required.
 
 ---
@@ -1411,7 +1449,7 @@ This section turns the framework from an architecture blueprint into a studio pr
 | **Game Designer** | Core loops, mechanics, balancing, GDD ownership, playtesting |
 | **UI/UX Designer** | App shell, game UI, accessibility, RTL flow, prototyping |
 | **Backend Engineer** | Colyseus rooms, Supabase, DevOps, multiplayer stability |
-| **Frontend Engineer** | App shell, Phaser integration, state management |
+| **Frontend Engineer** | App shell, Babylon.js integration, state management |
 | **QA Engineer** | Test plans, manual QA, automation, device lab |
 | **Product Owner** | Roadmap, stakeholder communication, compliance, prioritization |
 | **Art Lead** | Visual direction, asset pipeline, style guide enforcement |
@@ -1433,7 +1471,7 @@ Lose Condition:    [how to lose]
 Controls:          [desktop + tablet]
 Play Modes:        [single / local / online 1v1 / FFA / team]
 Estimated Effort:  [small / medium / large]
-Art Needs:         [sprites, backgrounds, particles, audio]
+Art Needs:         [3D models, materials, animations, particles, audio]
 Online Feasible:   [yes / no / later]
 Accessibility:     [color-blind safe, motion safe, etc.]
 ```
@@ -1446,15 +1484,15 @@ Accessibility:     [color-blind safe, motion safe, etc.]
 | **Tier 2** | Firefox, Edge last 2 versions | Mid-range Android phones, older iPads | Supported, best-effort QA |
 | **Tier 3** | Older Safari / Chrome | Low-end tablets | Graceful degradation |
 
-**3D support addendum:**
+**3D support requirements:**
 
 | 3D Tier | Requirement | Devices | Support Level |
 |---------|-------------|---------|---------------|
-| **3D Tier 1** | WebGL 2.0, stable 30+ FPS on low-complexity scenes | iPad 8th gen+, Samsung Galaxy Tab S6+, iPhone 12+, flagship Android | Required target for any 3D pilot |
-| **3D Tier 2** | WebGL 2.0, best-effort performance | Mid-range phones/tablets 2021+ | Supported with simplified assets |
-| **3D Tier 3** | WebGL 1.0 or software rendering | Low-end school tablets, old devices | Not supported; fall back to 2D version |
+| **3D Tier 1** | WebGL 2.0, stable 60 FPS on low-complexity scenes | iPad 8th gen+, Samsung Galaxy Tab S6+, iPhone 12+, flagship Android | Required target for every 3D game |
+| **3D Tier 2** | WebGL 2.0, stable 30+ FPS | Mid-range phones/tablets 2021+ | Supported with simplified assets |
+| **3D Tier 3** | WebGL 1.0 or software rendering | Low-end school tablets, old devices | Not supported; show friendly upgrade message |
 
-If a game is released in 3D, always provide a 2D fallback or route those devices to a 2D alternative game.
+All 3D games must pass QA on 3D Tier 1 devices. Provide quality presets (low/medium/high) so Tier 2 devices can still play.
 
 ### 18.4 Data Model
 
@@ -1542,7 +1580,7 @@ Align events with the GCC and Islamic calendar:
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Multiplayer hosting costs / scaling | Medium | High | Monitor Colyseus room density; add Redis and horizontal scaling when needed |
-| Art pipeline delays | Medium | High | Contract pixel artist in Phase 1; build shared asset library first |
+| Art pipeline delays | Medium | High | Contract 3D artist in Phase 1; build shared asset library first |
 | COPPA/GDPR compliance gap | Low | Very High | Legal review before public launch |
 | Tablet performance issues | Medium | High | Performance budget + device lab |
 | Key contributor leaves | Medium | Medium | Documentation, pair programming |
@@ -1589,27 +1627,30 @@ Design tablet-first. Most GCC children in the target age group play on iPads or 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 ```
 
-Use a **fixed internal resolution** with CSS scaling:
+Create the Babylon engine with a fixed-size canvas and let CSS scale it to the viewport:
 
 ```ts
-const config = {
-  type: Phaser.AUTO,
-  width: 1600,
-  height: 900,
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
-};
+const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+const engine = new Engine(canvas, true, {
+  preserveDrawingBuffer: true,
+  stencil: true,
+});
+const scene = new Scene(engine);
+engine.runRenderLoop(() => scene.render());
+window.addEventListener('resize', () => engine.resize());
 ```
 
-| Scale Mode | When to Use |
-|------------|-------------|
-| **FIT** | Most games; preserves aspect ratio with black bars. |
-| **RESIZE** | UI-heavy apps; canvas resizes to fill container. |
-| **ENVELOP** | Fill screen, crop edges; good for action games. |
+Use CSS to fit the canvas to its container while preserving aspect ratio:
 
-**Rule:** Never use raw `window.innerWidth` as game coordinates. Map input through Phaser's camera/world transform.
+```css
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+```
+
+**Rule:** Never use raw `window.innerWidth` as world coordinates. Cast rays from Babylon's camera through the pointer position to interact with the 3D scene.
 
 ### 19.3 Input Abstraction Layer
 
@@ -1618,15 +1659,17 @@ Create a single input manager that normalizes all devices.
 ```ts
 // src/core/InputManager.ts
 export class InputManager {
-  onTap(callback: (x: number, y: number) => void) {}
+  onTap(callback: (pickResult: PickingInfo) => void) {}
   onSwipe(direction: 'up' | 'down' | 'left' | 'right', callback: () => void) {}
   onDrag(start, move, end) {}
   onKey(code: string, callback: () => void) {}
+  onPointerMove(callback: (pickResult: PickingInfo) => void) {}
 }
 ```
 
 **Rules:**
 - Never bind raw `window` events inside game scenes.
+- Use Babylon's `scene.onPointerObservable` or `scene.pick` to get 3D world intersections.
 - Always expose normalized coordinates in **world space**, not screen space.
 - Debounce rapid taps to prevent accidental double-fire.
 
@@ -1674,7 +1717,7 @@ function recordStroke(points: { x: number; y: number }[]) {
 ### 19.5 UI Scaling & Safe Zones
 
 - Use **relative units** (`rem`, `%`, `vh/vw`) for shell UI.
-- Use Phaser's **scale manager** for in-game UI.
+- Use Babylon's **GUI** (`AdvancedDynamicTexture`) or HTML overlay for in-game UI.
 - Keep critical UI inside the **safe zone** (central 90% of screen).
 
 | Device | Safe Zone Padding |
@@ -1733,8 +1776,8 @@ Force landscape on phones with a rotate prompt:
 
 ### 19.10 Implementation Checklist
 
-- [ ] Fixed internal resolution with FIT/RESIZE scaling.
-- [ ] Input manager normalizes mouse, touch, and keyboard.
+- [ ] Babylon engine resizes cleanly to container.
+- [ ] Input manager normalizes mouse, touch, and keyboard with 3D raycasting.
 - [ ] Touch targets ≥ 64 px for kids.
 - [ ] On-screen controls for tablet/mobile.
 - [ ] Landscape lock with rotate prompt on phones.
@@ -1751,8 +1794,9 @@ Force landscape on phones with a rotate prompt:
 1. Decide between **Svelte 5** and **Vue 3** based on team familiarity.
 2. Initialize the Vite + TypeScript + chosen framework project.
 3. Migrate the existing CSS variables into the new project.
-4. Set up Phaser 3 and render a placeholder scene.
-5. Write a Colyseus schema for Tic-Tac-Toe and run a local server.
+4. Set up **Babylon.js** (`@babylonjs/core`) and render a simple 3D scene (e.g., a rotating Gulf-themed object).
+5. Create the `EngineManager` and `GameManager` lifecycle skeleton.
+6. Write a Colyseus schema for Tic-Tac-Toe and run a local server.
 
 ---
 
