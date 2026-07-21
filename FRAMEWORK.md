@@ -90,6 +90,23 @@ Build a safe, performant, and culturally authentic browser-based game platform f
 | PWA | **Vite PWA plugin** |
 | Asset Pipeline | Vite built-in + Aseprite/Figma for art |
 
+### 2.4 3D-Ready Alternative Stack
+
+The default stack is 2D-first with Phaser 3. If the studio later decides to build true 3D games, the following alternatives are approved. Do **not** mix Phaser 3 and a 3D engine in the same game scene unless there is a dedicated rendering bridge.
+
+| Engine | Best For | Bundle Size | Mobile Performance | Learning Curve | Licensing |
+|--------|----------|-------------|-------------------|----------------|-----------|
+| **Babylon.js** | Full web 3D games, strong TypeScript support | Medium–Large | Good with WebGL 2.0; test on Tier 1 tablets | Moderate | Apache-2.0 |
+| **PlayCanvas** | Web-first 3D, built-in publishing | Small–Medium | Excellent; optimized for mobile browsers | Low–Moderate | MIT (engine) + proprietary tools |
+| **Three.js** | Custom 3D experiences, maximum control | Small core, grows with addons | Variable; requires manual optimization | Moderate–High | MIT |
+| **Unity WebGL** | High-fidelity 3D, native-mobile fallback | Very large | Poor on low-end tablets; long load times | High | Proprietary / subscription |
+
+**Aldoolab guidance:**
+- Choose **Babylon.js** or **PlayCanvas** for a future 3D pilot.
+- Use **Three.js** only if the team needs custom rendering and has time to build its own tooling.
+- Avoid **Unity WebGL** for this platform unless the game is also shipping as a native mobile app.
+- Backend (Colyseus/Supabase), state management, and deployment patterns remain the same in 3D.
+
 ---
 
 ## 3. Architecture Overview
@@ -572,6 +589,26 @@ The platform is built on Phaser 3, a 2D engine, and is targeting tablets first. 
 **Production implication:**
 A single vector artist using Figma, Illustrator, or Aseprite can maintain the entire catalogue. Style consistency comes from the color palette, outline thickness, and proportion rules rather than from a single complex tool chain.
 
+#### 10.1.7 3D Migration Path
+
+True 3D is not blocked, but it is treated as a future track so the 2D platform can launch first.
+
+| Phase | Action | Trigger |
+|-------|--------|---------|
+| **1. Launch 2D** | Ship the full 2D catalogue on Phaser 3. | Day one — default plan. |
+| **2. 2.5D experiments** | Use isometric sprites, parallax, and fake depth inside Phaser 3. | When a game needs more visual depth without changing engines. |
+| **3. 3D pilot** | Build one standalone 3D game with Babylon.js or PlayCanvas. | After the 2D platform has users, revenue, or funding proof. |
+| **4. Full 3D catalogue** | Migrate or add more 3D games only after the pilot succeeds. | After the pilot proves performance and retention on target devices. |
+
+**Risks to manage before moving to 3D:**
+- **Asset cost:** 3D models, rigs, animations, and materials take significantly longer than 2D vector.
+- **Performance:** Tablets in Tier 1 must maintain stable frame rates with WebGL 2.0 content.
+- **Load times:** 3D asset bundles easily exceed the 5 MB per-game budget; compression and streaming become mandatory.
+- **Team skills:** Requires a 3D artist and a rendering/shader engineer.
+- **Compatibility:** Some school or low-end devices may not support WebGL 2.0 or may throttle GPU performance.
+
+**Decision gate:** Do not start Phase 3 until at least 10 of the planned 2D games are live and the platform has demonstrated retention.
+
 ---
 
 ### 10.2 Asset Standards
@@ -597,6 +634,9 @@ A single vector artist using Figma, Illustrator, or Aseprite can maintain the en
 | Audio | OGG | MP3 |
 | Animation data | JSON (Phaser atlas/Spine/DragonBones) | — |
 | Vector UI | SVG | — |
+| 3D models | GLB (GLTF 2.0 binary) | GLTF + bin |
+| 3D textures | KTX2 / Basis Universal | WebP / PNG |
+| 3D mesh compression | Draco | — |
 
 #### 10.2.3 Resolution & Sizing
 
@@ -1405,6 +1445,16 @@ Accessibility:     [color-blind safe, motion safe, etc.]
 | **Tier 1** | Chrome, Safari last 2 versions | iPad 7th gen+, Android tablet 10" 2020+ | Fully supported, must pass QA |
 | **Tier 2** | Firefox, Edge last 2 versions | Mid-range Android phones, older iPads | Supported, best-effort QA |
 | **Tier 3** | Older Safari / Chrome | Low-end tablets | Graceful degradation |
+
+**3D support addendum:**
+
+| 3D Tier | Requirement | Devices | Support Level |
+|---------|-------------|---------|---------------|
+| **3D Tier 1** | WebGL 2.0, stable 30+ FPS on low-complexity scenes | iPad 8th gen+, Samsung Galaxy Tab S6+, iPhone 12+, flagship Android | Required target for any 3D pilot |
+| **3D Tier 2** | WebGL 2.0, best-effort performance | Mid-range phones/tablets 2021+ | Supported with simplified assets |
+| **3D Tier 3** | WebGL 1.0 or software rendering | Low-end school tablets, old devices | Not supported; fall back to 2D version |
+
+If a game is released in 3D, always provide a 2D fallback or route those devices to a 2D alternative game.
 
 ### 18.4 Data Model
 
