@@ -640,21 +640,21 @@ Use this table as a template when planning new games.
 
 ## 11. Testing Strategy
 
-### 10.1 Unit Tests (Vitest)
+### 11.1 Unit Tests (Vitest)
 
 - Win detection for Tic-Tac-Toe.
 - AI move selection.
 - Network message validators.
 - Score calculation and leaderboard sorting.
 
-### 10.2 E2E Tests (Playwright)
+### 11.2 E2E Tests (Playwright)
 
 - Launch a game from the home grid.
 - Host a room and join with a second tab.
 - Complete a full online match.
 - Verify mute and fullscreen buttons.
 
-### 10.3 Manual QA
+### 11.3 Manual QA
 
 - Test on real tablets (iPad + Android).
 - Test on slow networks (3G throttle).
@@ -1105,7 +1105,161 @@ This matrix is a starting point and should be reviewed per game during design.
 
 ---
 
-## 18. Next Immediate Actions
+## 18. Studio Production Guide
+
+This section turns the framework from an architecture blueprint into a studio production guide.
+
+### 18.1 Team Roles & Responsibilities
+
+| Role | Responsibilities |
+|------|------------------|
+| **Tech Lead** | Architecture, code quality, performance, security, technical decisions |
+| **Game Designer** | Core loops, mechanics, balancing, GDD ownership, playtesting |
+| **UI/UX Designer** | App shell, game UI, accessibility, RTL flow, prototyping |
+| **Backend Engineer** | Colyseus rooms, Supabase, DevOps, multiplayer stability |
+| **Frontend Engineer** | App shell, Phaser integration, state management |
+| **QA Engineer** | Test plans, manual QA, automation, device lab |
+| **Product Owner** | Roadmap, stakeholder communication, compliance, prioritization |
+| **Art Lead** | Visual direction, asset pipeline, style guide enforcement |
+| **Sound Designer** | SFX, music, audio implementation |
+
+### 18.2 Game Design Document (GDD) Template
+
+Every new game must have a one-page GDD before development starts.
+
+```
+Game ID:           [unique-id]
+Name (AR):         [Arabic name]
+Name (EN):         [English name]
+Icon:              [emoji]
+Target Age:        [7-9 / 10-12 / all]
+Core Loop:         [one sentence]
+Win Condition:     [how to win]
+Lose Condition:    [how to lose]
+Controls:          [desktop + tablet]
+Play Modes:        [single / local / online 1v1 / FFA / team]
+Estimated Effort:  [small / medium / large]
+Art Needs:         [sprites, backgrounds, particles, audio]
+Online Feasible:   [yes / no / later]
+Accessibility:     [color-blind safe, motion safe, etc.]
+```
+
+### 18.3 Browser & Device Support Matrix
+
+| Tier | Browsers | Devices | Support Level |
+|------|----------|---------|---------------|
+| **Tier 1** | Chrome, Safari last 2 versions | iPad 7th gen+, Android tablet 10" 2020+ | Fully supported, must pass QA |
+| **Tier 2** | Firefox, Edge last 2 versions | Mid-range Android phones, older iPads | Supported, best-effort QA |
+| **Tier 3** | Older Safari / Chrome | Low-end tablets | Graceful degradation |
+
+### 18.4 Data Model
+
+#### 18.4.1 Core Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `profiles` | Player identity | `id`, `nickname`, `avatar`, `parent_email`, `created_at` |
+| `scores` | Game scores | `id`, `game_id`, `user_id`, `score`, `mode`, `created_at` |
+| `sessions` | Play sessions | `id`, `user_id`, `started_at`, `ended_at`, `device_type` |
+| `rooms` | Multiplayer rooms | `id`, `host_id`, `game_id`, `status`, `created_at` |
+| `leaderboards` | Rankings | `game_id`, `period`, `user_id`, `score`, `rank` |
+| `events` | Analytics | `event_type`, `user_id`, `game_id`, `payload`, `timestamp` |
+
+#### 18.4.2 Row-Level Security
+
+- Players can read only their own `profiles` and `scores`.
+- Leaderboards expose only nickname and score, never email or internal IDs.
+- Analytics events are write-only from the app; read via internal tools.
+
+### 18.5 Production & Release Management
+
+#### 18.5.1 Versioning
+
+- Use **Semantic Versioning**: `MAJOR.MINOR.PATCH`.
+- `MAJOR`: breaking changes to API or game saves.
+- `MINOR`: new games or features.
+- `PATCH`: bug fixes and balance tweaks.
+
+#### 18.5.2 Branch Strategy
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Production-ready code |
+| `staging` | Pre-release testing |
+| `release/vX.Y` | Release candidate |
+| `feature/*` | Individual features |
+| `hotfix/*` | Urgent production fixes |
+
+#### 18.5.3 Release Checklist
+
+- [ ] All tests pass.
+- [ ] Performance budget met.
+- [ ] QA sign-off on Tier 1 devices.
+- [ ] Security review for network changes.
+- [ ] Compliance review for new data collection.
+- [ ] Deployment runbook followed.
+- [ ] Rollback plan verified.
+
+### 18.6 Live Operations & Retention
+
+#### 18.6.1 Retention Mechanics
+
+| Mechanic | Purpose |
+|----------|---------|
+| Daily Challenge | Bring players back daily |
+| Streaks | Reward consecutive days |
+| Achievements / Badges | Long-term goals |
+| Weekly Leaderboards | Social competition |
+| Unlockable Avatars | Progression and expression |
+
+#### 18.6.2 Seasonal Content
+
+Align events with Omani and Islamic calendar:
+
+- **Oman National Day** — themed challenges and decorations.
+- **Ramadan** — daily puzzles, calmer visuals.
+- **Eid** — special rewards and festive confetti.
+- **Khareef Season** — Salalah-themed game variants.
+
+#### 18.6.3 In-Game Announcements
+
+- Use a lightweight announcement banner in the app shell.
+- Announce new games, events, and maintenance windows.
+- No push notifications for children; use in-app only.
+
+### 18.7 Risk Register
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Public PeerJS broker instability | High | High | Migrate to Colyseus in Phase 3 |
+| Art pipeline delays | Medium | High | Contract pixel artist in Phase 1 |
+| COPPA/GDPR compliance gap | Low | Very High | Legal review before public launch |
+| Tablet performance issues | Medium | High | Performance budget + device lab |
+| Key contributor leaves | Medium | Medium | Documentation, pair programming |
+| Scope creep on 20 games | High | Medium | Strict GDD + milestone gates |
+
+### 18.8 Incident Response
+
+#### 18.8.1 Severity Levels
+
+| Level | Example | Response Time |
+|-------|---------|---------------|
+| P0 | Platform down, no games load | 1 hour |
+| P1 | Multiplayer broken | 4 hours |
+| P2 | Single game unplayable | 24 hours |
+| P3 | Visual bug, typo | Next sprint |
+
+#### 18.8.2 Response Steps
+
+1. Detect via Sentry, uptime monitor, or user report.
+2. Triage and assign severity.
+3. Apply hotfix or rollback.
+4. Communicate status via in-app banner or status page.
+5. Post-mortem within 48 hours.
+
+---
+
+## 19. Next Immediate Actions
 
 1. Decide between **Svelte 5** and **Vue 3** based on team familiarity.
 2. Initialize the Vite + TypeScript + chosen framework project.
