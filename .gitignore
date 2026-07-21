@@ -8,3 +8,7 @@
 .wget-hsts
 *.log
 .bash_history
+.cache/
+.config/
+.local/
+.npm/

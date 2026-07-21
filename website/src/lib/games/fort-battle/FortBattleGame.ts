@@ -13,17 +13,9 @@ import {
 	KeyboardEventTypes,
 	PointerEventTypes
 } from '@babylonjs/core';
+import { FortBattleLogic, type FortBattleState, type Point2D } from './FortBattleLogic';
 
-export interface FortBattleState {
-	healths: [number, number];
-	currentPlayer: number;
-	angle: number;
-	power: number;
-	wind: number;
-	gameState: 'aiming' | 'flying' | 'gameover';
-	winner: number | null;
-	message: string;
-}
+export type { FortBattleState };
 
 class GameAudio {
 	private ctx: AudioContext | null = null;
@@ -69,7 +61,6 @@ class GameAudio {
 	playHit() {
 		const ctx = this.ensureCtx();
 		if (!ctx) return;
-		// noise burst + low thud
 		const bufferSize = ctx.sampleRate * 0.25;
 		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
 		const data = buffer.getChannelData(0);
@@ -157,41 +148,28 @@ export class FortBattleGame {
 	private aimPlane!: Mesh;
 
 	private audio = new GameAudio();
+	private logic: FortBattleLogic;
 	private onChange: (state: FortBattleState) => void;
 
-	private healths: [number, number] = [100, 100];
-	private currentPlayer = 0;
-	private angle = 45; // degrees from +X axis
-	private power = 0;
-	private wind = 0; // horizontal acceleration units
-	private gameState: 'aiming' | 'flying' | 'gameover' = 'aiming';
-	private winner: number | null = null;
-
-	private charging = false;
 	private chargeStartTime = 0;
-	private arrowVelocity = Vector3.Zero();
-	private arrowFlying = false;
-
-	private readonly PLAYER_ANGLES = [45, 135];
-	private readonly FORT_X = [-25, 25];
-	private readonly MAX_POWER = 100;
-	private readonly MIN_POWER = 10;
-	private readonly POWER_SCALE = 0.22;
-	private readonly GRAVITY = 11;
-	private readonly WIND_SCALE = 0.45;
-	private readonly DAMAGE = 25;
-	private readonly GROUND_Y = 0;
-	private readonly ARROW_RADIUS = 0.35;
-	private readonly FORT_RADIUS = 3.5;
-	private readonly FORT_HEIGHT = 8;
-	private readonly MAX_ANGLE = 170;
-	private readonly MIN_ANGLE = 10;
-
-	private lastState: FortBattleState | null = null;
+	private pendingTurnMessage = '';
 
 	constructor(canvas: HTMLCanvasElement, onChange: (state: FortBattleState) => void) {
 		this.canvas = canvas;
 		this.onChange = onChange;
+
+		this.logic = new FortBattleLogic(
+			(state) => {
+				this.onChange(state);
+				this.onStateChanged(state);
+			},
+			{},
+			{
+				onHit: (fortIndex, position) => this.onHit(fortIndex, position),
+				onMiss: (message) => this.onMiss(message),
+				onWin: (winner) => this.onWin(winner)
+			}
+		);
 
 		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 		this.scene = this.createScene();
@@ -204,8 +182,6 @@ export class FortBattleGame {
 		});
 
 		window.addEventListener('resize', this.handleResize);
-		this.resetTurn();
-		this.notify();
 	}
 
 	private createScene(): Scene {
@@ -225,9 +201,11 @@ export class FortBattleGame {
 	}
 
 	private setupEnvironment(): void {
+		const config = this.logic.getConfig();
+
 		// Ground
 		this.ground = MeshBuilder.CreateGround('ground', { width: 140, height: 60 }, this.scene);
-		this.ground.position.y = this.GROUND_Y;
+		this.ground.position.y = config.GROUND_Y;
 		const groundMat = new StandardMaterial('groundMat', this.scene);
 		groundMat.diffuseColor = new Color3(0.82, 0.72, 0.52);
 		groundMat.specularColor = new Color3(0.1, 0.1, 0.1);
@@ -242,7 +220,7 @@ export class FortBattleGame {
 
 		// Forts
 		for (let i = 0; i < 2; i++) {
-			const x = this.FORT_X[i];
+			const x = config.FORT_X[i];
 			const color = i === 0 ? new Color3(0.82, 0.48, 0.36) : new Color3(0.36, 0.55, 0.78);
 			const darker = color.scale(0.75);
 
@@ -252,11 +230,11 @@ export class FortBattleGame {
 
 			// Round Omani-style tower body
 			const body = MeshBuilder.CreateCylinder(`fortBody${i}`, {
-				height: this.FORT_HEIGHT,
-				diameter: this.FORT_RADIUS * 2,
+				height: config.FORT_HEIGHT,
+				diameter: config.FORT_RADIUS * 2,
 				tessellation: 32
 			}, this.scene);
-			body.position.y = this.FORT_HEIGHT / 2;
+			body.position.y = config.FORT_HEIGHT / 2;
 			body.parent = root;
 			const fortMat = new StandardMaterial(`fortMat${i}`, this.scene);
 			fortMat.diffuseColor = color;
@@ -267,10 +245,10 @@ export class FortBattleGame {
 			const roof = MeshBuilder.CreateCylinder(`fortRoof${i}`, {
 				height: 4,
 				diameterTop: 0,
-				diameterBottom: this.FORT_RADIUS * 2.1,
+				diameterBottom: config.FORT_RADIUS * 2.1,
 				tessellation: 32
 			}, this.scene);
-			roof.position.y = this.FORT_HEIGHT + 2;
+			roof.position.y = config.FORT_HEIGHT + 2;
 			roof.parent = root;
 			const roofMat = new StandardMaterial(`roofMat${i}`, this.scene);
 			roofMat.diffuseColor = darker;
@@ -284,7 +262,7 @@ export class FortBattleGame {
 				tessellation: 24
 			}, this.scene);
 			archFrame.scaling.y = 1.35;
-			archFrame.position = new Vector3(0, 2.3, this.FORT_RADIUS + 0.04);
+			archFrame.position = new Vector3(0, 2.3, config.FORT_RADIUS + 0.04);
 			archFrame.rotation.x = Math.PI / 2;
 			archFrame.parent = root;
 			const archFrameMat = new StandardMaterial(`windowFrameMat${i}`, this.scene);
@@ -293,7 +271,7 @@ export class FortBattleGame {
 
 			const archDark = MeshBuilder.CreateSphere(`fortWindowDark${i}`, { diameter: 1.25 }, this.scene);
 			archDark.scaling.y = 1.3;
-			archDark.position = new Vector3(0, 2.3, this.FORT_RADIUS + 0.08);
+			archDark.position = new Vector3(0, 2.3, config.FORT_RADIUS + 0.08);
 			archDark.parent = root;
 			const archDarkMat = new StandardMaterial(`windowDarkMat${i}`, this.scene);
 			archDarkMat.diffuseColor = new Color3(0.12, 0.1, 0.08);
@@ -301,18 +279,18 @@ export class FortBattleGame {
 
 			// Invisible hit box aligned with the round body
 			const hitBox = MeshBuilder.CreateCylinder(`fortHit${i}`, {
-				height: this.FORT_HEIGHT,
-				diameter: this.FORT_RADIUS * 2,
+				height: config.FORT_HEIGHT,
+				diameter: config.FORT_RADIUS * 2,
 				tessellation: 16
 			}, this.scene);
-			hitBox.position.y = this.FORT_HEIGHT / 2;
+			hitBox.position.y = config.FORT_HEIGHT / 2;
 			hitBox.parent = root;
 			hitBox.isVisible = false;
 			hitBox.isPickable = false;
 			this.fortHitBoxes.push(hitBox);
 
 			// Archer on top
-			this.archers.push(this.createArcher(root, i));
+			this.archers.push(this.createArcher(root, i, config.FORT_HEIGHT));
 		}
 
 		// Arrow with fletching
@@ -381,10 +359,10 @@ export class FortBattleGame {
 		this.windIndicator.material = windMat;
 	}
 
-	private createArcher(parent: TransformNode, index: number): TransformNode {
+	private createArcher(parent: TransformNode, index: number, fortHeight: number): TransformNode {
 		const archer = new TransformNode(`archer${index}`, this.scene);
 		archer.parent = parent;
-		archer.position = new Vector3(0, this.FORT_HEIGHT + 0.1, 0);
+		archer.position = new Vector3(0, fortHeight + 0.1, 0);
 		archer.scaling.setAll(1.35);
 
 		const skinMat = new StandardMaterial(`skinMat${index}`, this.scene);
@@ -473,30 +451,31 @@ export class FortBattleGame {
 
 	private setupInput(): void {
 		this.scene.onKeyboardObservable.add((kbInfo) => {
-			if (this.gameState === 'gameover') return;
+			const state = this.logic.getState();
+			if (state.gameState === 'gameover') return;
 
 			if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
 				switch (kbInfo.event.key) {
 					case 'ArrowUp':
 						kbInfo.event.preventDefault();
-						this.adjustAngle(2);
+						this.logic.adjustAngle(2);
 						break;
 					case 'ArrowDown':
 						kbInfo.event.preventDefault();
-						this.adjustAngle(-2);
+						this.logic.adjustAngle(-2);
 						break;
 					case ' ':
 					case 'Spacebar':
 						kbInfo.event.preventDefault();
-						if (this.gameState === 'aiming' && !this.charging) {
+						if (state.gameState === 'aiming' && !this.logic.isCharging()) {
 							this.startCharge();
 						}
 						break;
 				}
 			} else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
-				if ((kbInfo.event.key === ' ' || kbInfo.event.key === 'Spacebar') && this.charging) {
+				if ((kbInfo.event.key === ' ' || kbInfo.event.key === 'Spacebar') && this.logic.isCharging()) {
 					kbInfo.event.preventDefault();
-					this.releaseCharge();
+					this.logic.releaseCharge();
 				}
 			}
 		});
@@ -504,20 +483,21 @@ export class FortBattleGame {
 		// Mouse / touch: move to aim, press to charge, release to fire
 		let pointerDown = false;
 		this.scene.onPointerObservable.add((pointerInfo) => {
-			if (this.gameState === 'gameover') return;
+			const state = this.logic.getState();
+			if (state.gameState === 'gameover') return;
 
 			if (pointerInfo.type === PointerEventTypes.POINTERMOVE) {
-				if (this.gameState === 'aiming' && !this.charging) {
+				if (state.gameState === 'aiming' && !this.logic.isCharging()) {
 					this.aimFromPointer();
 				}
 			} else if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
-				if (this.gameState === 'aiming' && !this.charging) {
+				if (state.gameState === 'aiming' && !this.logic.isCharging()) {
 					pointerDown = true;
 					this.startCharge();
 				}
 			} else if (pointerInfo.type === PointerEventTypes.POINTERUP && pointerDown) {
 				pointerDown = false;
-				this.releaseCharge();
+				this.logic.releaseCharge();
 			}
 		});
 	}
@@ -526,48 +506,31 @@ export class FortBattleGame {
 		const pickResult = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => mesh === this.aimPlane);
 		if (!pickResult.hit || !pickResult.pickedPoint) return;
 
-		const start = this.getArrowStartPosition();
+		const start = this.logic.getArrowStartPosition();
 		const target = pickResult.pickedPoint;
 		const dx = target.x - start.x;
 		const dy = target.y - start.y;
 		let newAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
-		// Face the enemy side
-		if (this.currentPlayer === 0) {
-			newAngle = Math.max(this.MIN_ANGLE, Math.min(90, newAngle));
+		const config = this.logic.getConfig();
+		const currentPlayer = this.logic.getCurrentPlayer();
+		if (currentPlayer === 0) {
+			newAngle = Math.max(config.MIN_ANGLE, Math.min(90, newAngle));
 		} else {
-			newAngle = Math.max(90, Math.min(this.MAX_ANGLE, newAngle));
+			newAngle = Math.max(90, Math.min(config.MAX_ANGLE, newAngle));
 		}
 
-		this.angle = Math.round(newAngle);
-		this.updateAimVisuals();
-		this.notify();
+		this.logic.setAngle(Math.round(newAngle));
+	}
+
+	private startCharge(): void {
+		this.logic.startCharge();
+		this.chargeStartTime = performance.now();
 	}
 
 	private handleResize = (): void => {
 		this.engine.resize();
 	};
-
-	adjustAngle(delta: number): void {
-		if (this.gameState !== 'aiming') return;
-		this.angle = Math.max(this.MIN_ANGLE, Math.min(this.MAX_ANGLE, this.angle + delta));
-		this.updateAimVisuals();
-		this.notify();
-	}
-
-	startCharge(): void {
-		if (this.gameState !== 'aiming' || this.charging) return;
-		this.charging = true;
-		this.power = this.MIN_POWER;
-		this.chargeStartTime = performance.now();
-		this.notify();
-	}
-
-	releaseCharge(): void {
-		if (!this.charging) return;
-		this.charging = false;
-		this.fire();
-	}
 
 	setMuted(muted: boolean): void {
 		this.audio.setMuted(muted);
@@ -577,33 +540,11 @@ export class FortBattleGame {
 		return this.audio.getMuted();
 	}
 
-	private fire(): void {
-		if (this.gameState !== 'aiming') return;
-		this.gameState = 'flying';
-		this.aimGuideRoot.setEnabled(false);
-
-		const start = this.getArrowStartPosition();
-		this.arrowRoot.position.copyFrom(start);
-		this.arrowRoot.setEnabled(true);
-
-		const rad = (this.angle * Math.PI) / 180;
-		const speed = this.power * this.POWER_SCALE;
-		this.arrowVelocity.set(Math.cos(rad) * speed, Math.sin(rad) * speed, 0);
-		this.arrowFlying = true;
-		this.updateArrowRotation();
-		this.audio.playShoot();
-		this.notify();
-	}
-
-	private getArrowStartPosition(): Vector3 {
-		const x = this.FORT_X[this.currentPlayer] + (this.currentPlayer === 0 ? this.FORT_RADIUS + 0.8 : -(this.FORT_RADIUS + 0.8));
-		const y = this.FORT_HEIGHT + 1.6;
-		return new Vector3(x, y, 0);
-	}
-
 	private updateAimVisuals(): void {
-		if (this.gameState !== 'aiming') return;
-		const start = this.getArrowStartPosition();
+		const state = this.logic.getState();
+		if (state.gameState !== 'aiming') return;
+
+		const start = this.toVector3(this.logic.getArrowStartPosition());
 		this.arrowRoot.position.copyFrom(start);
 		this.arrowRoot.setEnabled(true);
 		this.updateArrowRotation();
@@ -611,30 +552,26 @@ export class FortBattleGame {
 	}
 
 	private updateAimGuide(): void {
-		if (this.gameState !== 'aiming') {
+		const state = this.logic.getState();
+		if (state.gameState !== 'aiming') {
 			this.aimGuideRoot.setEnabled(false);
 			return;
 		}
-		const rad = (this.angle * Math.PI) / 180;
-		const speed = this.power * this.POWER_SCALE;
-		const vx = Math.cos(rad) * speed;
-		const vy = Math.sin(rad) * speed;
-		const start = this.getArrowStartPosition();
 
+		const trajectory = this.logic.computeTrajectory(this.aimGuideDots.length);
 		this.aimGuideRoot.setEnabled(true);
-		const linePoints: Vector3[] = [start];
-		for (let i = 0; i < this.aimGuideDots.length; i++) {
-			const t = (i + 1) * 0.12;
-			const pos = new Vector3(
-				start.x + vx * t + 0.5 * this.wind * this.WIND_SCALE * t * t,
-				start.y + vy * t - 0.5 * this.GRAVITY * t * t,
-				0
-			);
-			this.aimGuideDots[i].position.copyFrom(pos);
-			const scale = 1 - i / this.aimGuideDots.length * 0.45;
-			this.aimGuideDots[i].scaling.setAll(scale);
+
+		const linePoints: Vector3[] = [];
+		for (let i = 0; i < trajectory.length; i++) {
+			const pos = this.toVector3(trajectory[i]);
+			if (i > 0) {
+				this.aimGuideDots[i - 1].position.copyFrom(pos);
+				const scale = 1 - (i - 1) / this.aimGuideDots.length * 0.45;
+				this.aimGuideDots[i - 1].scaling.setAll(scale);
+			}
 			linePoints.push(pos);
 		}
+
 		this.aimGuideLine = MeshBuilder.CreateLines(null, {
 			points: linePoints,
 			instance: this.aimGuideLine as any
@@ -642,124 +579,69 @@ export class FortBattleGame {
 	}
 
 	private updateArrowRotation(): void {
-		const angleRad = this.arrowFlying
-			? Math.atan2(this.arrowVelocity.y, this.arrowVelocity.x)
-			: (this.angle * Math.PI) / 180;
-		// Cylinder default axis is Y; we rotated it to point along +X at rest, so root rotation equals the flight angle.
+		const angleRad = this.logic.getArrowAngleRad();
 		this.arrowRoot.rotation.z = angleRad;
 
-		// Point archer and bow toward aim direction.
-		// The archer mesh was built facing +X in the X-Y plane, so rotate around Z to match the aim angle.
-		const archer = this.archers[this.currentPlayer];
+		const archer = this.archers[this.logic.getCurrentPlayer()];
 		if (archer) {
 			archer.rotation.z = angleRad;
 		}
 	}
 
 	private update(dt: number): void {
-		if (this.gameState === 'gameover') return;
+		const state = this.logic.getState();
+		if (state.gameState === 'gameover') return;
 
-		if (this.charging) {
+		if (this.logic.isCharging()) {
 			const elapsed = (performance.now() - this.chargeStartTime) / 1000;
-			this.power = Math.min(this.MAX_POWER, this.MIN_POWER + (elapsed / 1.4) * (this.MAX_POWER - this.MIN_POWER));
-			this.updateAimGuide();
-			this.notify();
+			this.logic.updateCharge(elapsed);
 		}
 
-		if (this.arrowFlying) {
-			const dtClamped = Math.min(dt, 0.05);
-			this.arrowVelocity.x += this.wind * this.WIND_SCALE * dtClamped;
-			this.arrowVelocity.y -= this.GRAVITY * dtClamped;
+		if (this.logic.isArrowFlying()) {
+			this.logic.updateFlight(dt);
 
-			this.arrowRoot.position.x += this.arrowVelocity.x * dtClamped;
-			this.arrowRoot.position.y += this.arrowVelocity.y * dtClamped;
+			const pos = this.logic.getArrowPosition();
+			this.arrowRoot.position.x = pos.x;
+			this.arrowRoot.position.y = pos.y;
 			this.updateArrowRotation();
-
-			this.checkCollisions();
 		}
 	}
 
-	private checkCollisions(): void {
-		const pos = this.arrowRoot.position;
+	private onStateChanged(state: FortBattleState): void {
+		this.updateWindVisual(state.wind);
 
-		// Ground
-		if (pos.y <= this.GROUND_Y + this.ARROW_RADIUS) {
-			this.handleMiss('السهم وقع على الأرض');
-			return;
+		if (state.gameState === 'aiming') {
+			this.arrowRoot.setEnabled(true);
+			this.updateAimVisuals();
+		} else if (state.gameState === 'flying') {
+			this.aimGuideRoot.setEnabled(false);
 		}
 
-		// Bounds
-		if (pos.x < -80 || pos.x > 80 || pos.y > 60) {
-			this.handleMiss('السهم خرج عن الميدان');
-			return;
-		}
-
-		// Forts
-		for (let i = 0; i < 2; i++) {
-			if (this.arrowShaft.intersectsMesh(this.fortHitBoxes[i], false)) {
-				this.handleHit(i);
-				return;
-			}
+		if (this.pendingTurnMessage && state.gameState === 'aiming') {
+			this.pendingTurnMessage = '';
 		}
 	}
 
-	private handleHit(fortIndex: number): void {
-		this.arrowFlying = false;
+	private onHit(fortIndex: number, position: Point2D): void {
 		this.arrowRoot.setEnabled(false);
-
-		this.healths[fortIndex] = Math.max(0, this.healths[fortIndex] - this.DAMAGE);
-		this.spawnParticles(this.arrowRoot.position);
+		this.spawnParticles(this.toVector3(position));
 		this.audio.playHit();
-
-		if (this.healths[fortIndex] <= 0) {
-			this.winner = fortIndex === 0 ? 1 : 0;
-			this.gameState = 'gameover';
-			this.audio.playWin();
-			this.notify();
-			return;
-		}
-
-		this.scheduleNextTurn();
 	}
 
-	private handleMiss(message: string): void {
-		this.arrowFlying = false;
+	private onMiss(message: string): void {
 		this.arrowRoot.setEnabled(false);
 		this.audio.playMiss();
-		this.scheduleNextTurn(message);
+		this.pendingTurnMessage = message;
 	}
 
-	private scheduleNextTurn(message = ''): void {
-		setTimeout(() => {
-			this.switchPlayer();
-			if (message) {
-				this.lastState = { ...this.lastState!, message };
-			}
-			this.notify();
-		}, 1200);
+	private onWin(winner: number): void {
+		this.audio.playWin();
 	}
 
-	private switchPlayer(): void {
-		this.currentPlayer = this.currentPlayer === 0 ? 1 : 0;
-		this.resetTurn();
-	}
-
-	private resetTurn(): void {
-		this.gameState = 'aiming';
-		this.angle = this.PLAYER_ANGLES[this.currentPlayer];
-		this.power = this.MIN_POWER;
-		this.charging = false;
-		this.arrowFlying = false;
-		this.wind = Math.floor(Math.random() * 7) - 3; // -3 to +3
-		this.updateWindVisual();
-		this.updateAimVisuals();
-		this.notify();
-	}
-
-	private updateWindVisual(): void {
-		const scale = Math.abs(this.wind) * 0.3 + 0.3;
+	private updateWindVisual(wind: number): void {
+		const scale = Math.abs(wind) * 0.3 + 0.3;
 		this.windIndicator.scaling = new Vector3(scale, 1, 1);
-		this.windIndicator.rotation.z = this.wind >= 0 ? -Math.PI / 2 : Math.PI / 2;
+		this.windIndicator.rotation.z = wind >= 0 ? -Math.PI / 2 : Math.PI / 2;
 	}
 
 	private spawnParticles(position: Vector3): void {
@@ -772,10 +654,11 @@ export class FortBattleGame {
 
 			const vel = new Vector3((Math.random() - 0.5) * 6, Math.random() * 6, (Math.random() - 0.5) * 4);
 			let life = 0;
+			const config = this.logic.getConfig();
 			const obs = this.scene.onBeforeRenderObservable.add(() => {
 				const dt = this.engine.getDeltaTime() / 1000;
 				life += dt;
-				vel.y -= this.GRAVITY * dt;
+				vel.y -= config.GRAVITY * dt;
 				particle.position.addInPlace(vel.scale(dt));
 				particle.scaling.scaleInPlace(1.02);
 				mat.alpha = 1 - life / 0.7;
@@ -788,40 +671,12 @@ export class FortBattleGame {
 		}
 	}
 
-	private notify(): void {
-		const state: FortBattleState = {
-			healths: [...this.healths] as [number, number],
-			currentPlayer: this.currentPlayer,
-			angle: Math.round(this.angle),
-			power: Math.round(this.power),
-			wind: this.wind,
-			gameState: this.gameState,
-			winner: this.winner,
-			message: this.getMessage()
-		};
-		this.lastState = state;
-		this.onChange(state);
-	}
-
-	private getMessage(): string {
-		if (this.gameState === 'gameover' && this.winner !== null) {
-			return this.winner === 0 ? 'فاز اللاعب الأحمر! 🎉' : 'فاز اللاعب الأزرق! 🎉';
-		}
-		if (this.charging) return 'استمر بالضغط لشحن القوة...';
-		if (this.gameState === 'aiming') {
-			return this.currentPlayer === 0
-				? 'دور اللاعب الأحمر: حرك الماوس للتصويب ثم اضغط لشحن القوة'
-				: 'دور اللاعب الأزرق: حرك الماوس للتصويب ثم اضغط لشحن القوة';
-		}
-		if (this.gameState === 'flying') return 'السهم في الجو...';
-		return '';
+	private toVector3(p: Point2D): Vector3 {
+		return new Vector3(p.x, p.y, 0);
 	}
 
 	resetGame(): void {
-		this.healths = [100, 100];
-		this.currentPlayer = 0;
-		this.winner = null;
-		this.resetTurn();
+		this.logic.resetGame();
 	}
 
 	dispose(): void {
