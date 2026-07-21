@@ -547,6 +547,31 @@ Use the palette consistently across all games so the platform feels cohesive.
 | Memory | Heritage tiles: pottery, jewelry, dress patterns, flags, landmarks |
 | Puzzle | Falaj channels, geometric Islamic patterns, wind towers, pearl diving |
 
+#### 10.1.6 Recommended Art Style
+
+**Aldoolab recommendation: stylized 2D vector as the primary art direction.**
+
+The platform is built on Phaser 3, a 2D engine, and is targeting tablets first. The art style must therefore be fast to render, easy to animate, and producible by a small team or solo developer without relying on rare 3D specialists.
+
+| Style | Verdict | Why |
+|-------|---------|-----|
+| **Stylized 2D vector (flat shapes, bold outlines, geometric)** | ✅ **Primary choice** | Native to Phaser 3; small file sizes; scales cleanly across devices; quick to iterate; RTL text friendly; easy to animate with tweens, spritesheets, or Spine/DragonBones. |
+| **Vector with painterly textures** | ✅ Good secondary look | Add subtle gradients, paper, or sand-grain textures to the flat vector base for warmth and Gulf atmosphere without sacrificing performance. |
+| **Pixel art** | ⚠️ Use selectively | Cheap to produce and nostalgic, but requires high-resolution sprites to read well on tablets; hard to render Arabic details cleanly at low resolutions. Use only if the artist is experienced with pixel art. |
+| **Low-poly 3D** | ⚠️ Deferred / standalone only | Visually appealing, but Phaser 3 is not a 3D engine. Implementing low-poly would require Three.js/Babylon.js hybrids or a separate 3D game. Reserve for a future dedicated 3D title or short intro/cinematic, not the core 2D catalogue. |
+| **Realistic 3D / high-fidelity illustration** | ❌ Avoid | Too expensive to produce for 20 games; hurts tablet performance; competes poorly with AAA mobile games; harder to keep culturally consistent. |
+
+**Visual rules for the chosen style:**
+- Use **flat, layered vector shapes** for characters and environments.
+- Keep outlines **thick and consistent** (2–4 px) so shapes read on small screens.
+- Use the unified palette from Section 10.1.2; avoid noisy gradients.
+- Build characters from simple parts so poses can be reused or tweened without redrawing.
+- Use parallax layers, particles, and camera effects to add depth instead of true 3D.
+- Export source art as SVG or high-resolution PNG, then output WebP/PNG atlases for Phaser.
+
+**Production implication:**
+A single vector artist using Figma, Illustrator, or Aseprite can maintain the entire catalogue. Style consistency comes from the color palette, outline thickness, and proportion rules rather than from a single complex tool chain.
+
 ---
 
 ### 10.2 Asset Standards
