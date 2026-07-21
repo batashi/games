@@ -153,21 +153,20 @@ export class FortBattleGame {
 
 	private chargeStartTime = 0;
 	private pendingTurnMessage = '';
+	private visualReady = false;
 
 	constructor(canvas: HTMLCanvasElement, onChange: (state: FortBattleState) => void) {
 		this.canvas = canvas;
 		this.onChange = onChange;
 
-		// Initialize the visual layer first so the logic callback can safely touch
-		// every mesh/transform created in setupEnvironment().
-		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
-		this.scene = this.createScene();
-		this.setupEnvironment();
-
+		// Create the logic first so setupEnvironment() can read its config.
+		// Visual callbacks are deferred until the scene is fully built.
 		this.logic = new FortBattleLogic(
 			(state) => {
 				this.onChange(state);
-				this.onStateChanged(state);
+				if (this.visualReady) {
+					this.onStateChanged(state);
+				}
 			},
 			{},
 			{
@@ -176,6 +175,12 @@ export class FortBattleGame {
 				onWin: (winner) => this.onWin(winner)
 			}
 		);
+
+		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+		this.scene = this.createScene();
+		this.setupEnvironment();
+		this.visualReady = true;
+		this.onStateChanged(this.logic.getState());
 
 		this.setupInput();
 
