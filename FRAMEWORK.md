@@ -1052,6 +1052,57 @@ This matrix is a starting point and should be reviewed per game during design.
 4. **Campaign / Region Map** — unifies the platform and gives players long-term goals.
 5. **Classroom Mode** — valuable for the Omani educational context, but requires teacher-facing UX.
 
+### 17.6 Multiplayer Modes Beyond 1v1
+
+> **⚠️ Review Needed:** This subsection introduces FFA and team modes. It must be reviewed against child-safety policy, moderation capacity, and technical feasibility before implementation.
+
+#### 17.6.1 Supported Larger Modes
+
+| Mode | Description | Player Count | Best Fit |
+|------|-------------|--------------|----------|
+| **Free-for-All (FFA)** | Every player competes individually | 3–6 | Racing, trivia, memory |
+| **Team vs Team** | Two teams compete | 2v2, 3v3 | Football, fort battle, castle defense |
+| **Co-op Team vs AI** | Multiple players team up against computer | 2–4 | Defense, maze, fishing |
+
+#### 17.6.2 Game Suitability Matrix
+
+| Game | 1v1 | FFA 3–6 | Team 2v2 | Notes |
+|------|-----|---------|----------|-------|
+| Frankincense Runner | — | — | — | Single-player only |
+| Tic-Tac-Toe | ✅ | — | — | Turn-based 1v1 |
+| Fort Battle | ✅ | — | ✅ 2v2 | Shared fort per team |
+| Memory Challenge | ✅ | ✅ 2–4 | — | Speed matching |
+| Camel Race | ✅ | ✅ 3–6 | — | Natural racing FFA |
+| Beach Football — Soor | — | — | ✅ 2v2/3v3 | Team sport |
+| Traditional Boat Race (Mwash) | ✅ | ✅ 3–6 | — | Natural racing FFA |
+| Castles & Forts Challenge | ⚠️ | — | ✅ 2v2 | Base defense teams |
+| Words & Capitals Challenge | ⚠️ | ✅ 2–8 | ✅ Teams | Quiz / trivia |
+| Falaj Maze | ✅ Co-op | — | ✅ Co-op 2–4 | Team vs AI |
+
+#### 17.6.3 Safety Rules for Larger Rooms
+
+- **Invite-only:** All FFA/team rooms must be private; no open public lobbies.
+- **Capacity limits:** Hard cap at 6 players for FFA, 6 players for teams.
+- **Host controls:** Host can kick idle or disruptive players.
+- **No free chat:** Emoji-only reactions remain mandatory.
+- **Report button:** Visible to all players in every multiplayer match.
+- **Supervised mode:** Classroom Mode is the only context where larger rooms are allowed without invites.
+
+#### 17.6.4 Technical Considerations
+
+- Colyseus rooms support multiple clients, but schemas and game logic must be redesigned.
+- Turn order becomes a queue or team-based rotation instead of simple X/O switching.
+- Win/lose conditions must be team-aware or ranking-aware.
+- State sync volume increases with player count; optimize early.
+- Host migration: if the host leaves, the server or another player must take over.
+
+#### 17.6.5 Implementation Priority for Larger Modes
+
+1. **2v2 Fort Battle** — builds on existing 1v1 architecture.
+2. **3–4 player Camel Race / Boat Race** — simple FFA, low sync complexity.
+3. **2v2 Beach Football** — requires new game design but high cultural value.
+4. **Team trivia (Words & Capitals)** — good fit for Classroom Mode.
+
 ---
 
 ## 18. Next Immediate Actions
