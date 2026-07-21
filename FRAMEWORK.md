@@ -6,15 +6,57 @@
 
 ---
 
+## Table of Contents
+
+1. [Vision & Scope](#1-vision--scope)
+2. [Recommended Tech Stack](#2-recommended-tech-stack)
+3. [Architecture Overview](#3-architecture-overview)
+4. [Project Structure](#4-project-structure)
+5. [Game Development Guidelines](#5-game-development-guidelines)
+6. [Multiplayer Architecture](#6-multiplayer-architecture)
+7. [State Management](#7-state-management)
+8. [Child Safety & Security](#8-child-safety--security)
+9. [Audio & Assets](#9-audio--assets)
+10. [Graphics & Animation](#10-graphics--animation)
+11. [Testing Strategy](#11-testing-strategy)
+12. [Migration Roadmap](#12-migration-roadmap)
+13. [Deployment](#13-deployment)
+14. [Code Quality Standards](#14-code-quality-standards)
+15. [Key Decisions Log](#15-key-decisions-log)
+16. [Operations, Analytics & Compliance](#16-operations-analytics--compliance)
+17. [Play Modes](#17-play-modes)
+18. [Studio Production Guide](#18-studio-production-guide)
+19. [Cross-Device Development & Input Guidelines](#19-cross-device-development--input-guidelines)
+20. [Next Immediate Actions](#20-next-immediate-actions)
+
+---
+
 ## 1. Vision & Scope
 
 Build a safe, performant, and culturally authentic browser-based game platform for children aged 7–12 across the GCC (Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, UAE). The platform celebrates shared Gulf heritage while honoring each country's unique identity, and supports:
 
-- Single-player and online 1v1 games.
+- Single-player, local hotseat, and online games.
+- Online 1v1 and private larger rooms: free-for-all (3–6 players) and team vs team (2v2, 3v3) where appropriate.
 - Arabic-first UI with full RTL support.
 - Child-safe communication (preset reactions only).
-- Cross-device play on desktop and tablet.
+- Cross-device play on desktop, tablet, and mobile.
 - Score persistence, simple player profiles, and leaderboards.
+
+### 1.1 Target Audience
+
+| Attribute | Definition |
+|-----------|------------|
+| **Primary age range** | 7–12 years old |
+| **Maximum target age** | 12 years old (content, mechanics, and safety controls are designed for pre-teens) |
+| **Secondary users** | Parents and teachers (dashboards, classroom mode, purchase approval) |
+| **Region** | GCC: Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, UAE |
+| **Devices** | Tablets first, then desktop and mobile |
+
+**Implications for design:**
+- Mechanics should be simple enough for a 7-year-old but offer enough depth to keep a 12-year-old engaged.
+- Reading level and UI copy must suit children who are still developing literacy in Arabic and English.
+- No free text chat, no open public lobbies, and no high-stakes competitive mechanics that attract older players.
+- Parental controls and consent flows are required because the core audience is under 13.
 
 ---
 
@@ -149,6 +191,31 @@ Build a safe, performant, and culturally authentic browser-based game platform f
 ├── eslint.config.js
 └── README.md
 ```
+
+### 4.1 Isolation Rules for Solo Development
+
+To keep the platform maintainable by a small team or a single developer, every game must be self-contained. No game should depend on another game's code, and platform-wide changes should not break individual games.
+
+**File isolation:**
+- One folder per game under `src/games/[game-id]/`.
+- Each game exports a single `GameConfig` object consumed by the Game Manager.
+- Game logic lives inside the game's Phaser scene; shared helpers live in `src/core/`.
+- Do not import between `src/games/*` folders.
+
+**Runtime isolation:**
+- The Game Manager creates and destroys the scene when entering or leaving a game.
+- Scenes clean up their own event listeners, timers, tweens, and audio in `shutdown()`.
+- Global state (audio, user, online status) is read-only inside scenes; scenes emit events for the shell to handle.
+
+**Asset isolation:**
+- Each game has its own asset manifest or preload list.
+- Shared cultural assets live in `public/assets/common/`; game-specific assets live in `public/assets/games/[game-id]/`.
+- Lazy-load game assets only when the game is selected.
+
+**Contract over coupling:**
+- Games communicate with the shell only through the `GameConfig` contract and emitted events.
+- Online games communicate with the server only through the typed Network Manager.
+- Changing one game's scene must never require changes to another game.
 
 ---
 
@@ -393,7 +460,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 - Collect minimal data: nickname (optional), avatar, scores.
 - Store no personal identifiers for children under 13 without guardian consent.
-- Comply with GCC data protection regulations (e.g., Oman PDPL, Saudi PDPL, UAE PDPL) and COPPA/GDPR if serving outside the GCC.
+- Comply with applicable GCC data protection regulations (e.g., Saudi PDPL, UAE PDPL, Oman PDPL, Qatar Law No. 13 of 2016, Bahrain PDPL) and COPPA/GDPR-K if serving users outside the GCC.
 
 ### 8.4 Client-Side Protections
 
@@ -769,28 +836,28 @@ Use this table as a template when planning new games.
 
 ## 12. Migration Roadmap
 
-### Phase 1: Foundation (Weeks 1–2)
+### 12.1 Phase 1: Foundation (Weeks 1–2)
 1. Initialize Vite + TypeScript project.
 2. Set up ESLint, Prettier, Vitest.
 3. Port global styles and CSS variables.
 4. Create the App Shell component.
 
-### Phase 2: First Phaser Game (Weeks 3–4)
+### 12.2 Phase 2: First Phaser Game (Weeks 3–4)
 1. Integrate Phaser 3.
 2. Migrate **Tic-Tac-Toe** to a Phaser scene.
 3. Add Svelte/Vue modals for mode selection.
 
-### Phase 3: Authoritative Multiplayer (Weeks 5–7)
+### 12.3 Phase 3: Authoritative Multiplayer (Weeks 5–7)
 1. Set up Colyseus server.
 2. Migrate Tic-Tac-Toe online play to Colyseus.
 3. Add Supabase auth and profiles.
 
-### Phase 4: Migrate Remaining Games (Weeks 8–16)
+### 12.4 Phase 4: Migrate Remaining Games (Weeks 8–16)
 1. Migrate Runner and Fort Battle to Phaser.
 2. Implement online play for Fort Battle.
 3. Add one new game every 1–2 weeks.
 
-### Phase 5: Polish & Launch (Weeks 17–20)
+### 12.5 Phase 5: Polish & Launch (Weeks 17–20)
 1. Add PWA support.
 2. Add leaderboards and achievements.
 3. Comprehensive testing and performance optimization.
@@ -800,18 +867,18 @@ Use this table as a template when planning new games.
 
 ## 13. Deployment
 
-### 12.1 Frontend
+### 13.1 Frontend
 
 - Static hosting: **Vercel**, **Netlify**, **Cloudflare Pages**, or **GitHub Pages**.
 - Ensure HTTPS is enforced.
 
-### 12.2 Backend
+### 13.2 Backend
 
 - Colyseus server on **Node.js**.
 - Host on **Railway**, **Render**, **Fly.io**, or a VPS.
 - Use Redis for presence/room discovery if scaling beyond one process.
 
-### 12.3 Database
+### 13.3 Database
 
 - Supabase PostgreSQL for profiles, scores, and leaderboards.
 - Regular backups and row-level security policies.
@@ -892,7 +959,7 @@ Define the model early because it changes architecture, payment flows, and the c
 | **Free, sponsored** | Best for GCC educational context | Ministry, school, or NGO sponsorship |
 | **Freemium cosmetics** | Safe for kids | Unlockable avatars, themes, badges; no pay-to-win |
 | **Ads** | Low-touch but risky for under-13 | Use only COPPA-certified rewarded video; avoid interstitials and banners |
-| **Subscription / unlock** | Strong D2C model | Recurring or one-time access to all games and features |
+| **Subscription / unlock** | Direct consumer offer | Recurring or one-time access to all games and features |
 | **Institutional license** | B2B option | Schools pay for classroom accounts |
 | **Asset/template sales** | Side revenue for Aldoolab | Reusable components sold on Gumroad/CodeCanyon |
 
@@ -1148,7 +1215,7 @@ Add a `CONTRIBUTING.md` that explains:
 
 1. How to set up the project locally.
 2. How to run tests.
-3. How to add a new game using the `GameModule` interface.
+3. How to add a new game using the `GameConfig` contract (see Section 5.2).
 4. How to test multiplayer locally.
 5. Code review checklist.
 
@@ -1399,8 +1466,8 @@ Align events with the GCC and Islamic calendar:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Public PeerJS broker instability | High | High | Migrate to Colyseus in Phase 3 |
-| Art pipeline delays | Medium | High | Contract pixel artist in Phase 1 |
+| Multiplayer hosting costs / scaling | Medium | High | Monitor Colyseus room density; add Redis and horizontal scaling when needed |
+| Art pipeline delays | Medium | High | Contract pixel artist in Phase 1; build shared asset library first |
 | COPPA/GDPR compliance gap | Low | Very High | Legal review before public launch |
 | Tablet performance issues | Medium | High | Performance budget + device lab |
 | Key contributor leaves | Medium | Medium | Documentation, pair programming |
@@ -1526,7 +1593,7 @@ function recordStroke(points: { x: number; y: number }[]) {
 **Guidelines:**
 - Stroke width: 8–12 px on mobile, 4–6 px on desktop.
 - Provide immediate ink feedback.
-- Support undo with shake or back button.
+- Provide a clear undo button; avoid relying on shake gestures.
 - Recognize gestures with tolerance; children draw imprecisely.
 
 ### 19.5 UI Scaling & Safe Zones
