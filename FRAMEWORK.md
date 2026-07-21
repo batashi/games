@@ -199,6 +199,108 @@ export const runnerConfig: GameConfig = {
 4. **Clear feedback:** Every action should have visual and audio feedback.
 5. **Touch-first:** All games must be fully playable on a 10-inch tablet without a keyboard.
 
+### 5.4 Phaser 3 Standards & Constraints
+
+Phaser 3 is the studio's chosen 2D game engine. The following rules keep the catalogue consistent, performant, and maintainable.
+
+#### 5.4.1 Version & Dependency Policy
+
+- Pin Phaser to a specific version in `package.json` (e.g., `"phaser": "3.80.1"`).
+- Do not upgrade Phaser mid-sprint. Schedule upgrades during dedicated refactoring weeks.
+- Only approved plugins may be used. Current approved list:
+  - `phaser3-rex-plugins` for UI components.
+  - `phaser-spine` or `phaser-plugin-dragonbones` for skeletal animation if required.
+
+#### 5.4.2 Bundle Size Targets
+
+| Budget | Target |
+|--------|--------|
+| Phaser core (gzipped) | < 900 KB |
+| Per-game scene code | < 50 KB |
+| Per-game asset bundle | < 5 MB |
+| Total initial app load | < 3 MB |
+
+Lazy-load game-specific assets when a game is selected, not at app startup.
+
+#### 5.4.3 Scene Architecture
+
+Every Phaser game must follow this structure:
+
+```ts
+// src/games/[game-id]/[Game]Scene.ts
+export class ExampleScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'ExampleScene' });
+  }
+
+  preload() {
+    // Load only this game's assets
+  }
+
+  create() {
+    // Setup world, input, and initial state
+  }
+
+  update(time: number, delta: number) {
+    // Game loop (keep lightweight)
+  }
+
+  shutdown() {
+    // Clean up event listeners, timers, and tweens
+  }
+}
+```
+
+Rules:
+- One scene per game.
+- Destroy the scene completely when returning to the home screen.
+- Do not leak event listeners or timers between scenes.
+
+#### 5.4.4 Performance Rules
+
+- Target 60 FPS on a mid-range tablet (e.g., iPad 8th gen, Samsung Galaxy Tab A8).
+- Keep draw calls under 50 per scene on mobile.
+- Use object pooling for bullets, obstacles, collectibles, and particles.
+- Disable off-screen game objects (`active = false`, `visible = false`).
+- Avoid creating new objects inside `update()`; reuse or pool instead.
+- Use `texture atlases` to reduce draw calls.
+
+#### 5.4.5 Input Handling
+
+- Use Phaser's input manager; do not attach raw DOM event listeners inside scenes.
+- Support both touch and keyboard for every action.
+- Provide on-screen controls for tablet users when keyboard is not available.
+- Debounce rapid inputs to prevent accidental double-actions.
+
+#### 5.4.6 Audio in Phaser
+
+- Use Phaser's sound manager for game audio.
+- Keep SFX short (< 2s) and compressed.
+- Respect the global mute state from the app shell.
+- Provide per-game volume overrides only if the design explicitly requires it.
+
+#### 5.4.7 State & Shell Communication
+
+- Scenes own local game state.
+- Emit events to the app shell for UI updates:
+
+```ts
+this.events.emit('score', { value: 120 });
+this.events.emit('gameOver', { winner: 'left', score: 450 });
+```
+
+- For online games, send only player intents to Colyseus; never send score or health from the client.
+
+#### 5.4.8 Profiling Gate
+
+No game ships without passing the Phaser profiling gate:
+
+- [ ] Stable 60 FPS on Tier 1 tablet for 5 minutes.
+- [ ] Memory usage does not grow during a 10-minute session.
+- [ ] No console errors or warnings.
+- [ ] Scene transitions cleanly with no leaked listeners.
+- [ ] Asset bundle size within budget.
+
 ---
 
 ## 6. Multiplayer Architecture
