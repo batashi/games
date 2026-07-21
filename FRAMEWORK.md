@@ -738,7 +738,261 @@ Use this table as a template when planning new games.
 
 ---
 
-## 16. Next Immediate Actions
+## 16. Operations, Analytics & Compliance
+
+This section covers what is needed to run the platform as a live product, not just to build it.
+
+### 16.1 Analytics & Telemetry
+
+Track only what is useful and privacy-respecting. Avoid collecting identifiable data about children.
+
+#### 16.1.1 Events to Track
+
+| Event | Purpose |
+|-------|---------|
+| `game_started` | Measure game popularity |
+| `game_completed` | Track completion rates |
+| `score_recorded` | Balance difficulty and leaderboards |
+| `room_created` / `room_joined` | Multiplayer engagement |
+| `session_length` | Retention analysis |
+| `ad_or_reward_shown` | Monetization tracking (if applicable) |
+| `error_occurred` | Stability monitoring |
+
+#### 16.1.2 Recommended Tools
+
+| Tool | Use Case |
+|------|----------|
+| **Plausible** | Privacy-friendly web analytics |
+| **Google Analytics 4** | Deeper funnel analysis (configure for child safety) |
+| **Sentry** | Error and crash reporting |
+| **Custom events table** | Game-specific events stored in Supabase |
+
+#### 16.1.3 Performance Telemetry
+
+- Track FPS drops per scene.
+- Log load times for asset bundles.
+- Monitor memory usage on low-end tablets.
+- Set alerts when crash rate exceeds 1%.
+
+---
+
+### 16.2 Monetization & Business Model
+
+Define the model early because it changes architecture.
+
+#### 16.2.1 Candidate Models
+
+| Model | Fit | Notes |
+|-------|-----|-------|
+| **Free, sponsored** | Best for Oman educational context | Ministry, school, or NGO sponsorship |
+| **Freemium cosmetics** | Safe for kids | Unlockable avatars, themes, badges; no pay-to-win |
+| **Ads** | Risky for under-13 | Only use COPPA-certified networks; avoid interstitials mid-game |
+| **Institutional license** | B2B option | Schools pay for classroom accounts |
+
+#### 16.2.2 In-Game Economy (if used)
+
+- Use a soft currency earned by playing.
+- Avoid real-money purchases directly in the child-facing app.
+- All purchases go through a parent dashboard.
+
+---
+
+### 16.3 Localization Strategy
+
+The platform is Arabic-first, but design for future languages from the start.
+
+#### 16.3.1 Internationalization Rules
+
+- Use key-based strings, never hardcoded text in game code.
+- Support RTL and LTR layouts.
+- Use a font that supports Arabic shaping (Cairo/Tajawal already do).
+- Plan for text expansion: Arabic phrases are often shorter, but not always.
+
+#### 16.3.2 Recommended Libraries
+
+| Framework | Library |
+|-----------|---------|
+| Svelte | `svelte-i18n` |
+| Vue | `vue-i18n` |
+| Phaser | Load JSON locale files and resolve keys manually |
+
+---
+
+### 16.4 Offline Support & PWA Operations
+
+#### 16.4.1 Offline Capability by Game
+
+| Game Type | Offline Support |
+|-----------|-----------------|
+| Single-player | Full offline after first load |
+| Online 1v1 | Requires connection; queue or AI fallback offline |
+| Score-based | Save locally, sync when online |
+
+#### 16.4.2 Caching Strategy
+
+- Cache static assets (images, audio, fonts) with a service worker.
+- Use stale-while-revalidate for app shell.
+- Version cache keys per release.
+- Provide a "reload to update" prompt when a new version is available.
+
+---
+
+### 16.5 Error Handling & Crash Reporting
+
+#### 16.5.1 Global Error Boundaries
+
+- Catch unhandled errors in the app shell.
+- Catch errors inside Phaser scenes and return to the home screen gracefully.
+- Never expose stack traces to children.
+
+#### 16.5.2 Graceful Degradation
+
+| Failure | Behavior |
+|---------|----------|
+| WebGL unavailable | Show a friendly "update your browser" message |
+| Audio context blocked | Continue silently; do not crash |
+| WebSocket disconnected | Show reconnecting spinner; allow rejoin |
+| Asset fails to load | Retry once, then show fallback or skip |
+
+#### 16.5.3 Crash Reporting
+
+- Send errors to Sentry or a custom endpoint.
+- Include game ID, scene, device type, and browser version.
+- Scrub any personally identifiable information.
+
+---
+
+### 16.6 DevOps & CI/CD
+
+#### 16.6.1 Continuous Integration
+
+Run on every pull request:
+
+1. `npm run lint`
+2. `npm run typecheck`
+3. `npm run test:unit`
+4. Build frontend and server
+
+#### 16.6.2 Environments
+
+| Environment | Purpose | Hosting Example |
+|-------------|---------|-----------------|
+| Local | Development | `npm run dev` |
+| Staging | Pre-release testing | Vercel preview / Render staging |
+| Production | Live users | Vercel production / Render production |
+
+#### 16.6.3 Deployment Pipeline
+
+1. Merge PR to `main`.
+2. CI runs tests and build.
+3. Deploy frontend to static host.
+4. Deploy Colyseus server to Node.js host.
+5. Run database migrations (if any).
+6. Smoke test production.
+
+#### 16.6.4 Database Migrations
+
+- Use migration files for schema changes.
+- Test migrations against a copy of production data before deploying.
+- Keep backward-compatible migrations when possible.
+
+---
+
+### 16.7 Compliance & Legal
+
+#### 16.7.1 Required Documents
+
+- Privacy Policy
+- Terms of Service
+- Parental Consent Flow (for under-13 users)
+- Cookie/Tracking Notice (if using analytics)
+
+#### 16.7.2 Regulations to Consider
+
+| Regulation | Key Requirement |
+|------------|-----------------|
+| **COPPA** (US) | Parental consent for under-13 data collection |
+| **GDPR-K** (EU) | Parental consent for under-16 (or 13 with approval) |
+| **Oman PDPL** | Local data protection compliance |
+
+#### 16.7.3 Data Minimization
+
+- Collect only: nickname (optional), avatar choice, scores, session metadata.
+- Do not collect: real name, email of child, location, device identifiers.
+- Allow parents to delete child accounts and data.
+
+---
+
+### 16.8 Parental Controls
+
+Provide a lightweight parent dashboard or in-app flow:
+
+| Feature | Purpose |
+|---------|---------|
+| Playtime limits | Daily/weekly caps |
+| Data deletion | Remove account and history |
+| Friends management | Approve or block contacts |
+| Purchase approval | Gate any real-money transactions |
+| Activity summary | See games played and time spent |
+
+---
+
+### 16.9 Matchmaking, Fallbacks & Reconnection
+
+#### 16.9.1 Friend-Based Play
+
+- Keep the 4–8 character room code model for private games.
+- Add a "copy invite link" option for mobile sharing.
+
+#### 16.9.2 Public Matchmaking (optional)
+
+- If added later, use age-bucketed queues.
+- Never match a 7-year-old with a 13+ user.
+
+#### 16.9.3 AI Fallback
+
+- If a player disconnects, offer to continue against AI.
+- If no opponent is found within 30 seconds, offer AI match.
+
+#### 16.9.4 Reconnection
+
+- Allow rejoin within 60 seconds of disconnect.
+- Server holds room state briefly after a player leaves.
+
+---
+
+### 16.10 Content Moderation
+
+Even with emoji-only chat, moderate anything user-facing:
+
+- Filter nicknames against a deny-list.
+- Review custom avatars if ever allowed.
+- Provide a "report" button on every online match.
+- Log reports for manual review.
+
+---
+
+### 16.11 Asset Licensing & Open Source
+
+- Decide on a license for the codebase (e.g., MIT, Apache-2.0, or proprietary).
+- Track licenses of third-party assets (fonts, audio, sprites).
+- Include an attribution file if required.
+
+---
+
+### 16.12 Contributor Onboarding
+
+Add a `CONTRIBUTING.md` that explains:
+
+1. How to set up the project locally.
+2. How to run tests.
+3. How to add a new game using the `GameModule` interface.
+4. How to test multiplayer locally.
+5. Code review checklist.
+
+---
+
+## 17. Next Immediate Actions
 
 1. Decide between **Svelte 5** and **Vue 3** based on team familiarity.
 2. Initialize the Vite + TypeScript + chosen framework project.
