@@ -196,6 +196,53 @@ Each game detail page needs:
 - Logos in Arabic and English.
 - Team photos and bios.
 
+### 8.4 Adding a New Game to the Website
+
+The website reads game metadata from a single source of truth: `data/games.json`. This file is shared with the game app so game IDs, names, modes, and statuses stay synchronized.
+
+#### 8.4.1 Game Entry Schema
+
+Each game object contains:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | string | Unique game ID used by the app and URLs (`/games/:id`, `/play/:id`). |
+| `slug` | string | URL-friendly identifier. |
+| `nameAr` / `nameEn` | string | Display names in Arabic and English. |
+| `taglineAr` / `taglineEn` | string | Short one-line hook for cards and hero. |
+| `descriptionAr` / `descriptionEn` | string | Longer description on the detail page. |
+| `icon` | string | Emoji or icon identifier. |
+| `genre` / `genreLabelAr` / `genreLabelEn` | string | Genre for filtering. |
+| `ageRange` | string | E.g., `7-12` or `10-12`. |
+| `sessionLength` | string | E.g., `1-3 min`. |
+| `modes` | string[] | `single`, `local`, `online`, `async`, `daily`, `practice`, `coop`, `team`. |
+| `countries` | string[] | GCC country codes for country-specific variants. |
+| `status` | string | `ready`, `beta`, `coming-soon`. |
+| `supportedPlatforms` | string[] | `desktop`, `tablet`, `mobile`. |
+| `heroImage` / `thumbnail` / `video` | string | Paths to media assets. |
+| `howToPlayAr` / `howToPlayEn` | string[] | Step-by-step instructions. |
+| `culturalNoteAr` / `culturalNoteEn` | string | Cultural education paragraph. |
+| `metaTitleAr` / `metaTitleEn` | string | SEO `<title>`. |
+| `metaDescriptionAr` / `metaDescriptionEn` | string | SEO meta description. |
+
+#### 8.4.2 Step-by-Step Process
+
+1. **Add the game entry** to `data/games.json`.
+2. **Create media assets:**
+   - Hero image (`heroImage`) — 16:9, WebP, < 200 KB.
+   - Thumbnail (`thumbnail`) — 1:1, WebP, < 50 KB.
+   - Looping video (`video`) — WebM, < 1 MB, no audio.
+3. **Write Arabic and English copy** for description, how-to-play, and cultural note.
+4. **Generate the detail page** automatically from the JSON entry.
+   - The website builder creates `/games/:slug` and `/play/:id` routes at build time.
+5. **Add the game card** to the catalogue grid automatically — no extra page needed.
+6. **Publish a blog post** announcing the new game (optional but recommended).
+7. **Update the sitemap** by rebuilding the static site.
+
+#### 8.4.3 Example Entry
+
+See `data/games.json` for complete examples of `frankincense`, `tictactoe`, and `archery`.
+
 ---
 
 ## 9. SEO & Performance
