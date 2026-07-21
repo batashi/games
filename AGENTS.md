@@ -24,7 +24,6 @@ Seventeen additional games are listed in `README.md` as "Coming Soon" but have n
 /root
 ├── README.md                   # Quick-start and catalogue (describes removed prototype)
 ├── FRAMEWORK.md                # Main English technical blueprint (authoritative)
-├── FRAMEWORK_AR.md             # Arabic translation of the framework (note: still references Phaser 3)
 ├── WEBSITE.md                  # Specification for the public marketing/discovery website
 ├── AGENTS.md                   # This file
 ├── data/
@@ -55,7 +54,7 @@ The framework documents propose the following stack for a future implementation.
 | E2E tests | Playwright |
 | Linting / formatting | ESLint + Prettier |
 
-**Note on engine choice:** `FRAMEWORK.md` (English) selects **Babylon.js** as the default engine. `FRAMEWORK_AR.md` (Arabic) still references **Phaser 3**. Treat the English `FRAMEWORK.md` as the authoritative source unless a maintainer explicitly overrides it.
+**Note on engine choice:** `FRAMEWORK.md` selects **Babylon.js** as the default engine. Treat it as the authoritative technical source unless a maintainer explicitly overrides it.
 
 ## 4. Build and Run Commands
 
@@ -75,7 +74,6 @@ Because there is no build system or runnable code, there are no project build or
 There is no source code to organize yet. Work is structured by document type:
 
 - **`FRAMEWORK.md`** — Architecture, tech stack, migration roadmap, code-quality standards, child-safety rules, and asset pipeline.
-- **`FRAMEWORK_AR.md`** — Arabic translation of the framework.
 - **`WEBSITE.md`** — Public website requirements, SEO, analytics, ads policy, and integration with the game app.
 - **`GDD/*.md`** — Individual Game Design Documents, one per implemented game.
 - **`data/games.json`** — Shared metadata used by both the game app and the website.
@@ -115,7 +113,7 @@ The JSON file declares `"$schema": "./games.schema.json"`, but that schema file 
 
 Until coding begins, follow these document-level conventions:
 
-- **Primary language for docs:** English. `FRAMEWORK_AR.md` is a translation; keep it in sync with `FRAMEWORK.md` if you update the framework.
+- **Primary language for docs:** English.
 - **Game design documents:** Use the existing `GDD/*.md` structure (Elevator Pitch, Game Identity, GameConfig Contract, Core Loop, Mechanics, Controls, UI/Feedback, Audio, Safety, Monetization, Technical Notes).
 - **Commit style:** The project uses conventional commit prefixes such as `docs:`, `chore:`, `docs(framework):`, etc. Continue using them.
 - **Game metadata:** When a new game is designed, add it to `data/games.json` and create a matching `GDD/gdd-NN-game-name.md` file.
