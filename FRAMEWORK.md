@@ -317,7 +317,328 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ---
 
-## 10. Testing Strategy
+## 10. Graphics & Animation
+
+### 10.1 Visual Identity & Art Direction
+
+The platform must feel unmistakably Omani while remaining friendly and readable for children aged 7–12.
+
+#### 10.1.1 Cultural Visual Pillars
+
+- **Desert & dunes:** Warm sandy tones, rolling dunes, sun-bleached rocks.
+- **Sea & coast:** Turquoise waters, dhows, fish, coral, Muttrah harbor cues.
+- **Mountains & green wadis:** Jebel Akhdar terraces, roses, pomegranate trees.
+- **Heritage symbols:** Forts (Nakhal, Jabreen, Bahla), frankincense trees, camels, traditional daggers (khanjar), swords, pottery.
+- **Festive & social:** Omani halwa, coffee pots (dallah), dates, traditional dress.
+
+#### 10.1.2 Unified Color Palette
+
+Base the palette on the existing CSS variables and extend it for game art:
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--sandy` | `#e6d5b8` | Dunes, backgrounds |
+| `--sand-dark` | `#cbb593` | Shadows, rocks |
+| `--sea` | `#1e6f7a` | Water, UI primary |
+| `--sea-dark` | `#15565e` | Deep water, headers |
+| `--sun` | `#f4b942` | Accents, sun, coins |
+| `--sun-dark` | `#d99a2b` | Hover states |
+| `--success` | `#27ae60` | Positive feedback |
+| `--danger` | `#c0392b` | Damage, warnings |
+| `--white` | `#ffffff` | Text on dark, highlights |
+| `--charcoal` | `#2f2f2f` | Body text |
+
+Use the palette consistently across all games so the platform feels cohesive.
+
+#### 10.1.3 Typography
+
+- **UI font:** `Cairo` / `Tajawal` (already in use).
+- **In-game text:** Use the same font family; avoid decorative fonts that reduce readability in Arabic.
+- **Minimum sizes:** 16px body, 22px scores, 32px headlines on mobile.
+- **Line height:** 1.5 or greater for Arabic text.
+
+#### 10.1.4 Character Design
+
+- **Style:** Friendly, rounded proportions, large eyes, readable silhouettes.
+- **Avatars:** Allow children to pick from a set of culturally themed characters (boy/girl in Omani attire, camel, falcon, etc.).
+- **Silhouette test:** Every character should be recognizable from its silhouette alone.
+- **Avoid:** Overly complex details that do not read at small sizes.
+
+#### 10.1.5 Environment Themes
+
+| Game Type | Environment Cues |
+|-----------|------------------|
+| Runner | Wahiba Sands dunes, frankincense trees, ancient valley |
+| Tic-Tac-Toe | Khanjar vs. sword board, sandstone tiles |
+| Fort Battle | Two Omani forts across a wadi, wind flags |
+| Racing | Coastal road, mountain pass, desert track |
+| Memory | Heritage tiles: pottery, jewelry, dress patterns |
+| Puzzle | Falaj water channels, geometric Omani patterns |
+
+---
+
+### 10.2 Asset Standards
+
+#### 10.2.1 Asset Types
+
+| Category | Examples |
+|----------|----------|
+| Sprites | Player characters, enemies, collectibles, projectiles |
+| Backgrounds | Parallax layers, static scenes, sky gradients |
+| UI | Buttons, panels, badges, icons, modals |
+| Particles | Dust, sparks, confetti, water splash, fire |
+| Effects | Flash, screen shake, vignette, transitions |
+| Fonts | Cairo/Tajawal web fonts, numeric score fonts |
+
+#### 10.2.2 File Formats
+
+| Asset Type | Preferred Format | Fallback |
+|------------|------------------|----------|
+| Static images | WebP | PNG |
+| Sprites with transparency | WebP (lossless) | PNG-8 |
+| Texture atlases | PNG + JSON | — |
+| Audio | OGG | MP3 |
+| Animation data | JSON (Phaser atlas/Spine/DragonBones) | — |
+| Vector UI | SVG | — |
+
+#### 10.2.3 Resolution & Sizing
+
+- **Internal canvas resolution:** Target 1920×1080 max; scale down for performance on tablets.
+- **Sprite sizes:** Design at 2× or 3× the in-game display size, then scale down.
+- **Max texture size:** 2048×2048 for broad device compatibility.
+- **Asset budget per game:** aim for < 5 MB total (images + audio).
+
+#### 10.2.4 Naming Conventions
+
+```
+assets/
+├── images/
+│   ├── bg_desert_day.webp
+│   ├── bg_sea_sunset.webp
+│   ├── char_boy_run_01.webp
+│   └── ui_button_primary.webp
+├── spritesheets/
+│   ├── runner_player.json
+│   ├── runner_player.png
+│   └── fort_archer.json
+├── particles/
+│   ├── confetti.png
+│   └── dust.png
+└── audio/
+    ├── sfx_jump.ogg
+    └── sfx_win.ogg
+```
+
+Use lowercase, underscores, and descriptive names.
+
+#### 10.2.5 Texture Atlases
+
+- Pack sprites for each game into atlases to reduce draw calls.
+- Use tools like **TexturePacker**, **Shoebox**, or **Phaser 3 built-in atlas generation**.
+- Keep UI atlas separate from game atlas for memory management.
+
+---
+
+### 10.3 Animation Principles
+
+#### 10.3.1 Timing for Children
+
+- **Actions:** 0.15–0.3s for UI feedback.
+- **Transitions:** 0.3–0.5s for screen/modal changes.
+- **Anticipation:** Use 2–4 frames of wind-up before big actions (jump, shoot).
+- **Hold on win:** Celebrate for 1.5–2s so children notice victory.
+- **Avoid:** Strobing, rapid flashing, or motions that may cause discomfort.
+
+#### 10.3.2 Feedback Animations
+
+Every interaction must provide immediate visual feedback:
+
+| Interaction | Feedback |
+|-------------|----------|
+| Button press | Scale down 0.95 + brightness bump |
+| Cell selection | Pop-in + subtle glow |
+| Correct action | Green flash + score float-up |
+| Wrong action | Red shake + short sound |
+| Damage taken | Screen shake + vignette pulse |
+| Collection | Item shrinks into score counter |
+| Win | Confetti + character celebrate |
+| Loss | Gentle fade + retry prompt |
+
+#### 10.3.3 Character Animation States
+
+Most player characters should support:
+
+- **Idle:** breathing/looping subtle motion.
+- **Run:** 6–10 frame cycle.
+- **Jump:** anticipation → launch → peak → land.
+- **Duck/Crouch:** compressed pose, quick transition.
+- **Attack/Shoot:** wind-up → action → recovery.
+- **Celebrate:** arms up, bounce, smile.
+- **Hurt:** brief red flash, stagger pose.
+
+#### 10.3.4 Transitions
+
+- Use fade or slide transitions between app shell and game scenes.
+- Keep transitions under 0.4s to maintain engagement.
+- Avoid overly complex page transitions on low-end tablets.
+
+#### 10.3.5 Appeal & Exaggeration
+
+- Use **squash and stretch** on characters and UI elements.
+- Add **follow-through** (e.g., scarf/hair trailing on runner).
+- Use **secondary motion** (flags waving, palm leaves swaying) to bring scenes to life.
+
+---
+
+### 10.4 Technical Implementation
+
+#### 10.4.1 Phaser 3 Animation Tools
+
+- **Tweens:** for UI feedback, score counters, modal transitions.
+- **Animations:** for sprite-based character cycles.
+- **Particles:** for confetti, dust, sparks, water.
+- **Camera effects:** shake, fade, flash, zoom.
+- **Timers:** for delayed animations and sequence choreography.
+
+Example tween for a score pop:
+
+```ts
+this.tweens.add({
+  targets: scoreText,
+  scale: { from: 1, to: 1.4 },
+  y: '-=30',
+  alpha: { from: 1, to: 0 },
+  duration: 800,
+  ease: 'Back.easeOut',
+});
+```
+
+#### 10.4.2 Skeletal Animation
+
+For complex characters (e.g., running camel, dancing avatar), consider:
+
+- **Spine** (premium, industry standard).
+- **DragonBones** (free, open-source).
+- Export to JSON + atlas and load in Phaser via plugins.
+
+Use skeletal animation only when frame-by-frame is too expensive or rigid.
+
+#### 10.4.3 Particle Effects
+
+| Effect | Use Case |
+|--------|----------|
+| Confetti | Win celebration |
+| Dust | Running/landing |
+| Sparks | Arrow hit on stone |
+| Splash | Water/fishing games |
+| Fire glow | Pottery kiln |
+| Leaves | Wind in mountain games |
+
+Keep particle counts reasonable:
+- Mobile: < 200 active particles.
+- Desktop: < 500 active particles.
+
+#### 10.4.4 Parallax & Layering
+
+- Use 2–4 parallax layers for runner/explorer games.
+- Layers closer to camera move faster than distant layers.
+- Cache static layers as single textures when possible.
+
+#### 10.4.5 Screen Effects Rules
+
+| Effect | When to Use | Limit |
+|--------|-------------|-------|
+| Screen shake | Heavy damage, fort collapse | < 0.3s, low intensity |
+| Flash | Successful hit, power-up | 50–100ms, soft color |
+| Vignette | Low health, danger | Pulsing, not constant |
+| Zoom | Focus on win/important moment | Brief, subtle |
+| Fade | Scene transitions | 0.3–0.5s |
+
+---
+
+### 10.5 Performance & Accessibility
+
+#### 10.5.1 Performance Budgets
+
+| Metric | Target |
+|--------|--------|
+| Draw calls per scene | < 50 on mobile |
+| Texture memory per game | < 32 MB |
+| Initial load time | < 3s on 3G |
+| Frame rate | Stable 60 FPS on mid-range tablet |
+| Asset bundle per game | < 5 MB |
+
+#### 10.5.2 Optimization Rules
+
+- Reuse textures across games where thematically appropriate.
+- Pool particles and sprites instead of creating/destroying constantly.
+- Disable off-screen updates (`active = false` for sprites outside camera).
+- Use object pooling for bullets, obstacles, and collectibles.
+- Compress audio to 128 kbps or lower.
+
+#### 10.5.3 Accessibility
+
+- Respect `prefers-reduced-motion`: disable screen shake, reduce particle counts, simplify transitions.
+- Maintain color contrast ratios ≥ 4.5:1 for text and important UI.
+- Do not rely solely on color to convey game state; use icons/shape too.
+- Provide clear visual focus indicators for keyboard navigation.
+
+---
+
+### 10.6 Asset Production Pipeline
+
+#### 10.6.1 Recommended Tools
+
+| Task | Tool |
+|------|------|
+| Pixel art / sprites | Aseprite, GraphicsGale |
+| Vector UI / icons | Figma, Adobe Illustrator |
+| Texture packing | TexturePacker, Free Texture Packer |
+| Skeletal animation | Spine, DragonBones |
+| 3D (if needed) | Blender |
+| Audio | Bfxr, LMMS, Audacity |
+| Font subsetting | glyphhanger, fonttools |
+
+#### 10.6.2 Export & Optimization Workflow
+
+1. Create art at 2× or 3× target resolution.
+2. Export to PNG/OGG source files.
+3. Convert images to WebP with fallback PNG.
+4. Pack sprites into atlases.
+5. Compress audio.
+6. Run assets through an optimizer (e.g., `imagemin`, `ffmpeg`).
+7. Verify file sizes against the performance budget.
+8. Commit to `public/assets/`.
+
+#### 10.6.3 Asset Review Checklist
+
+- [ ] Culturally accurate and appropriate for children.
+- [ ] Consistent with the platform color palette.
+- [ ] Readable at target resolution.
+- [ ] Optimized and within budget.
+- [ ] Includes RTL-safe layout where text is involved.
+- [ ] Has fallback formats where required.
+
+---
+
+### 10.7 Game-Specific Animation Notes
+
+| Game | Required Animations |
+|------|---------------------|
+| Frankincense Collector | Run cycle, jump, duck, obstacle break, background parallax, score pop, game-over fade |
+| Tic-Tac-Toe | Mark pop-in, cell highlight, win-line draw, draw reaction, confetti on win |
+| Fort Battle | Bow draw/release, arrow flight, block crumble, fort shake, collapse, wind flag, victory/defeat pose |
+| Camel Race | Gallop cycle, dust clouds, crowd cheer, finish-line burst |
+| Omani Sweets Catcher | Falling sweets, basket catch, combo counter, missed-item reaction |
+| Memory | Card flip, match glow, mismatch shake, board clear celebration |
+| Beach Football | Kick, ball arc, goal net ripple, crowd reaction |
+| Pottery Maker | Wheel spin, clay morph, paint stroke, kiln glow |
+
+Use this table as a template when planning new games.
+
+---
+
+## 11. Testing Strategy
 
 ### 10.1 Unit Tests (Vitest)
 
@@ -341,7 +662,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ---
 
-## 11. Migration Roadmap
+## 12. Migration Roadmap
 
 ### Phase 1: Foundation (Weeks 1–2)
 1. Initialize Vite + TypeScript project.
@@ -372,7 +693,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ---
 
-## 12. Deployment
+## 13. Deployment
 
 ### 12.1 Frontend
 
@@ -392,7 +713,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ---
 
-## 13. Code Quality Standards
+## 14. Code Quality Standards
 
 1. **TypeScript strict mode** enabled.
 2. **No `any` types** except in narrowly justified cases.
@@ -404,7 +725,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ---
 
-## 14. Key Decisions Log
+## 15. Key Decisions Log
 
 | Decision | Choice | Reason |
 |----------|--------|--------|
@@ -417,7 +738,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ---
 
-## 15. Next Immediate Actions
+## 16. Next Immediate Actions
 
 1. Decide between **Svelte 5** and **Vue 3** based on team familiarity.
 2. Initialize the Vite + TypeScript + chosen framework project.
