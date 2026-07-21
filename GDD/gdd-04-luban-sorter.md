@@ -27,7 +27,7 @@ A young trader apprentice sorts precious frankincense resin by grade, packs it i
 | **Play Modes** | Single-player, Daily Challenge, Practice / Free Play |
 | **Online Feasible** | No — asynchronous leaderboards only |
 | **Estimated Effort** | Small |
-| **Session Length** | 2–4 minutes |
+| **Session Length** | 1–3 minutes |
 | **Accessibility** | Color-blind safe grades (shape + pattern), one-handed play, ≥ 64 px touch targets, no time pressure in Practice mode |
 
 ### 2.1 GameConfig Contract
@@ -39,13 +39,30 @@ export const lubanSorterConfig: GameConfig = {
   nameEn: 'Luban Sorter',
   icon: '🧺',
   supportsSingle: true,
-  supportsLocal: false,
-  supportsOnline: false,
   supportsDaily: true,
+  supportsOnline: false,
   gameKey: 'LubanSorterGame',
   preloadAssets: [...],
 };
 ```
+
+### 2.2 State & Shell Communication
+
+The game scene owns all local state (score, stars, level progress, sorted pieces). It communicates with the app shell through typed events only:
+
+```ts
+this.onScoreChange.notifyObservers({ value: 120 });
+this.onLevelComplete.notifyObservers({ level: 3, stars: 2, score: 450 });
+this.onGameOver.notifyObservers({ score: 120, highScore: false });
+```
+
+Global state (audio mute, user profile, online status) is read-only inside the scene. The scene never writes to the app shell stores directly.
+
+### 2.3 Localization
+
+- Arabic-first UI and in-game text; English as a secondary language.
+- All strings are key-based and loaded from locale files; no hardcoded text in game logic.
+- UI layouts support both RTL (Arabic) and LTR (English) via the shared shell.
 
 ---
 
@@ -117,12 +134,21 @@ Country-specific backdrops can be added later for Oman, Saudi Arabia, the UAE, Q
 
 ---
 
-## 8. Controls
+## 8. Controls & Input Handling
+
+All input goes through the shared `InputManager` / Babylon.js pointer system. Game scenes never bind raw `window` events.
 
 | Device | Input |
 |--------|-------|
 | Desktop | Mouse drag-and-drop; click a piece then click a basket; Space = hint; P = pause; Esc = menu. |
-| Tablet / Mobile | Drag-and-drop with finger; tap piece then tap basket; on-screen hint button. |
+| Tablet / Mobile | Drag-and-drop with finger; tap piece then tap basket; on-screen hint and pause buttons. |
+
+**Input rules:**
+- Use `scene.onPointerObservable` or `scene.pick` for 3D world intersections.
+- Debounce rapid taps to prevent accidental double-sorts.
+- Touch targets are ≥ 64 px for children.
+- On-screen controls are required on mobile and optional on tablets.
+- Respect `prefers-reduced-motion` by disabling screen shake and reducing particles.
 
 ---
 
@@ -173,9 +199,11 @@ Country-specific backdrops can be added later for Oman, Saudi Arabia, the UAE, Q
 | Event | Purpose |
 |-------|---------|
 | `game_started` | Track game popularity. |
-| `level_completed` | Track progression and difficulty balance. |
+| `game_completed` / `level_completed` | Track completion and drop-off. |
 | `score_recorded` | Balance scoring and leaderboards. |
+| `session_length` | Retention analysis. |
 | `hint_used` | Understand where players struggle. |
+| `ad_or_reward_shown` | Monetization tracking (if applicable). |
 | `error_occurred` | Stability monitoring. |
 
 ## 14. Offline & PWA
@@ -200,11 +228,16 @@ Country-specific backdrops can be added later for Oman, Saudi Arabia, the UAE, Q
 
 ## 17. Technical Notes
 
-- Use a small pool of resin piece meshes to reduce draw calls.
+- Game code lives in `src/games/luban-sorter/` and is isolated from other games.
+- Game-specific assets live in `public/assets/games/luban-sorter/`; shared cultural assets live in `public/assets/common/`.
+- Use one Babylon.js `Scene` per game instance; dispose it completely when returning to the shell.
+- Use object pooling for resin pieces, baskets, and particles; avoid creating/disposing meshes during gameplay.
+- Freeze world matrices on static environment meshes after placement.
+- Keep draw calls < 100 on mobile and < 200 on desktop; triangles < 80,000 on mobile.
 - Animate pieces with Babylon.js animation groups, not physics.
-- Keep the scene lightweight: target 60 FPS on Tier 1 tablets.
+- Target stable 60 FPS on Tier 1 tablets; 30+ FPS on Tier 2 devices.
 - Asset budget: < 6 MB.
-- Dispose scene, meshes, materials, and observables on exit.
+- Dispose scene, meshes, materials, textures, lights, and observables on exit.
 
 ---
 
