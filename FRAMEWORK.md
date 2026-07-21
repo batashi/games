@@ -1,14 +1,14 @@
-# Project Framework — Omani Kids Web Game Platform
+# Project Framework — GCC Kids Web Game Platform
 
 **Version:** 1.0  
 **Date:** 2026-07-21  
-**Purpose:** Technical blueprint for evolving the prototype into a production-ready platform of 20 culturally-themed web games for Omani children.
+**Purpose:** Technical blueprint for evolving the prototype into a production-ready platform of 20 culturally-themed web games for children across the Gulf Cooperation Council (GCC).
 
 ---
 
 ## 1. Vision & Scope
 
-Build a safe, performant, and culturally authentic browser-based game platform for children aged 7–12. The platform supports:
+Build a safe, performant, and culturally authentic browser-based game platform for children aged 7–12 across the GCC (Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, UAE). The platform celebrates shared Gulf heritage while honoring each country's unique identity, and supports:
 
 - Single-player and online 1v1 games.
 - Arabic-first UI with full RTL support.
@@ -28,7 +28,7 @@ Build a safe, performant, and culturally authentic browser-based game platform f
 | Language | **TypeScript** | Type safety for game logic, network messages, and state. Reduces bugs as the catalogue grows. |
 | App Shell | **Svelte 5** or **Vue 3** | Lightweight, reactive, excellent RTL/i18n support, small bundle size. |
 | Game Engine | **Phaser 3** | Mature 2D engine with physics, scenes, input abstraction, audio, camera effects, and proven mobile performance. |
-| Styling | CSS custom properties + optional **Tailwind CSS** | Preserve the existing Omani palette; add utility classes for faster UI development. |
+| Styling | CSS custom properties + optional **Tailwind CSS** | Preserve the existing Gulf palette; add utility classes for faster UI development. |
 
 ### 2.2 Backend & Multiplayer
 
@@ -193,7 +193,7 @@ export const runnerConfig: GameConfig = {
 
 ### 5.3 Design Principles
 
-1. **Cultural authenticity:** Use Omani visuals, colors, and motifs in sprites, backgrounds, and sound effects.
+1. **Cultural authenticity:** Use Gulf visuals, shared colors, and country-specific motifs in sprites, backgrounds, and sound effects.
 2. **Accessible difficulty:** Target age 7–12. Avoid twitch mechanics that require adult reflexes.
 3. **Short sessions:** Aim for 1–3 minute play sessions.
 4. **Clear feedback:** Every action should have visual and audio feedback.
@@ -393,7 +393,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 - Collect minimal data: nickname (optional), avatar, scores.
 - Store no personal identifiers for children under 13 without guardian consent.
-- Comply with Oman’s data protection regulations and COPPA/GDPR if serving outside Oman.
+- Comply with GCC data protection regulations (e.g., Oman PDPL, Saudi PDPL, UAE PDPL) and COPPA/GDPR if serving outside the GCC.
 
 ### 8.4 Client-Side Protections
 
@@ -413,7 +413,7 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ### 9.2 Art Pipeline
 
-- Create a shared asset library: Omani forts, desert dunes, palm trees, camels, traditional dress, etc.
+- Create a shared asset library: GCC forts and landmarks, desert dunes, palm trees, camels, falcons, dhows, traditional dress, etc.
 - Use texture atlases for performance.
 - Optimize images to WebP/AVIF where supported.
 
@@ -423,15 +423,18 @@ Colyseus schemas are the authoritative source for online games. Clients mirror s
 
 ### 10.1 Visual Identity & Art Direction
 
-The platform must feel unmistakably Omani while remaining friendly and readable for children aged 7–12.
+The platform must feel unmistakably Gulf while remaining friendly and readable for children aged 7–12.
 
 #### 10.1.1 Cultural Visual Pillars
 
-- **Desert & dunes:** Warm sandy tones, rolling dunes, sun-bleached rocks.
-- **Sea & coast:** Turquoise waters, dhows, fish, coral, Muttrah harbor cues.
-- **Mountains & green wadis:** Jebel Akhdar terraces, roses, pomegranate trees.
-- **Heritage symbols:** Forts (Nakhal, Jabreen, Bahla), frankincense trees, camels, traditional daggers (khanjar), swords, pottery.
-- **Festive & social:** Omani halwa, coffee pots (dallah), dates, traditional dress.
+The visual identity must feel authentically Gulf while leaving room for country-specific variants.
+
+- **Shared Gulf heritage:** Desert dunes, date palms, camels, falcons, dhows, coffee pots (dallah), traditional dress, hospitality scenes.
+- **Sea & coast:** Turquoise waters, pearl diving, fishing, coral reefs, harbors from Kuwait to Muscat.
+- **Modern Gulf cities:** Skyline silhouettes (Kuwait Towers, Burj Khalifa, Riyadh skyline, Bahrain World Trade Center) used subtly as background layers.
+- **Heritage symbols:** Forts and palaces from each GCC country, souks, wind towers (barjeel), frankincense, pottery, traditional daggers and swords.
+- **Nature & geography:** Omani wadis and frankincense trees, Saudi Red Sea coast, UAE mangroves, Bahrain pearl banks, Kuwaiti islands, Qatar inland sea.
+- **Festive & social:** Arabic coffee, dates, halwa, majlis gatherings, Eid and National Day celebrations across the GCC.
 
 #### 10.1.2 Unified Color Palette
 
@@ -462,7 +465,7 @@ Use the palette consistently across all games so the platform feels cohesive.
 #### 10.1.4 Character Design
 
 - **Style:** Friendly, rounded proportions, large eyes, readable silhouettes.
-- **Avatars:** Allow children to pick from a set of culturally themed characters (boy/girl in Omani attire, camel, falcon, etc.).
+- **Avatars:** Allow children to pick from a set of culturally themed characters (boy/girl in Gulf attire, camel, falcon, etc.).
 - **Silhouette test:** Every character should be recognizable from its silhouette alone.
 - **Avoid:** Overly complex details that do not read at small sizes.
 
@@ -470,12 +473,12 @@ Use the palette consistently across all games so the platform feels cohesive.
 
 | Game Type | Environment Cues |
 |-----------|------------------|
-| Runner | Wahiba Sands dunes, frankincense trees, ancient valley |
-| Tic-Tac-Toe | Khanjar vs. sword board, sandstone tiles |
-| Fort Battle | Two Omani forts across a wadi, wind flags |
-| Racing | Coastal road, mountain pass, desert track |
-| Memory | Heritage tiles: pottery, jewelry, dress patterns |
-| Puzzle | Falaj water channels, geometric Omani patterns |
+| Runner | GCC desert dunes (Empty Quarter, Wahiba), oasis palms, ancient trade routes |
+| Tic-Tac-Toe | Gulf heritage board: khanjar, sword, dhow, falcon, coffee pot tiles |
+| Fort Battle | Historic forts from across the GCC across a wadi or coastal inlet |
+| Racing | Coastal Corniche, mountain pass, desert highway, city skyline backdrop |
+| Memory | Heritage tiles: pottery, jewelry, dress patterns, flags, landmarks |
+| Puzzle | Falaj channels, geometric Islamic patterns, wind towers, pearl diving |
 
 ---
 
@@ -731,7 +734,7 @@ Keep particle counts reasonable:
 | Tic-Tac-Toe | Mark pop-in, cell highlight, win-line draw, draw reaction, confetti on win |
 | Fort Battle | Bow draw/release, arrow flight, block crumble, fort shake, collapse, wind flag, victory/defeat pose |
 | Camel Race | Gallop cycle, dust clouds, crowd cheer, finish-line burst |
-| Omani Sweets Catcher | Falling sweets, basket catch, combo counter, missed-item reaction |
+| Gulf Sweets Catcher | Falling sweets, basket catch, combo counter, missed-item reaction |
 | Memory | Card flip, match glow, mismatch shake, board clear celebration |
 | Beach Football | Kick, ball arc, goal net ripple, crowd reaction |
 | Pottery Maker | Wheel spin, clay morph, paint stroke, kiln glow |
@@ -886,7 +889,7 @@ Define the model early because it changes architecture.
 
 | Model | Fit | Notes |
 |-------|-----|-------|
-| **Free, sponsored** | Best for Oman educational context | Ministry, school, or NGO sponsorship |
+| **Free, sponsored** | Best for GCC educational context | Ministry, school, or NGO sponsorship |
 | **Freemium cosmetics** | Safe for kids | Unlockable avatars, themes, badges; no pay-to-win |
 | **Ads** | Risky for under-13 | Only use COPPA-certified networks; avoid interstitials mid-game |
 | **Institutional license** | B2B option | Schools pay for classroom accounts |
@@ -896,6 +899,7 @@ Define the model early because it changes architecture.
 - Use a soft currency earned by playing.
 - Avoid real-money purchases directly in the child-facing app.
 - All purchases go through a parent dashboard.
+- For GCC markets, support regional payment methods: Apple Pay, Google Pay, STC Pay, UAE Pass-linked payments, and carrier billing where available.
 
 ---
 
@@ -917,6 +921,14 @@ The platform is Arabic-first, but design for future languages from the start.
 | Svelte | `svelte-i18n` |
 | Vue | `vue-i18n` |
 | Phaser | Load JSON locale files and resolve keys manually |
+
+#### 16.3.3 GCC Localization Considerations
+
+- Use **Modern Standard Arabic (MSA)** as the default written language. It is understood across the GCC and safest for children.
+- Avoid heavy dialect-specific phrasing in core UI; optional dialect packs can be added later for voice-overs or regional events.
+- Support **English** as a secondary language from launch; many GCC children and parents toggle between Arabic and English.
+- Plan for country-specific content flags so events, landmarks, and themed games can be enabled per market.
+- Respect each country's flag, symbols, and national colors in seasonal events.
 
 ---
 
@@ -1015,7 +1027,7 @@ Run on every pull request:
 |------------|-----------------|
 | **COPPA** (US) | Parental consent for under-13 data collection |
 | **GDPR-K** (EU) | Parental consent for under-16 (or 13 with approval) |
-| **Oman PDPL** | Local data protection compliance |
+| **GCC PDPL laws** | Local data protection compliance in each target country |
 
 #### 16.7.3 Data Minimization
 
@@ -1116,7 +1128,7 @@ These modes deliver the highest value with the lowest implementation and moderat
 |------|-------------|-------------|------------|
 | **Asynchronous turns** | Take turns over hours or days | Works for Tic-Tac-Toe and strategy games; no live connection needed | Low |
 | **Score Attack / Time Attack** | Compete for high score or best time | Asynchronous competition via leaderboards | Low |
-| **Campaign / Region Map** | Progress through Omani regions to unlock games | Adds cohesion across the 20-game catalogue | Medium |
+| **Campaign / Region Map** | Progress through GCC regions to unlock games | Adds cohesion across the 20-game catalogue | Medium |
 | **Bot Match with difficulty** | Easy / Medium / Hard AI opponent | Keeps online-capable games fun when no human is available | Low–Medium |
 | **Classroom Mode** | Teacher hosts a room, students join | Strong fit for schools and cultural education | Medium |
 | **Co-op vs AI** | Two players team up against the computer | Good for Fort Battle and defense-style games | Medium |
@@ -1152,7 +1164,7 @@ This matrix is a starting point and should be reviewed per game during design.
 2. **Daily Challenge** — strong retention mechanic, single implementation pattern.
 3. **Bot difficulty levels** — improves replayability of online-capable games.
 4. **Campaign / Region Map** — unifies the platform and gives players long-term goals.
-5. **Classroom Mode** — valuable for the Omani educational context, but requires teacher-facing UX.
+5. **Classroom Mode** — valuable for the GCC educational context, but requires teacher-facing UX.
 
 ### 17.6 Multiplayer Modes Beyond 1v1
 
@@ -1316,12 +1328,18 @@ Accessibility:     [color-blind safe, motion safe, etc.]
 
 #### 18.6.2 Seasonal Content
 
-Align events with Omani and Islamic calendar:
+Align events with the GCC and Islamic calendar:
 
-- **Oman National Day** — themed challenges and decorations.
-- **Ramadan** — daily puzzles, calmer visuals.
-- **Eid** — special rewards and festive confetti.
-- **Khareef Season** — Salalah-themed game variants.
+- **GCC National Days** — rotating country spotlights with themed challenges and decorations:
+  - Bahrain: 16 December
+  - Kuwait: 25 February
+  - Oman: 18 November
+  - Qatar: 18 December
+  - Saudi Arabia: 23 September
+  - UAE: 2 December
+- **Ramadan** — daily puzzles, calmer visuals, charity-themed rewards.
+- **Eid al-Fitr & Eid al-Adha** — special rewards and festive confetti.
+- **Country-specific events** — e.g., Khareef Season (Oman), Riyadh Season (Saudi Arabia), Dubai Shopping Festival (UAE), National Day parades (Kuwait, Qatar, Bahrain).
 
 #### 18.6.3 In-Game Announcements
 
