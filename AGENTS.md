@@ -113,7 +113,7 @@ The JSON file declares `"$schema": "./games.schema.json"`, but that schema file 
 
 Until coding begins, follow these document-level conventions:
 
-- **Primary language for docs:** English.
+- **Primary language for docs:** English. The framework and internal documentation are maintained in English; the public-facing platform, games, and website remain **Arabic-first**.
 - **Game design documents:** Use the existing `GDD/*.md` structure (Elevator Pitch, Game Identity, GameConfig Contract, Core Loop, Mechanics, Controls, UI/Feedback, Audio, Safety, Monetization, Technical Notes).
 - **Commit style:** The project uses conventional commit prefixes such as `docs:`, `chore:`, `docs(framework):`, etc. Continue using them.
 - **Game metadata:** When a new game is designed, add it to `data/games.json` and create a matching `GDD/gdd-NN-game-name.md` file.
