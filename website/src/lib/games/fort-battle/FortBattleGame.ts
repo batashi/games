@@ -158,6 +158,12 @@ export class FortBattleGame {
 		this.canvas = canvas;
 		this.onChange = onChange;
 
+		// Initialize the visual layer first so the logic callback can safely touch
+		// every mesh/transform created in setupEnvironment().
+		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+		this.scene = this.createScene();
+		this.setupEnvironment();
+
 		this.logic = new FortBattleLogic(
 			(state) => {
 				this.onChange(state);
@@ -171,9 +177,6 @@ export class FortBattleGame {
 			}
 		);
 
-		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
-		this.scene = this.createScene();
-		this.setupEnvironment();
 		this.setupInput();
 
 		this.engine.runRenderLoop(() => {
