@@ -913,25 +913,88 @@ Use this table as a template when planning new games.
 
 ## 11. Testing Strategy
 
-### 11.1 Unit Tests (Vitest)
+The goal is to catch logic regressions immediately after every code change, without waiting for a full browser build or deployment. The project therefore uses a **two-layer testing model**: fast unit tests for game logic, and targeted E2E tests for integration and deployment smoke checks.
 
-- Win detection for Tic-Tac-Toe.
-- AI move selection.
-- Network message validators.
+### 11.1 Guiding Principle: Logic Must Be Testable Without a Browser
+
+Every game should split its code into two layers:
+
+1. **Game Logic Layer** — pure TypeScript classes/functions with no dependency on Babylon.js, DOM, Canvas, Web Audio, or network APIs. This layer owns rules, state transitions, physics, scoring, win/lose conditions, and AI decisions.
+2. **Presentation Layer** — Babylon.js scenes, meshes, materials, input handling, audio playback, and render loops. This layer calls the logic layer and visualizes the result.
+
+**Why:** Unit tests run in Node.js via Vitest in milliseconds. They can be executed on every save, in CI, and before every commit. If logic is entangled with 3D rendering, tests become slow, brittle, and often require a real browser.
+
+### 11.2 Unit Tests (Vitest)
+
+Unit tests must cover the game logic layer and any shared utilities. They should run with `npm test` (or `npm run test:unit`) and complete in under a few seconds.
+
+**Required coverage for every game:**
+
+- State transitions (e.g., `aiming` → `flying` → `gameover`).
+- Win/lose conditions and turn switching.
+- Physics step correctness (position, velocity, gravity, wind).
+- Collision and damage calculation.
+- Input intent parsing (angle/power changes, clamping, invalid values).
+- Audio mute state and other user settings that affect the game loop.
+
+**Examples by game:**
+
+| Game | Key unit-test targets |
+|------|-----------------------|
+| Gulf Tic-Tac-Toe | Win detection, board indexing, AI move selection, undo/reset. |
+| Frankincense Runner | Collision detection, score multiplier, obstacle spawning rules, speed curves. |
+| Fort Battle | Arrow physics (gravity + wind), fort health/damage, turn rotation, wind generation bounds, mute state. |
+
+**Shared system tests:**
+
+- Network message validators and schema serialization.
 - Score calculation and leaderboard sorting.
+- Utility functions (clamp, lerp, random ranges, RTL text helpers).
 
-### 11.2 E2E Tests (Playwright)
+### 11.3 E2E Tests (Playwright)
+
+E2E tests verify that the deployed app loads, renders, and responds to user input. They are slower and therefore run on pull requests and before releases, not on every file save.
+
+**Smoke tests:**
 
 - Launch a game from the home grid.
-- Host a room and join with a second tab.
-- Complete a full online match.
+- Verify the game canvas appears and the HUD renders.
+- Fire a shot via mouse/touch and confirm the turn switches.
 - Verify mute and fullscreen buttons.
 
-### 11.3 Manual QA
+**Online integration tests (once multiplayer is implemented):**
+
+- Host a room and join with a second tab.
+- Complete a full online match.
+- Verify emoji reactions and room-code entry.
+
+### 11.4 Manual QA
 
 - Test on real tablets (iPad + Android).
 - Test on slow networks (3G throttle).
 - Test RTL layout and Arabic text rendering.
+- Test touch gestures (tap, drag, pinch) on target devices.
+
+### 11.5 Running Tests
+
+The project must expose these npm scripts:
+
+```json
+{
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:e2e": "playwright test",
+  "test:e2e:ci": "playwright test --reporter=dot"
+}
+```
+
+- `npm run test:watch` is the recommended command during active development.
+- `npm test` runs once and is used in CI and before deployment.
+- `npm run test:e2e` runs Playwright integration tests against a local build or staging URL.
+
+### 11.6 Refactoring Existing Games for Testability
+
+For games already implemented with mixed logic and rendering (e.g., the first Babylon.js prototype), create a `*Logic.ts` module next to the existing `*Game.ts` file. Move state, rules, and physics into the logic module incrementally. Keep the existing scene file as the visual adapter. Do not rewrite the whole game unless the logic is small enough to safely extract in one pass.
 
 ---
 
@@ -1010,6 +1073,7 @@ Use this table as a template when planning new games.
 | Backend data | Supabase | Integrated auth + PostgreSQL + realtime reduces backend work. |
 | Build tool | Vite | Fast, modern, simple configuration, PWA-ready. |
 | Styling | CSS vars + optional Tailwind | Preserves existing design system while improving productivity. |
+| Testing strategy | Vitest unit tests + Playwright E2E | Unit tests run fast after every change; E2E verifies deployed integration. Game logic is separated from rendering to keep unit tests fast and reliable. |
 
 ---
 
