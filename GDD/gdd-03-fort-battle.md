@@ -67,17 +67,17 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 
 ## 4. Core Loop
 
-1. Player aims arrow vertically.
-2. Player charges power and releases to shoot.
-3. Arrow arcs under gravity and wind; hits enemy fort blocks.
-4. Players alternate until one fort is destroyed.
+1. Player aims arrow by moving the mouse / finger or using Up/Down keys.
+2. Player holds the shoot button or Space to charge power, then releases to fire.
+3. Arrow arcs under gravity and wind; hits the enemy fort and deals damage.
+4. Players alternate turns until one fort's health reaches zero.
 
 ---
 
 ## 5. Win / Lose Conditions
 
-- **Win:** Destroy all enemy fort blocks or reduce enemy fort health to zero.
-- **Lose:** Your fort is destroyed first.
+- **Win:** Reduce the enemy fort health to zero.
+- **Lose:** Your fort health reaches zero first.
 
 ---
 
@@ -85,34 +85,56 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 
 | Mechanic | Description |
 |----------|-------------|
-| Aim | Adjust vertical angle up/down. |
-| Power | Hold to charge power meter; release to shoot. |
-| Wind | Random wind value each turn affects arrow arc; shown by flag indicator. |
-| Damage | Arrow removes a block on hit or deals direct fort damage when base is hit. |
-| Physics | Gravity arc, wind drift, block collapse when supports are removed. |
-| AI | Simulates aim and power with adjustable accuracy. Easy misses often; Hard accounts for wind. |
+| Aim | Adjust vertical angle with mouse/touch drag or Up/Down keys. |
+| Power | Hold to charge power meter (10–100%); release to shoot. |
+| Wind | Random wind value (-3 to +3) each turn affects arrow arc; shown by a sky indicator. |
+| Damage | Direct health damage on fort hit; 25 HP per hit. |
+| Physics | Gravity arc and wind drift. |
+| Aim Guide | Dotted trajectory line preview updates while aiming/charging. |
+| AI | Simulates aim and power with adjustable accuracy. Easy misses often; Hard accounts for wind. *(future)* |
 
 ---
 
 ## 7. 3D Art Direction
 
-- **Style:** Stylized low-poly forts across a wadi or coastal inlet.
-- **Forts:** Mud-brick towers with country-specific flag accents and landmark hints.
-- **Characters:** Small archer figures on top of each fort.
-- **Environment:** Rocky ground, sparse palms, distant mountains, water inlet.
-- **Camera:** Side view showing both forts; follows the arrow in flight; zooms on impact.
-- **Effects:** Arrow trail, block crumble particles, dust on impact, camera shake on direct hit.
+- **Style:** Stylized low-poly procedural meshes built in Babylon.js (no external model files in v1.0).
+- **Forts:** Round Omani-style mud-brick towers with a conical pointed roof and a recessed arched window near the base. Country-specific skins are a future enhancement.
+- **Characters:** Visible archer figures standing on top of each fort, holding a bow and wearing a keffiyeh/turban.
+- **Environment:** Simple sandy ground and sky background. Rocky wadi, palms, and mountains are future enhancements.
+- **Camera:** Fixed side view showing both forts.
+- **Effects:** Dotted aim-guide trajectory, hit particle burst, synthesized sound effects.
 
 ### 7.1 Asset List
 
 | Category | Assets |
 |----------|--------|
-| Forts | Two modular fort sets (base, towers, blocks, flags) |
-| Characters | Archer figure (idle, aim, celebrate, hurt) |
-| Props | Arrow, bow, debris chunks |
-| Environment | Rocky ground, palms, water, mountains, sky dome |
-| UI | Angle meter, power meter, wind indicator, health bars, turn timer |
-| Particles | Dust, sparks, block crumble |
+| Forts | Two round Omani-style towers (body, conical roof, arched window) |
+| Characters | Procedural archer figure (body, head, keffiyeh, arms, bow, quiver) |
+| Props | Procedural arrow (shaft, metal head, fletching) |
+| Environment | Ground plane, sky color |
+| UI | Angle meter, power meter, wind indicator, health bars, turn message |
+| Particles | Hit particle burst |
+
+### 7.2 Arrow Design
+
+The player arrow is built from three parts for instant readability:
+
+- **Shaft:** wooden cylinder.
+- **Head:** metallic cone.
+- **Fletching:** three colored planes at the tail.
+
+The arrow always rotates to face its flight direction (velocity vector) so the head leads and the fletching trails.
+
+### 7.3 Fort Design Requirements
+
+Each fort must visually read as a Gulf/Omani round tower:
+
+- Cylindrical mud-brick body.
+- Conical pointed roof (not flat).
+- Recessed arched window near the base.
+- Archer standing clearly on top.
+
+Country-specific skins and landmark silhouettes are future enhancements.
 
 ---
 
@@ -120,31 +142,30 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 
 | Device | Input |
 |--------|-------|
-| Desktop | Up/Down arrows = aim angle; Space = charge/release shot; P = pause. |
-| Tablet / Mobile | On-screen angle up/down buttons + large Shoot button; tap and drag to aim. |
+| Desktop | Mouse move = aim; mouse hold/release = charge/fire; Up/Down arrows = fine-tune angle; Space = charge/release shot. |
+| Tablet / Mobile | Touch and drag to aim; on-screen angle up/down buttons + large Shoot button to charge/fire. |
 
 ---
 
 ## 9. UI & Feedback
 
-- Angle and power meters near the active archer.
-- Wind indicator with direction and strength.
-- Fort health bars above each fort.
-- Last shot result message ("Direct hit!", "Missed!", "Block destroyed!").
-- Online panel: room code, turn timer, emoji reactions.
-- Aim-assist toggle in settings for younger players.
+- Angle, power, and wind HUD at the top center.
+- Fort health bars at the top left/right.
+- Turn message and last-shot result message.
+- Mute button in the game header.
+- Online panel: room code, turn timer, emoji reactions. *(future)*
+- Aim-assist toggle in settings for younger players. *(future)*
 
 ---
 
 ## 10. Audio
 
-- **Music:** Tense but playful battle loop.
-- **SFX:**
-  - Bow draw creak
+- **Music:** Tense but playful battle loop. *(future)*
+- **SFX (synthesized via Web Audio API in v1.0):**
   - Arrow release whoosh
-  - Impact thud
-  - Block crumble
-  - Victory/defeat fanfare
+  - Fort impact thud
+  - Miss sound
+  - Victory fanfare
 
 ---
 
@@ -219,13 +240,24 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 - **Optional rewarded video** — after 50K+ MAU, COPPA-certified only.
 - No interstitials, banners, or personalized ads.
 
-## 19. Technical Notes
+## 19. Implementation Notes (v1.0)
+
+- Built as a Babylon.js scene inside a SvelteKit lazy-loaded component.
+- All meshes are procedural (cylinders, spheres, torus, planes, lines); no external GLB/texture assets required for the playable version.
+- Physics is custom: Euler integration with gravity and constant horizontal wind acceleration.
+- Arrow rotation aligns to the aim/velocity vector each frame.
+- A dotted line + sphere trajectory preview is computed from the same physics formula used at fire time.
+- Audio is synthesized at runtime via the Web Audio API; a mute toggle is exposed through the game header.
+- Input supports mouse/touch drag aiming, on-screen buttons, and keyboard shortcuts.
+- Current mode: local 2-player hotseat.
+
+## 20. Technical Notes
 
 - Build this game last among the three — it has the most complex physics and online sync.
-- Use Babylon physics for arrow arc and block collapse.
-- Colyseus schema: fort health arrays, block states, wind, current turn, shot result.
+- Use Babylon physics for arrow arc and block collapse. *(future block-collapse mode)*
+- Colyseus schema: fort health arrays, block states, wind, current turn, shot result. *(future online)*
 - Target 60 FPS on Tier 1 tablets.
-- Asset budget: < 8 MB.
+- Asset budget: < 8 MB once GLB skins are added.
 - Dispose scene, meshes, materials, and observables on exit.
 
 ---
