@@ -924,6 +924,11 @@ Every game should split its code into two layers:
 
 **Why:** Unit tests run in Node.js via Vitest in milliseconds. They can be executed on every save, in CI, and before every commit. If logic is entangled with 3D rendering, tests become slow, brittle, and often require a real browser.
 
+**Initialization safety rule:**
+- The game class constructor must never invoke visual callbacks before the Babylon.js scene, meshes, lights, and cameras are fully created.
+- Use a `visualReady` flag (or equivalent guard) so that logic notifications fired during construction do not touch uninitialized visual objects.
+- After scene setup, set the flag to `true` and manually sync the visual state once.
+
 ### 11.2 Unit Tests (Vitest)
 
 Unit tests must cover the game logic layer and any shared utilities. They should run with `npm test` (or `npm run test:unit`) and complete in under a few seconds.
@@ -955,12 +960,16 @@ Unit tests must cover the game logic layer and any shared utilities. They should
 
 E2E tests verify that the deployed app loads, renders, and responds to user input. They are slower and therefore run on pull requests and before releases, not on every file save.
 
-**Smoke tests:**
+**Smoke tests (mandatory for every shipped game):**
 
 - Launch a game from the home grid.
 - Verify the game canvas appears and the HUD renders.
+- Capture `pageerror` and `console.error` events during initialization and the first few seconds of gameplay.
+- Assert that **zero** unexpected errors occurred. The test fails if any runtime error is thrown, including constructor initialization errors and Babylon.js mesh access errors.
 - Fire a shot via mouse/touch and confirm the turn switches.
 - Verify mute and fullscreen buttons.
+
+**Why this matters:** Unit tests cannot instantiate Babylon.js in Node.js. Runtime errors such as `Cannot set properties of undefined (setting 'scaling')` or `Cannot read properties of undefined (reading 'getConfig')` only appear in a real browser. The E2E smoke test is the gate that catches them.
 
 **Online integration tests (once multiplayer is implemented):**
 
@@ -983,18 +992,72 @@ The project must expose these npm scripts:
 {
   "test": "vitest run",
   "test:watch": "vitest",
-  "test:e2e": "playwright test",
-  "test:e2e:ci": "playwright test --reporter=dot"
+  "e2e": "playwright test",
+  "e2e:ui": "playwright test --ui",
+  "e2e:debug": "playwright test --debug"
 }
 ```
 
 - `npm run test:watch` is the recommended command during active development.
 - `npm test` runs once and is used in CI and before deployment.
-- `npm run test:e2e` runs Playwright integration tests against a local build or staging URL.
+- `npm run e2e` runs Playwright against the production static build via `npm run preview`.
+- `npm run e2e:ui` opens the Playwright UI for debugging.
+- `npm run e2e:debug` runs in debug mode.
 
 ### 11.6 Refactoring Existing Games for Testability
 
 For games already implemented with mixed logic and rendering (e.g., the first Babylon.js prototype), create a `*Logic.ts` module next to the existing `*Game.ts` file. Move state, rules, and physics into the logic module incrementally. Keep the existing scene file as the visual adapter. Do not rewrite the whole game unless the logic is small enough to safely extract in one pass.
+
+### 11.7 Deployment Gate — Strict Compliance
+
+**No game may be deployed unless all of the following pass:**
+
+1. `npm test` — all unit tests pass.
+2. `npm run e2e` — all Playwright smoke tests pass with **zero console/page errors**.
+3. `npm run build` — production build completes without TypeScript or Vite errors.
+
+**Consequences of skipping the gate:**
+- Runtime initialization errors (e.g., undefined mesh properties, missing config access) will reach users.
+- Browser-only bugs cannot be caught by Vitest and will only surface after deployment.
+- Regressions in one game's constructor or render loop can break the entire playable experience.
+
+**Recommended workflow:**
+- During development: `npm run test:watch` for logic feedback.
+- Before every commit: `npm test` and `npm run check`.
+- Before every deployment: `npm run build && npm run e2e`.
+
+### 11.8 Current Reference Implementation: Fort Battle
+
+The first game to implement this strategy is **Fort Battle** (`src/lib/games/fort-battle/`).
+
+**File split:**
+- `FortBattleLogic.ts` — pure game logic: state, aiming, charging, physics, collision, turn rotation, win/lose. Tested by `FortBattleLogic.test.ts` with Vitest.
+- `FortBattleGame.ts` — Babylon.js presentation layer: scene setup, meshes, input, audio, render loop. Calls `FortBattleLogic` and visualizes its state.
+
+**Constructor safety pattern:**
+The logic is created first so `setupEnvironment()` can read its config. Visual callbacks are deferred until after the scene and all meshes are initialized:
+
+```ts
+this.logic = new FortBattleLogic(
+  (state) => {
+    this.onChange(state);
+    if (this.visualReady) {
+      this.onStateChanged(state);
+    }
+  },
+  ...
+);
+this.engine = new Engine(canvas, ...);
+this.scene = this.createScene();
+this.setupEnvironment();
+this.visualReady = true;
+this.onStateChanged(this.logic.getState());
+```
+
+This pattern prevents callbacks from touching Babylon.js objects before they exist.
+
+**E2E smoke test:**
+`e2e/games.spec.ts` loads `/play/archery`, waits for the canvas, listens for `pageerror` and `console.error`, and fails if any error occurs. It successfully caught the historical `Cannot set properties of undefined (setting 'scaling')` bug.
 
 ---
 
