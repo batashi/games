@@ -883,7 +883,7 @@ Track only what is useful and privacy-respecting. Avoid collecting identifiable 
 
 ### 16.2 Monetization & Business Model
 
-Define the model early because it changes architecture.
+Define the model early because it changes architecture, payment flows, and the child-facing UX.
 
 #### 16.2.1 Candidate Models
 
@@ -891,15 +891,63 @@ Define the model early because it changes architecture.
 |-------|-----|-------|
 | **Free, sponsored** | Best for GCC educational context | Ministry, school, or NGO sponsorship |
 | **Freemium cosmetics** | Safe for kids | Unlockable avatars, themes, badges; no pay-to-win |
-| **Ads** | Risky for under-13 | Only use COPPA-certified networks; avoid interstitials mid-game |
+| **Ads** | Low-touch but risky for under-13 | Use only COPPA-certified rewarded video; avoid interstitials and banners |
+| **Subscription / unlock** | Strong D2C model | Recurring or one-time access to all games and features |
 | **Institutional license** | B2B option | Schools pay for classroom accounts |
+| **Asset/template sales** | Side revenue for Aldoolab | Reusable components sold on Gumroad/CodeCanyon |
 
-#### 16.2.2 In-Game Economy (if used)
+#### 16.2.2 Ads as a Low-Touch Option
+
+Ads are attractive because they require minimal business development: enroll with an ad network, integrate an SDK, and earn per impression or view. However, for a child-safety-focused platform, ads must be heavily constrained.
+
+**Allowed ad format (if implemented):**
+
+| Format | Allowed | Notes |
+|--------|---------|-------|
+| **Rewarded video** | ✅ Yes, with opt-in | Kids choose to watch for a reward; never forced |
+| **Non-personalized only** | ✅ Required | COPPA/GDPR-K compliance |
+| **COPPA-certified network** | ✅ Required | Google AdMob (kids config), Unity LevelPlay under-13 mode |
+| **Interstitial ads** | ❌ No | Interrupt gameplay and hurt retention |
+| **Banner ads** | ❌ No | Clutter UI and erode trust |
+| **Personalized ads** | ❌ No | Illegal or restricted for under-13 users |
+
+**Implementation requirements for ads:**
+- Parent dashboard toggle to disable ads for Premium subscribers.
+- Clear labeling: "Watch to earn" not "Watch ad."
+- Maximum one rewarded video per session.
+- Audit ad content manually during soft launch.
+
+**Revenue estimate:** $0.03–$0.10 per rewarded video view. Low CPM for kids inventory means ads alone are rarely enough to sustain the platform.
+
+#### 16.2.3 Low-Touch Alternatives to Ads
+
+These methods are similarly code-first and require little or no relationship management:
+
+| Method | Integration Effort | Best Placement | Notes |
+|--------|-------------------|----------------|-------|
+| **Affiliate links** | Low | Parent dashboard, emails | Promote kids' books, tablets, family products |
+| **In-app purchases (IAP)** | Medium | Child-facing store, parent-approved | App Store / Google Play billing or Stripe web checkout |
+| **Subscription / unlock** | Medium | Upgrade prompts, locked content | Stripe, Paddle, or RevenueCat |
+| **Asset/template sales** | Low-Medium | External marketplaces | Sell Phaser scenes, UI kits, starter templates |
+| **Referral program** | Medium | Share-link in parent dashboard | Reward free premium days or cosmetics |
+| **GitHub Sponsors / Ko-fi** | Low | Open-source framework repo | Optional reputation-based revenue |
+
+#### 16.2.4 In-Game Economy (if used)
 
 - Use a soft currency earned by playing.
 - Avoid real-money purchases directly in the child-facing app.
-- All purchases go through a parent dashboard.
+- All purchases go through a parent dashboard or app-store PIN/biometric gate.
 - For GCC markets, support regional payment methods: Apple Pay, Google Pay, STC Pay, UAE Pass-linked payments, and carrier billing where available.
+
+#### 16.2.5 Recommended Monetization Mix
+
+For the first 12 months, prioritize models that preserve trust and require minimal external negotiation:
+
+1. **One-time Full Game Pass** — simplest parent-friendly offer.
+2. **Freemium cosmetics** — parent-gated microtransactions.
+3. **Optional rewarded video** — only after 50K+ MAU and only COPPA-certified.
+4. **Affiliate links** — parent dashboard only.
+5. **Subscription** — introduced once content depth justifies recurring payment.
 
 ---
 
