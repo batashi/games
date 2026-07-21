@@ -1,6 +1,16 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	let { data } = $props();
 	let game = $derived(data.game);
+
+	// Lazy-load game components so Babylon.js is only fetched for playable games.
+	let FortBattle = $state<typeof import('$lib/components/games/FortBattle.svelte').default | null>(null);
+	onMount(async () => {
+		if (game.id === 'archery') {
+			FortBattle = (await import('$lib/components/games/FortBattle.svelte')).default;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -39,30 +49,35 @@
 	</div>
 
 	<!-- Game container -->
-	<div class="flex-1 relative flex items-center justify-center bg-gradient-to-br from-charcoal to-sea-dark/50">
-		<!-- Placeholder canvas -->
-		<div class="text-center px-4">
-			<div class="text-8xl mb-6">{game.icon}</div>
-			<h2 class="text-cream font-display font-bold text-2xl md:text-4xl mb-4">
-				جاري تحميل {game.nameAr}
-			</h2>
-			<p class="text-cream/70 text-lg max-w-md mx-auto mb-8">
-				سيتم تشغيل اللعبة هنا مباشرة في المتصفح باستخدام Babylon.js. التطبيق قيد التطوير حالياً.
-			</p>
-			<div class="flex flex-col sm:flex-row gap-3 justify-center">
-				<a
-					href="/games/{game.slug}"
-					class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-6 rounded-xl transition-colors"
-				>
-					التفاصيل
-				</a>
-				<a
-					href="/games"
-					class="bg-white/10 hover:bg-white/20 text-cream font-bold py-3 px-6 rounded-xl transition-colors"
-				>
-					المزيد من الألعاب
-				</a>
+	<div class="flex-1 relative bg-gradient-to-br from-charcoal to-sea-dark/50">
+		{#if game.id === 'archery' && FortBattle}
+			<FortBattle />
+		{:else}
+			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
+				<div>
+					<div class="text-8xl mb-6">{game.icon}</div>
+					<h2 class="text-cream font-display font-bold text-2xl md:text-4xl mb-4">
+						جاري تحميل {game.nameAr}
+					</h2>
+					<p class="text-cream/70 text-lg max-w-md mx-auto mb-8">
+						سيتم تشغيل اللعبة هنا قريباً باستخدام Babylon.js.
+					</p>
+					<div class="flex flex-col sm:flex-row gap-3 justify-center">
+						<a
+							href="/games/{game.slug}"
+							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-6 rounded-xl transition-colors"
+						>
+							التفاصيل
+						</a>
+						<a
+							href="/games"
+							class="bg-white/10 hover:bg-white/20 text-cream font-bold py-3 px-6 rounded-xl transition-colors"
+						>
+							المزيد من الألعاب
+						</a>
+					</div>
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 </div>
