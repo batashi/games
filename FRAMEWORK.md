@@ -1427,7 +1427,184 @@ Align events with the GCC and Islamic calendar:
 
 ---
 
-## 19. Next Immediate Actions
+## 19. Cross-Device Development & Input Guidelines
+
+All games must work consistently across desktop big screens, tablets, and mobile phones. The primary target is the tablet, with graceful scaling up to desktop and down to mobile.
+
+### 19.1 Device Categories & Breakpoints
+
+| Class | Typical Range | Input Method | Priority |
+|-------|---------------|--------------|----------|
+| **Desktop / Big Screen** | ≥ 1024 px width | Mouse + keyboard | Secondary |
+| **Tablet** | 768–1024 px width | Touch, sometimes keyboard | **Primary** |
+| **Mobile** | < 768 px width | Touch only | Fallback |
+
+Design tablet-first. Most GCC children in the target age group play on iPads or Android tablets at home.
+
+### 19.2 Viewport & Canvas Scaling
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+```
+
+Use a **fixed internal resolution** with CSS scaling:
+
+```ts
+const config = {
+  type: Phaser.AUTO,
+  width: 1600,
+  height: 900,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+};
+```
+
+| Scale Mode | When to Use |
+|------------|-------------|
+| **FIT** | Most games; preserves aspect ratio with black bars. |
+| **RESIZE** | UI-heavy apps; canvas resizes to fill container. |
+| **ENVELOP** | Fill screen, crop edges; good for action games. |
+
+**Rule:** Never use raw `window.innerWidth` as game coordinates. Map input through Phaser's camera/world transform.
+
+### 19.3 Input Abstraction Layer
+
+Create a single input manager that normalizes all devices.
+
+```ts
+// src/core/InputManager.ts
+export class InputManager {
+  onTap(callback: (x: number, y: number) => void) {}
+  onSwipe(direction: 'up' | 'down' | 'left' | 'right', callback: () => void) {}
+  onDrag(start, move, end) {}
+  onKey(code: string, callback: () => void) {}
+}
+```
+
+**Rules:**
+- Never bind raw `window` events inside game scenes.
+- Always expose normalized coordinates in **world space**, not screen space.
+- Debounce rapid taps to prevent accidental double-fire.
+
+### 19.4 Touch & Gesture Guidelines
+
+#### 19.4.1 Minimum Touch Targets
+
+| Element | Minimum Size |
+|---------|--------------|
+| Buttons | 48 × 48 px (72 × 72 px preferred for kids) |
+| Game pieces (cards, cells) | 64 × 64 px minimum |
+| Drag handles | 44 × 44 px |
+| Spacing between touchable elements | 8 px minimum |
+
+#### 19.4.2 Supported Gestures
+
+| Gesture | Use Case | Notes |
+|---------|----------|-------|
+| **Tap** | Select, place mark, jump | Single pointer down + up within 300ms |
+| **Double tap** | Reset, special action | Avoid in core gameplay |
+| **Long press** | Context menu, preview | 500ms hold; provide visual feedback |
+| **Swipe** | Runner jump/duck, page change | Detect velocity + direction; threshold 50px |
+| **Drag** | Aim, move pieces, draw | Track pointer delta; support outside canvas |
+| **Pinch** | Zoom map, resize | Two-finger distance delta |
+| **Multi-touch** | Two-player hotseat | Track multiple pointer IDs |
+
+#### 19.4.3 Play Strokes (Drawing Gestures)
+
+For games that require drawing (puzzle, pottery, falaj maze):
+
+```ts
+function recordStroke(points: { x: number; y: number }[]) {
+  // 1. Sample points at fixed distance
+  // 2. Smooth with moving average
+  // 3. Match against gesture templates ($1 recognizer)
+}
+```
+
+**Guidelines:**
+- Stroke width: 8–12 px on mobile, 4–6 px on desktop.
+- Provide immediate ink feedback.
+- Support undo with shake or back button.
+- Recognize gestures with tolerance; children draw imprecisely.
+
+### 19.5 UI Scaling & Safe Zones
+
+- Use **relative units** (`rem`, `%`, `vh/vw`) for shell UI.
+- Use Phaser's **scale manager** for in-game UI.
+- Keep critical UI inside the **safe zone** (central 90% of screen).
+
+| Device | Safe Zone Padding |
+|--------|-------------------|
+| Phone | 10% on all sides |
+| Tablet | 5% on all sides |
+| Desktop | Full screen, HUD near edges |
+
+### 19.6 On-Screen Controls
+
+| Device | Controls |
+|--------|----------|
+| Desktop | Keyboard shortcuts visible in tooltips |
+| Tablet | Optional on-screen buttons for complex games |
+| Mobile | Required on-screen buttons for all actions |
+
+Keep controls large, spaced, and visually distinct. Avoid overlapping controls with gameplay-critical areas.
+
+### 19.7 Performance by Device Class
+
+| Class | Target FPS | Draw Calls | Texture Memory |
+|-------|------------|------------|----------------|
+| Desktop | 60 | < 100 | < 64 MB |
+| Tablet | 60 | < 50 | < 32 MB |
+| Mobile | 30–60 | < 30 | < 16 MB |
+
+### 19.8 Orientation & Presentation
+
+Force landscape on phones with a rotate prompt:
+
+```css
+@media screen and (orientation: portrait) and (max-width: 768px) {
+  .rotate-prompt { display: flex; }
+}
+```
+
+```json
+// manifest.json
+{
+  "display": "standalone",
+  "orientation": "landscape"
+}
+```
+
+### 19.9 Cross-Device Testing Matrix
+
+| Test | Desktop | Tablet | Mobile |
+|------|---------|--------|--------|
+| Full gameplay loop | ✅ | ✅ | ✅ |
+| All input methods | ✅ | ✅ | ✅ |
+| UI readability | ✅ | ✅ | ✅ |
+| 10-minute session stability | ✅ | ✅ | ✅ |
+| Rotation handling | N/A | ✅ | ✅ |
+| Offline loading | ✅ | ✅ | ✅ |
+| Low-end device (throttled) | Optional | ✅ | ✅ |
+
+### 19.10 Implementation Checklist
+
+- [ ] Fixed internal resolution with FIT/RESIZE scaling.
+- [ ] Input manager normalizes mouse, touch, and keyboard.
+- [ ] Touch targets ≥ 64 px for kids.
+- [ ] On-screen controls for tablet/mobile.
+- [ ] Landscape lock with rotate prompt on phones.
+- [ ] Performance budgets per device class.
+- [ ] Gesture recognition for swipe, drag, pinch.
+- [ ] Play stroke recognition with child-friendly tolerance.
+- [ ] Reduced-motion support.
+- [ ] Cross-device QA matrix completed.
+
+---
+
+## 20. Next Immediate Actions
 
 1. Decide between **Svelte 5** and **Vue 3** based on team familiarity.
 2. Initialize the Vite + TypeScript + chosen framework project.
