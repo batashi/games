@@ -992,7 +992,69 @@ Add a `CONTRIBUTING.md` that explains:
 
 ---
 
-## 17. Next Immediate Actions
+## 17. Play Modes
+
+> **⚠️ Review Needed:** This chapter is a first draft. The team should review game-mode choices against development capacity, child-safety policy, and the target age range before committing to a roadmap.
+
+### 17.1 Core Modes (Build First)
+
+These modes deliver the highest value with the lowest implementation and moderation risk.
+
+| Mode | Description | Why It Fits | Complexity |
+|------|-------------|-------------|------------|
+| **Single-player vs AI** | One player against the computer | Safe, works offline, good for learning mechanics | Low |
+| **Local 2-player (hotseat)** | Two players take turns or share a device | Natural on tablets; no server or safety concerns | Low |
+| **Online 1v1 (friend invite)** | Two players connect via room code | Already implemented model; child-safe when invite-only | Medium |
+| **Daily Challenge** | One shared puzzle/run/level per day | Drives retention with minimal dev cost | Low–Medium |
+| **Practice / Free Play** | Play without scoring or penalties | Lets children learn controls without frustration | Low |
+
+### 17.2 Secondary Modes (Add After Core)
+
+| Mode | Description | Why It Fits | Complexity |
+|------|-------------|-------------|------------|
+| **Asynchronous turns** | Take turns over hours or days | Works for Tic-Tac-Toe and strategy games; no live connection needed | Low |
+| **Score Attack / Time Attack** | Compete for high score or best time | Asynchronous competition via leaderboards | Low |
+| **Campaign / Region Map** | Progress through Omani regions to unlock games | Adds cohesion across the 20-game catalogue | Medium |
+| **Bot Match with difficulty** | Easy / Medium / Hard AI opponent | Keeps online-capable games fun when no human is available | Low–Medium |
+| **Classroom Mode** | Teacher hosts a room, students join | Strong fit for schools and cultural education | Medium |
+| **Co-op vs AI** | Two players team up against the computer | Good for Fort Battle and defense-style games | Medium |
+
+### 17.3 Modes to Defer or Avoid
+
+| Mode | Verdict | Reason |
+|------|---------|--------|
+| **Open public matchmaking** | ⚠️ Defer | Difficult to keep child-safe without dedicated moderation |
+| **Free text chat** | ❌ Avoid | Violates the child-safe communication policy |
+| **Voice chat** | ❌ Avoid | High moderation and safety burden |
+| **Battle royale / large lobbies** | ❌ Avoid | Too complex and inappropriate for ages 7–12 |
+| **Guilds / clans** | ⚠️ Defer | Social overhead and moderation risk |
+| **Real-money trading** | ❌ Avoid | Not suitable for children |
+
+### 17.4 Suggested Mode Matrix by Game
+
+This matrix is a starting point and should be reviewed per game during design.
+
+| Game | Single | Local 2P | Online 1v1 | Daily | Campaign |
+|------|--------|----------|------------|-------|----------|
+| Frankincense Runner | ✅ | — | — | ✅ Score | ✅ Level |
+| Tic-Tac-Toe | ✅ AI | ✅ Hotseat | ✅ | ✅ Puzzle | — |
+| Fort Battle | ✅ AI | ✅ | ✅ | — | ✅ Siege |
+| Memory | ✅ | ✅ | ✅ | ✅ | — |
+| Camel Race | ✅ AI | ✅ | ✅ | ✅ Time | ✅ Cup |
+| Sudoku | ✅ | — | — | ✅ | ✅ Unlock |
+| Falaj Maze | ✅ | ✅ Co-op | ✅ Co-op | ✅ | ✅ Map |
+
+### 17.5 Implementation Priority
+
+1. **Local 2-player hotseat** — low cost, high value, tablet-native.
+2. **Daily Challenge** — strong retention mechanic, single implementation pattern.
+3. **Bot difficulty levels** — improves replayability of online-capable games.
+4. **Campaign / Region Map** — unifies the platform and gives players long-term goals.
+5. **Classroom Mode** — valuable for the Omani educational context, but requires teacher-facing UX.
+
+---
+
+## 18. Next Immediate Actions
 
 1. Decide between **Svelte 5** and **Vue 3** based on team familiarity.
 2. Initialize the Vite + TypeScript + chosen framework project.
