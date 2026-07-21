@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Gulf palette */
+  --color-sand: #e6d5b8;
+  --color-sand-dark: #cbb593;
+  --color-sea: #1e6f7a;
+  --color-sea-dark: #15565e;
+  --color-sun: #f4b942;
+  --color-sun-dark: #d99a2b;
+  --color-success: #27ae60;
+  --color-danger: #c0392b;
+  --color-charcoal: #2f2f2f;
+  --color-cream: #fffdf8;
+
+  /* Typography */
+  --font-sans: 'Cairo', 'Tajawal', system-ui, sans-serif;
+  --font-display: 'Tajawal', 'Cairo', system-ui, sans-serif;
+}
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  outline: 3px solid var(--color-sun);
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-sand);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-sea);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-sea-dark);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
