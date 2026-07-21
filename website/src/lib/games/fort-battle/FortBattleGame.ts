@@ -25,19 +25,138 @@ export interface FortBattleState {
 	message: string;
 }
 
+class GameAudio {
+	private ctx: AudioContext | null = null;
+	private muted = false;
+
+	constructor() {}
+
+	setMuted(muted: boolean) {
+		this.muted = muted;
+	}
+
+	getMuted() {
+		return this.muted;
+	}
+
+	private ensureCtx() {
+		if (this.muted) return null;
+		if (!this.ctx) {
+			this.ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+		}
+		if (this.ctx.state === 'suspended') {
+			this.ctx.resume();
+		}
+		return this.ctx;
+	}
+
+	playShoot() {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'sawtooth';
+		osc.frequency.setValueAtTime(180, ctx.currentTime);
+		osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.18);
+		gain.gain.setValueAtTime(0.25, ctx.currentTime);
+		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		osc.start();
+		osc.stop(ctx.currentTime + 0.2);
+	}
+
+	playHit() {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		// noise burst + low thud
+		const bufferSize = ctx.sampleRate * 0.25;
+		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+		const data = buffer.getChannelData(0);
+		for (let i = 0; i < bufferSize; i++) {
+			data[i] = (Math.random() * 2 - 1) * Math.max(0, 1 - i / bufferSize);
+		}
+		const noise = ctx.createBufferSource();
+		noise.buffer = buffer;
+		const noiseGain = ctx.createGain();
+		noiseGain.gain.setValueAtTime(0.35, ctx.currentTime);
+		noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'lowpass';
+		filter.frequency.value = 800;
+		noise.connect(filter);
+		filter.connect(noiseGain);
+		noiseGain.connect(ctx.destination);
+		noise.start();
+
+		const osc = ctx.createOscillator();
+		const oscGain = ctx.createGain();
+		osc.type = 'sine';
+		osc.frequency.setValueAtTime(90, ctx.currentTime);
+		osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.2);
+		oscGain.gain.setValueAtTime(0.4, ctx.currentTime);
+		oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+		osc.connect(oscGain);
+		oscGain.connect(ctx.destination);
+		osc.start();
+		osc.stop(ctx.currentTime + 0.22);
+	}
+
+	playMiss() {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'triangle';
+		osc.frequency.setValueAtTime(220, ctx.currentTime);
+		osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.2);
+		gain.gain.setValueAtTime(0.15, ctx.currentTime);
+		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		osc.start();
+		osc.stop(ctx.currentTime + 0.25);
+	}
+
+	playWin() {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		[330, 392, 494, 659].forEach((freq, i) => {
+			const osc = ctx!.createOscillator();
+			const gain = ctx!.createGain();
+			osc.type = 'sine';
+			osc.frequency.setValueAtTime(freq, ctx!.currentTime + i * 0.12);
+			gain.gain.setValueAtTime(0.0001, ctx!.currentTime + i * 0.12);
+			gain.gain.exponentialRampToValueAtTime(0.2, ctx!.currentTime + i * 0.12 + 0.03);
+			gain.gain.exponentialRampToValueAtTime(0.001, ctx!.currentTime + i * 0.12 + 0.35);
+			osc.connect(gain);
+			gain.connect(ctx!.destination);
+			osc.start(ctx!.currentTime + i * 0.12);
+			osc.stop(ctx!.currentTime + i * 0.12 + 0.4);
+		});
+	}
+}
+
 export class FortBattleGame {
 	private engine: Engine;
 	private scene: Scene;
 	private canvas: HTMLCanvasElement;
 
-	private ground: Mesh;
-	private fortMeshes: Mesh[] = [];
+	private ground!: Mesh;
+	private fortRoots: TransformNode[] = [];
 	private fortHitBoxes: Mesh[] = [];
-	private arrowRoot: TransformNode;
-	private arrowShaft: Mesh;
-	private arrowHead: Mesh;
-	private windIndicator: Mesh;
+	private archers: TransformNode[] = [];
+	private arrowRoot!: TransformNode;
+	private arrowShaft!: Mesh;
+	private arrowHead!: Mesh;
+	private fletching: Mesh[] = [];
+	private windIndicator!: Mesh;
+	private aimGuideRoot!: TransformNode;
+	private aimGuideDots: Mesh[] = [];
+	private aimGuideLine!: Mesh;
+	private aimPlane!: Mesh;
 
+	private audio = new GameAudio();
 	private onChange: (state: FortBattleState) => void;
 
 	private healths: [number, number] = [100, 100];
@@ -63,9 +182,8 @@ export class FortBattleGame {
 	private readonly DAMAGE = 25;
 	private readonly GROUND_Y = 0;
 	private readonly ARROW_RADIUS = 0.35;
-	private readonly FORT_WIDTH = 6;
+	private readonly FORT_RADIUS = 3.5;
 	private readonly FORT_HEIGHT = 8;
-	private readonly FORT_DEPTH = 6;
 	private readonly MAX_ANGLE = 170;
 	private readonly MIN_ANGLE = 10;
 
@@ -108,80 +226,249 @@ export class FortBattleGame {
 
 	private setupEnvironment(): void {
 		// Ground
-		this.ground = MeshBuilder.CreateGround('ground', { width: 120, height: 40 }, this.scene);
+		this.ground = MeshBuilder.CreateGround('ground', { width: 140, height: 60 }, this.scene);
 		this.ground.position.y = this.GROUND_Y;
 		const groundMat = new StandardMaterial('groundMat', this.scene);
-		groundMat.diffuseColor = new Color3(0.85, 0.75, 0.55);
+		groundMat.diffuseColor = new Color3(0.82, 0.72, 0.52);
 		groundMat.specularColor = new Color3(0.1, 0.1, 0.1);
 		this.ground.material = groundMat;
+
+		// Invisible aiming plane at z=0 for mouse-to-world conversion
+		this.aimPlane = MeshBuilder.CreatePlane('aimPlane', { width: 200, height: 100 }, this.scene);
+		this.aimPlane.position.z = 0;
+		this.aimPlane.rotation.y = Math.PI; // face camera
+		this.aimPlane.isVisible = false;
+		this.aimPlane.isPickable = true;
 
 		// Forts
 		for (let i = 0; i < 2; i++) {
 			const x = this.FORT_X[i];
-			const color = i === 0 ? new Color3(0.85, 0.45, 0.35) : new Color3(0.35, 0.55, 0.85);
+			const color = i === 0 ? new Color3(0.82, 0.48, 0.36) : new Color3(0.36, 0.55, 0.78);
+			const darker = color.scale(0.75);
 
-			const fort = MeshBuilder.CreateBox(`fort${i}`, {
-				width: this.FORT_WIDTH,
+			const root = new TransformNode(`fortRoot${i}`, this.scene);
+			root.position.x = x;
+			this.fortRoots.push(root);
+
+			// Round Omani-style tower body
+			const body = MeshBuilder.CreateCylinder(`fortBody${i}`, {
 				height: this.FORT_HEIGHT,
-				depth: this.FORT_DEPTH
+				diameter: this.FORT_RADIUS * 2,
+				tessellation: 32
 			}, this.scene);
-			fort.position = new Vector3(x, this.FORT_HEIGHT / 2, 0);
+			body.position.y = this.FORT_HEIGHT / 2;
+			body.parent = root;
 			const fortMat = new StandardMaterial(`fortMat${i}`, this.scene);
 			fortMat.diffuseColor = color;
-			fort.material = fortMat;
+			fortMat.specularColor = new Color3(0.1, 0.1, 0.1);
+			body.material = fortMat;
 
-			// Crenellations
-			for (let j = -1; j <= 1; j++) {
-				const cren = MeshBuilder.CreateBox(`cren${i}_${j}`, { width: 1.2, height: 1, depth: 1.5 }, this.scene);
-				cren.position = new Vector3(j * 1.8, this.FORT_HEIGHT / 2 + 1, 0);
-				cren.parent = fort;
-				const crenMat = new StandardMaterial(`crenMat${i}_${j}`, this.scene);
-				crenMat.diffuseColor = color.scale(0.85);
-				cren.material = crenMat;
-			}
-
-			this.fortMeshes.push(fort);
-
-			// Invisible hit box for easier collision detection
-			const hitBox = MeshBuilder.CreateBox(`fortHit${i}`, {
-				width: this.FORT_WIDTH,
-				height: this.FORT_HEIGHT,
-				depth: this.FORT_DEPTH
+			// Pointed conical roof
+			const roof = MeshBuilder.CreateCylinder(`fortRoof${i}`, {
+				height: 4,
+				diameterTop: 0,
+				diameterBottom: this.FORT_RADIUS * 2.1,
+				tessellation: 32
 			}, this.scene);
-			hitBox.position = new Vector3(x, this.FORT_HEIGHT / 2, 0);
+			roof.position.y = this.FORT_HEIGHT + 2;
+			roof.parent = root;
+			const roofMat = new StandardMaterial(`roofMat${i}`, this.scene);
+			roofMat.diffuseColor = darker;
+			roofMat.specularColor = new Color3(0.1, 0.1, 0.1);
+			roof.material = roofMat;
+
+			// Recessed arched window near bottom (Omani-style)
+			const archFrame = MeshBuilder.CreateTorus(`fortWindow${i}`, {
+				diameter: 1.7,
+				thickness: 0.22,
+				tessellation: 24
+			}, this.scene);
+			archFrame.scaling.y = 1.35;
+			archFrame.position = new Vector3(0, 2.3, this.FORT_RADIUS + 0.04);
+			archFrame.rotation.x = Math.PI / 2;
+			archFrame.parent = root;
+			const archFrameMat = new StandardMaterial(`windowFrameMat${i}`, this.scene);
+			archFrameMat.diffuseColor = darker;
+			archFrame.material = archFrameMat;
+
+			const archDark = MeshBuilder.CreateSphere(`fortWindowDark${i}`, { diameter: 1.25 }, this.scene);
+			archDark.scaling.y = 1.3;
+			archDark.position = new Vector3(0, 2.3, this.FORT_RADIUS + 0.08);
+			archDark.parent = root;
+			const archDarkMat = new StandardMaterial(`windowDarkMat${i}`, this.scene);
+			archDarkMat.diffuseColor = new Color3(0.12, 0.1, 0.08);
+			archDark.material = archDarkMat;
+
+			// Invisible hit box aligned with the round body
+			const hitBox = MeshBuilder.CreateCylinder(`fortHit${i}`, {
+				height: this.FORT_HEIGHT,
+				diameter: this.FORT_RADIUS * 2,
+				tessellation: 16
+			}, this.scene);
+			hitBox.position.y = this.FORT_HEIGHT / 2;
+			hitBox.parent = root;
 			hitBox.isVisible = false;
 			hitBox.isPickable = false;
 			this.fortHitBoxes.push(hitBox);
+
+			// Archer on top
+			this.archers.push(this.createArcher(root, i));
 		}
 
-		// Arrow
+		// Arrow with fletching
 		this.arrowRoot = new TransformNode('arrowRoot', this.scene);
-		this.arrowShaft = MeshBuilder.CreateCylinder('arrowShaft', { height: 1.6, diameter: 0.18 }, this.scene);
+		this.arrowShaft = MeshBuilder.CreateCylinder('arrowShaft', { height: 1.8, diameter: 0.14 }, this.scene);
 		this.arrowShaft.rotation.z = -Math.PI / 2;
-		this.arrowShaft.position.x = 0.4;
+		this.arrowShaft.position.x = 0.45;
 		this.arrowShaft.parent = this.arrowRoot;
 		const shaftMat = new StandardMaterial('shaftMat', this.scene);
-		shaftMat.diffuseColor = new Color3(0.6, 0.35, 0.2);
+		shaftMat.diffuseColor = new Color3(0.55, 0.32, 0.18);
 		this.arrowShaft.material = shaftMat;
 
-		this.arrowHead = MeshBuilder.CreateCylinder('arrowHead', { height: 0.5, diameterTop: 0, diameterBottom: 0.35, tessellation: 4 }, this.scene);
+		this.arrowHead = MeshBuilder.CreateCylinder('arrowHead', { height: 0.55, diameterTop: 0, diameterBottom: 0.32, tessellation: 5 }, this.scene);
 		this.arrowHead.rotation.z = -Math.PI / 2;
-		this.arrowHead.position.x = 1.35;
+		this.arrowHead.position.x = 1.5;
 		this.arrowHead.parent = this.arrowRoot;
 		const headMat = new StandardMaterial('headMat', this.scene);
-		headMat.diffuseColor = new Color3(0.7, 0.7, 0.75);
+		headMat.diffuseColor = new Color3(0.75, 0.75, 0.78);
+		headMat.specularColor = new Color3(0.4, 0.4, 0.4);
 		this.arrowHead.material = headMat;
+
+		for (let k = 0; k < 3; k++) {
+			const fletch = MeshBuilder.CreatePlane(`fletch${k}`, { width: 0.35, height: 0.45 }, this.scene);
+			fletch.position.x = -0.55;
+			fletch.rotation.x = (k * Math.PI * 2) / 3;
+			fletch.rotation.y = Math.PI / 2;
+			fletch.parent = this.arrowRoot;
+			const fletchMat = new StandardMaterial(`fletchMat${k}`, this.scene);
+			fletchMat.diffuseColor = new Color3(0.9, 0.25, 0.2);
+			fletchMat.backFaceCulling = false;
+			fletch.material = fletchMat;
+			this.fletching.push(fletch);
+		}
 
 		this.arrowRoot.setEnabled(false);
 
+		// Aim guide (dotted trajectory + line)
+		this.aimGuideRoot = new TransformNode('aimGuideRoot', this.scene);
+		const guideMat = new StandardMaterial('guideMat', this.scene);
+		guideMat.diffuseColor = new Color3(1, 0.95, 0.6);
+		guideMat.emissiveColor = new Color3(0.5, 0.45, 0.15);
+		guideMat.alpha = 0.85;
+
+		this.aimGuideLine = MeshBuilder.CreateLines('aimGuideLine', {
+			points: [Vector3.Zero(), Vector3.Zero()],
+			updatable: true
+		}, this.scene);
+		this.aimGuideLine.color = new Color3(1, 0.95, 0.7);
+		this.aimGuideLine.parent = this.aimGuideRoot;
+
+		for (let k = 0; k < 18; k++) {
+			const dot = MeshBuilder.CreateSphere(`guideDot${k}`, { diameter: 0.32 }, this.scene);
+			dot.material = guideMat;
+			dot.parent = this.aimGuideRoot;
+			this.aimGuideDots.push(dot);
+		}
+		this.aimGuideRoot.setEnabled(false);
+
 		// Wind indicator (simple arrow in the sky)
-		this.windIndicator = MeshBuilder.CreateCylinder('windInd', { height: 2, diameterTop: 0, diameterBottom: 0.2, tessellation: 8 }, this.scene);
+		this.windIndicator = MeshBuilder.CreateCylinder('windInd', { height: 2.2, diameterTop: 0, diameterBottom: 0.22, tessellation: 8 }, this.scene);
 		this.windIndicator.rotation.z = -Math.PI / 2;
 		this.windIndicator.position = new Vector3(0, 22, -10);
 		const windMat = new StandardMaterial('windMat', this.scene);
 		windMat.diffuseColor = new Color3(1, 1, 0.9);
 		windMat.emissiveColor = new Color3(0.2, 0.2, 0.15);
 		this.windIndicator.material = windMat;
+	}
+
+	private createArcher(parent: TransformNode, index: number): TransformNode {
+		const archer = new TransformNode(`archer${index}`, this.scene);
+		archer.parent = parent;
+		archer.position = new Vector3(0, this.FORT_HEIGHT + 0.1, 0);
+		archer.scaling.setAll(1.35);
+
+		const skinMat = new StandardMaterial(`skinMat${index}`, this.scene);
+		skinMat.diffuseColor = new Color3(0.76, 0.6, 0.45);
+
+		const clothesMat = new StandardMaterial(`clothesMat${index}`, this.scene);
+		clothesMat.diffuseColor = index === 0 ? new Color3(0.75, 0.3, 0.25) : new Color3(0.25, 0.45, 0.7);
+
+		// Robe / body
+		const body = MeshBuilder.CreateCylinder(`archerBody${index}`, { height: 1.2, diameter: 0.55 }, this.scene);
+		body.position.y = 0.6;
+		body.parent = archer;
+		body.material = clothesMat;
+
+		// Head
+		const head = MeshBuilder.CreateSphere(`archerHead${index}`, { diameter: 0.48 }, this.scene);
+		head.position.y = 1.35;
+		head.parent = archer;
+		head.material = skinMat;
+
+		// Keffiyeh / headscarf
+		const turban = MeshBuilder.CreateTorus(`archerTurban${index}`, { diameter: 0.54, thickness: 0.14 }, this.scene);
+		turban.position.y = 1.42;
+		turban.rotation.x = Math.PI / 2;
+		turban.parent = archer;
+		const turbanMat = new StandardMaterial(`turbanMat${index}`, this.scene);
+		turbanMat.diffuseColor = new Color3(0.93, 0.88, 0.72);
+		turban.material = turbanMat;
+
+		// Legs
+		for (let s = -1; s <= 1; s += 2) {
+			const leg = MeshBuilder.CreateCylinder(`archerLeg${index}_${s}`, { height: 0.75, diameter: 0.2 }, this.scene);
+			leg.position = new Vector3(s * 0.18, -0.38, 0);
+			leg.parent = archer;
+			leg.material = clothesMat;
+		}
+
+		// Arms (one forward holding bow, one back drawing string)
+		const armL = MeshBuilder.CreateCylinder(`archerArmL${index}`, { height: 0.7, diameter: 0.16 }, this.scene);
+		armL.position = new Vector3(-0.35, 0.95, 0.28);
+		armL.rotation.z = -0.5;
+		armL.rotation.x = 0.8;
+		armL.parent = archer;
+		armL.material = skinMat;
+
+		const armR = MeshBuilder.CreateCylinder(`archerArmR${index}`, { height: 0.7, diameter: 0.16 }, this.scene);
+		armR.position = new Vector3(0.35, 0.95, -0.18);
+		armR.rotation.z = 0.5;
+		armR.rotation.x = -0.6;
+		armR.parent = archer;
+		armR.material = skinMat;
+
+		// Bow (curved tube-like torus segment)
+		const bow = MeshBuilder.CreateTorus(`archerBow${index}`, { diameter: 1.2, thickness: 0.07, tessellation: 24 }, this.scene);
+		bow.position = new Vector3(-0.6, 0.95, 0.38);
+		bow.rotation.y = Math.PI / 2;
+		bow.rotation.x = 0.4;
+		bow.scaling.z = 1.6;
+		bow.parent = archer;
+		const bowMat = new StandardMaterial(`bowMat${index}`, this.scene);
+		bowMat.diffuseColor = new Color3(0.45, 0.28, 0.15);
+		bow.material = bowMat;
+
+		// Bowstring
+		const bowString = MeshBuilder.CreateLines(`archerBowString${index}`, {
+			points: [
+				new Vector3(-0.25, 1.55, 0.38),
+				new Vector3(-0.95, 0.35, 0.38),
+			],
+		}, this.scene);
+		bowString.color = new Color3(0.85, 0.8, 0.7);
+		bowString.parent = archer;
+
+		// Quiver on back
+		const quiver = MeshBuilder.CreateCylinder(`archerQuiver${index}`, { height: 0.9, diameter: 0.22 }, this.scene);
+		quiver.position = new Vector3(0.3, 0.8, -0.35);
+		quiver.rotation.x = -0.5;
+		quiver.rotation.z = -0.2;
+		quiver.parent = archer;
+		const quiverMat = new StandardMaterial(`quiverMat${index}`, this.scene);
+		quiverMat.diffuseColor = new Color3(0.55, 0.32, 0.18);
+		quiver.material = quiverMat;
+
+		return archer;
 	}
 
 	private setupInput(): void {
@@ -214,18 +501,47 @@ export class FortBattleGame {
 			}
 		});
 
-		// Touch / mouse drag support through pointer observables
+		// Mouse / touch: move to aim, press to charge, release to fire
 		let pointerDown = false;
 		this.scene.onPointerObservable.add((pointerInfo) => {
-			if (this.gameState !== 'aiming') return;
-			if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
-				pointerDown = true;
-				this.startCharge();
+			if (this.gameState === 'gameover') return;
+
+			if (pointerInfo.type === PointerEventTypes.POINTERMOVE) {
+				if (this.gameState === 'aiming' && !this.charging) {
+					this.aimFromPointer();
+				}
+			} else if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
+				if (this.gameState === 'aiming' && !this.charging) {
+					pointerDown = true;
+					this.startCharge();
+				}
 			} else if (pointerInfo.type === PointerEventTypes.POINTERUP && pointerDown) {
 				pointerDown = false;
 				this.releaseCharge();
 			}
 		});
+	}
+
+	private aimFromPointer(): void {
+		const pickResult = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => mesh === this.aimPlane);
+		if (!pickResult.hit || !pickResult.pickedPoint) return;
+
+		const start = this.getArrowStartPosition();
+		const target = pickResult.pickedPoint;
+		const dx = target.x - start.x;
+		const dy = target.y - start.y;
+		let newAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+		// Face the enemy side
+		if (this.currentPlayer === 0) {
+			newAngle = Math.max(this.MIN_ANGLE, Math.min(90, newAngle));
+		} else {
+			newAngle = Math.max(90, Math.min(this.MAX_ANGLE, newAngle));
+		}
+
+		this.angle = Math.round(newAngle);
+		this.updateAimVisuals();
+		this.notify();
 	}
 
 	private handleResize = (): void => {
@@ -253,9 +569,18 @@ export class FortBattleGame {
 		this.fire();
 	}
 
+	setMuted(muted: boolean): void {
+		this.audio.setMuted(muted);
+	}
+
+	getMuted(): boolean {
+		return this.audio.getMuted();
+	}
+
 	private fire(): void {
 		if (this.gameState !== 'aiming') return;
 		this.gameState = 'flying';
+		this.aimGuideRoot.setEnabled(false);
 
 		const start = this.getArrowStartPosition();
 		this.arrowRoot.position.copyFrom(start);
@@ -263,19 +588,16 @@ export class FortBattleGame {
 
 		const rad = (this.angle * Math.PI) / 180;
 		const speed = this.power * this.POWER_SCALE;
-		this.arrowVelocity.set(
-			Math.cos(rad) * speed,
-			Math.sin(rad) * speed,
-			0
-		);
+		this.arrowVelocity.set(Math.cos(rad) * speed, Math.sin(rad) * speed, 0);
 		this.arrowFlying = true;
 		this.updateArrowRotation();
+		this.audio.playShoot();
 		this.notify();
 	}
 
 	private getArrowStartPosition(): Vector3 {
-		const x = this.FORT_X[this.currentPlayer] + (this.currentPlayer === 0 ? 4 : -4);
-		const y = this.FORT_HEIGHT + 1.5;
+		const x = this.FORT_X[this.currentPlayer] + (this.currentPlayer === 0 ? this.FORT_RADIUS + 0.8 : -(this.FORT_RADIUS + 0.8));
+		const y = this.FORT_HEIGHT + 1.6;
 		return new Vector3(x, y, 0);
 	}
 
@@ -285,12 +607,53 @@ export class FortBattleGame {
 		this.arrowRoot.position.copyFrom(start);
 		this.arrowRoot.setEnabled(true);
 		this.updateArrowRotation();
+		this.updateAimGuide();
+	}
+
+	private updateAimGuide(): void {
+		if (this.gameState !== 'aiming') {
+			this.aimGuideRoot.setEnabled(false);
+			return;
+		}
+		const rad = (this.angle * Math.PI) / 180;
+		const speed = this.power * this.POWER_SCALE;
+		const vx = Math.cos(rad) * speed;
+		const vy = Math.sin(rad) * speed;
+		const start = this.getArrowStartPosition();
+
+		this.aimGuideRoot.setEnabled(true);
+		const linePoints: Vector3[] = [start];
+		for (let i = 0; i < this.aimGuideDots.length; i++) {
+			const t = (i + 1) * 0.12;
+			const pos = new Vector3(
+				start.x + vx * t + 0.5 * this.wind * this.WIND_SCALE * t * t,
+				start.y + vy * t - 0.5 * this.GRAVITY * t * t,
+				0
+			);
+			this.aimGuideDots[i].position.copyFrom(pos);
+			const scale = 1 - i / this.aimGuideDots.length * 0.45;
+			this.aimGuideDots[i].scaling.setAll(scale);
+			linePoints.push(pos);
+		}
+		this.aimGuideLine = MeshBuilder.CreateLines(null, {
+			points: linePoints,
+			instance: this.aimGuideLine as any
+		});
 	}
 
 	private updateArrowRotation(): void {
-		const angleRad = Math.atan2(this.arrowVelocity.y, this.arrowVelocity.x);
-		// Cylinder default axis is Y; we rotated it to point along X at rest.
-		this.arrowRoot.rotation.z = angleRad - Math.PI / 2;
+		const angleRad = this.arrowFlying
+			? Math.atan2(this.arrowVelocity.y, this.arrowVelocity.x)
+			: (this.angle * Math.PI) / 180;
+		// Cylinder default axis is Y; we rotated it to point along +X at rest, so root rotation equals the flight angle.
+		this.arrowRoot.rotation.z = angleRad;
+
+		// Point archer and bow toward aim direction.
+		// The archer mesh was built facing +X in the X-Y plane, so rotate around Z to match the aim angle.
+		const archer = this.archers[this.currentPlayer];
+		if (archer) {
+			archer.rotation.z = angleRad;
+		}
 	}
 
 	private update(dt: number): void {
@@ -298,10 +661,8 @@ export class FortBattleGame {
 
 		if (this.charging) {
 			const elapsed = (performance.now() - this.chargeStartTime) / 1000;
-			this.power = Math.min(
-				this.MAX_POWER,
-				this.MIN_POWER + (elapsed / 1.4) * (this.MAX_POWER - this.MIN_POWER)
-			);
+			this.power = Math.min(this.MAX_POWER, this.MIN_POWER + (elapsed / 1.4) * (this.MAX_POWER - this.MIN_POWER));
+			this.updateAimGuide();
 			this.notify();
 		}
 
@@ -328,7 +689,7 @@ export class FortBattleGame {
 		}
 
 		// Bounds
-		if (pos.x < -70 || pos.x > 70 || pos.y > 50) {
+		if (pos.x < -80 || pos.x > 80 || pos.y > 60) {
 			this.handleMiss('السهم خرج عن الميدان');
 			return;
 		}
@@ -346,13 +707,14 @@ export class FortBattleGame {
 		this.arrowFlying = false;
 		this.arrowRoot.setEnabled(false);
 
-		// Self-damage if you hit your own fort (rare but possible with wind)
 		this.healths[fortIndex] = Math.max(0, this.healths[fortIndex] - this.DAMAGE);
 		this.spawnParticles(this.arrowRoot.position);
+		this.audio.playHit();
 
 		if (this.healths[fortIndex] <= 0) {
 			this.winner = fortIndex === 0 ? 1 : 0;
 			this.gameState = 'gameover';
+			this.audio.playWin();
 			this.notify();
 			return;
 		}
@@ -363,6 +725,7 @@ export class FortBattleGame {
 	private handleMiss(message: string): void {
 		this.arrowFlying = false;
 		this.arrowRoot.setEnabled(false);
+		this.audio.playMiss();
 		this.scheduleNextTurn(message);
 	}
 
@@ -400,23 +763,29 @@ export class FortBattleGame {
 	}
 
 	private spawnParticles(position: Vector3): void {
-		const particle = MeshBuilder.CreateSphere('hit', { diameter: 0.8 }, this.scene);
-		particle.position = position.clone();
-		const mat = new StandardMaterial('hitMat', this.scene);
-		mat.diffuseColor = new Color3(1, 0.6, 0.2);
-		particle.material = mat;
+		for (let i = 0; i < 8; i++) {
+			const particle = MeshBuilder.CreateSphere(`hit${i}`, { diameter: 0.5 + Math.random() * 0.4 }, this.scene);
+			particle.position = position.clone();
+			const mat = new StandardMaterial(`hitMat${i}`, this.scene);
+			mat.diffuseColor = new Color3(1, 0.5 + Math.random() * 0.2, 0.1);
+			particle.material = mat;
 
-		let life = 0;
-		const obs = this.scene.onBeforeRenderObservable.add(() => {
-			life += this.engine.getDeltaTime() / 1000;
-			particle.scaling.scaleInPlace(1.05);
-			mat.alpha = 1 - life / 0.5;
-			if (life >= 0.5) {
-				this.scene.onBeforeRenderObservable.remove(obs);
-				particle.dispose();
-				mat.dispose();
-			}
-		});
+			const vel = new Vector3((Math.random() - 0.5) * 6, Math.random() * 6, (Math.random() - 0.5) * 4);
+			let life = 0;
+			const obs = this.scene.onBeforeRenderObservable.add(() => {
+				const dt = this.engine.getDeltaTime() / 1000;
+				life += dt;
+				vel.y -= this.GRAVITY * dt;
+				particle.position.addInPlace(vel.scale(dt));
+				particle.scaling.scaleInPlace(1.02);
+				mat.alpha = 1 - life / 0.7;
+				if (life >= 0.7) {
+					this.scene.onBeforeRenderObservable.remove(obs);
+					particle.dispose();
+					mat.dispose();
+				}
+			});
+		}
 	}
 
 	private notify(): void {
@@ -441,8 +810,8 @@ export class FortBattleGame {
 		if (this.charging) return 'استمر بالضغط لشحن القوة...';
 		if (this.gameState === 'aiming') {
 			return this.currentPlayer === 0
-				? 'دور اللاعب الأحمر: اضبط الزاوية ثم اضغط لشحن القوة'
-				: 'دور اللاعب الأزرق: اضبط الزاوية ثم اضغط لشحن القوة';
+				? 'دور اللاعب الأحمر: حرك الماوس للتصويب ثم اضغط لشحن القوة'
+				: 'دور اللاعب الأزرق: حرك الماوس للتصويب ثم اضغط لشحن القوة';
 		}
 		if (this.gameState === 'flying') return 'السهم في الجو...';
 		return '';

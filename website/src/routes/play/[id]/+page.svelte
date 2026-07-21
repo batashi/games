@@ -6,11 +6,19 @@
 
 	// Lazy-load game components so Babylon.js is only fetched for playable games.
 	let FortBattle = $state<typeof import('$lib/components/games/FortBattle.svelte').default | null>(null);
+	let fortBattleRef: import('$lib/components/games/FortBattle.svelte').default | null = $state(null);
+	let muted = $state(false);
+
 	onMount(async () => {
 		if (game.id === 'archery') {
 			FortBattle = (await import('$lib/components/games/FortBattle.svelte')).default;
 		}
 	});
+
+	function toggleMute() {
+		fortBattleRef?.toggleMute();
+		muted = fortBattleRef?.isMuted() ?? false;
+	}
 </script>
 
 <svelte:head>
@@ -18,7 +26,7 @@
 	<meta name="description" content="العب {game.nameAr} مباشرة في المتصفح." />
 </svelte:head>
 
-<div class="bg-charcoal min-h-[calc(100vh-64px)] flex flex-col">
+<div class="bg-charcoal flex-1 flex flex-col min-h-0">
 	<!-- Game header -->
 	<div class="bg-sea-dark text-cream px-4 py-3 flex items-center justify-between">
 		<div class="flex items-center gap-3">
@@ -34,9 +42,10 @@
 			<button
 				type="button"
 				class="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-				aria-label="كتم الصوت"
+				aria-label={muted ? 'إلغاء كتم الصوت' : 'كتم الصوت'}
+				onclick={toggleMute}
 			>
-				🔊
+				{muted ? '🔇' : '🔊'}
 			</button>
 			<button
 				type="button"
@@ -49,9 +58,9 @@
 	</div>
 
 	<!-- Game container -->
-	<div class="flex-1 relative bg-gradient-to-br from-charcoal to-sea-dark/50">
+	<div class="flex-1 relative min-h-0 bg-gradient-to-br from-charcoal to-sea-dark/50">
 		{#if game.id === 'archery' && FortBattle}
-			<FortBattle />
+			<FortBattle bind:this={fortBattleRef} />
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
 				<div>

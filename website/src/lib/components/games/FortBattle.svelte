@@ -6,6 +6,7 @@
 	let game: import('$lib/games/fort-battle').FortBattleGame | null = null;
 	let state = $state<FortBattleState | null>(null);
 	let charging = $state(false);
+	let muted = $state(false);
 
 	onMount(async () => {
 		const { FortBattleGame } = await import('$lib/games/fort-battle');
@@ -37,6 +38,15 @@
 		game?.resetGame();
 	}
 
+	export function toggleMute() {
+		muted = !muted;
+		game?.setMuted(muted);
+	}
+
+	export function isMuted(): boolean {
+		return muted;
+	}
+
 	function windText(w: number): string {
 		if (w > 0) return `→ ${w}`;
 		if (w < 0) return `← ${Math.abs(w)}`;
@@ -44,7 +54,7 @@
 	}
 </script>
 
-<div class="relative w-full h-full bg-gradient-to-b from-sky-200 to-sand overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-b from-sky-200 to-sand overflow-hidden">
 	<canvas bind:this={canvas} class="block w-full h-full outline-none" tabindex="0"></canvas>
 
 	{#if state}
@@ -134,7 +144,7 @@
 
 		<!-- Desktop hint -->
 		<div class="hidden sm:block absolute bottom-20 left-4 text-cream/70 text-xs bg-charcoal/50 px-3 py-1 rounded-lg pointer-events-none">
-			↑ ↓ لضبط الزاوية | مسافة لشحن القوة
+			حرك الماوس للتصويب | ↑ ↓ لضبط الزاوية | مسافة لشحن القوة
 		</div>
 	{/if}
 </div>
