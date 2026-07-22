@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import type { FortBattleState, FortBattleMode, AIDifficulty } from '$lib/games/fort-battle';
+	import type { FortBattleState, FortBattleMode, AIDifficulty, FortTheme } from '$lib/games/fort-battle';
 
 	let canvas: HTMLCanvasElement;
 	let game: import('$lib/games/fort-battle').FortBattleGame | null = null;
 	let state = $state<FortBattleState | null>(null);
 	let charging = $state(false);
 	let muted = $state(false);
+	let theme = $state<FortTheme | null>(null);
 
 	let phase = $state<'mode' | 'difficulty' | 'playing'>('mode');
 	let mode = $state<FortBattleMode>('hotseat');
@@ -34,12 +35,14 @@
 			},
 			{ mode, difficulty }
 		);
+		theme = game.getTheme();
 	}
 
 	function backToModePicker() {
 		game?.dispose();
 		game = null;
 		state = null;
+		theme = null;
 		charging = false;
 		phase = 'mode';
 	}
@@ -188,7 +191,12 @@
 		</div>
 
 		<!-- Stats -->
-		<div class="absolute top-24 left-4 right-4 flex justify-center gap-3 pointer-events-none">
+		<div class="absolute top-24 left-4 right-4 flex justify-center gap-3 pointer-events-none flex-wrap">
+			{#if theme}
+				<div class="bg-charcoal/70 text-cream px-3 py-1.5 rounded-lg text-sm">
+					الساحة: <span class="font-bold">{theme.nameAr}</span>
+				</div>
+			{/if}
 			<div class="bg-charcoal/70 text-cream px-3 py-1.5 rounded-lg text-sm">
 				الزاوية: <span class="font-bold">{state.angle}°</span>
 			</div>

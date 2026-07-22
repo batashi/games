@@ -98,9 +98,9 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 ## 7. 3D Art Direction
 
 - **Style:** Stylized low-poly procedural meshes built in Babylon.js (no external model files in v1.0).
-- **Forts:** Round Omani-style mud-brick towers with a conical pointed roof and a recessed arched window near the base. Country-specific skins are a future enhancement.
+- **Forts:** Round Omani-style mud-brick towers with a conical pointed roof and a recessed arched window near the base. Country-specific skins are implemented procedurally per match: each game picks a GCC country theme (OM, SA, AE, QA, BH, KW) that changes the fort body/roof colours, ground tint, sky tint, and roof silhouette (cone, crenellated, dome, flat, stepped).
 - **Characters:** Visible archer figures standing on top of each fort, holding a bow and wearing a keffiyeh/turban.
-- **Environment:** Simple sandy ground and sky background. Rocky wadi, palms, and mountains are future enhancements.
+- **Environment:** Sandy ground and sky background, plus procedural distant mountains, palm trees, and scattered rocks. Rocky wadi detail is a future enhancement.
 - **Camera:** Fixed side view showing both forts.
 - **Effects:** Dotted aim-guide trajectory, hit particle burst, synthesized sound effects.
 
@@ -243,7 +243,9 @@ Country-specific skins and landmark silhouettes are future enhancements.
 ## 19. Implementation Notes (v1.0)
 
 - Built as a Babylon.js scene inside a SvelteKit lazy-loaded component.
-- All meshes are procedural (cylinders, spheres, torus, planes, lines); no external GLB/texture assets required for the playable version.
+- All meshes are procedural (cylinders, spheres, torus, planes, cones, boxes); no external GLB/texture assets required for the playable version.
+- A random GCC country theme is selected per match; it drives fort colours, roof silhouette, ground/sky tints, and environment accents.
+- Environment scenery includes distant low-poly mountains, palm trees, and rocks placed behind and to the sides of the battlefield.
 - Physics is custom: Euler integration with gravity and constant horizontal wind acceleration.
 - Arrow rotation aligns to the aim/velocity vector each frame.
 - A dotted line + sphere trajectory preview is computed from the same physics formula used at fire time.

@@ -13,16 +13,19 @@ import {
 	KeyboardEventTypes,
 	PointerEventTypes
 } from '@babylonjs/core';
-import { FortBattleLogic, type FortBattleState, type Point2D } from './FortBattleLogic';
+import { FortBattleLogic, type FortBattleState, type Point2D, type FortBattleConfig } from './FortBattleLogic';
 import { computeAIShot, type AIDifficulty } from './FortBattleAI';
+import { pickRandomTheme, type FortTheme, type RGB } from './FortBattleTheme';
 
-export type { FortBattleState, AIDifficulty };
+export type { FortBattleState, AIDifficulty, FortTheme };
 
 export type FortBattleMode = 'hotseat' | 'ai';
 
 export interface FortBattleGameOptions {
 	mode?: FortBattleMode;
 	difficulty?: AIDifficulty;
+	/** If omitted, a random GCC country theme is picked per match. */
+	theme?: FortTheme;
 }
 
 class GameAudio {
@@ -161,6 +164,7 @@ export class FortBattleGame {
 
 	private mode: FortBattleMode;
 	private difficulty: AIDifficulty;
+	private theme: FortTheme;
 	private aiTurnTimer: ReturnType<typeof setTimeout> | null = null;
 	private aiTurnActive = false;
 	private aiTargetPower = 0;
@@ -178,6 +182,7 @@ export class FortBattleGame {
 		this.onChange = onChange;
 		this.mode = options.mode ?? 'hotseat';
 		this.difficulty = options.difficulty ?? 'medium';
+		this.theme = options.theme ?? pickRandomTheme();
 
 		// Create the logic first so setupEnvironment() can read its config.
 		// Visual callbacks are deferred until the scene is fully built.
@@ -212,9 +217,13 @@ export class FortBattleGame {
 		window.addEventListener('resize', this.handleResize);
 	}
 
+	private color(rgb: RGB): Color3 {
+		return new Color3(rgb.r, rgb.g, rgb.b);
+	}
+
 	private createScene(): Scene {
 		const scene = new Scene(this.engine);
-		scene.clearColor = new Color3(0.52, 0.8, 0.92).toColor4(1); // sky
+		scene.clearColor = this.color(this.theme.sky).toColor4(1);
 
 		const camera = new UniversalCamera('camera', new Vector3(0, 16, -55), scene);
 		camera.setTarget(Vector3.Zero());
@@ -230,17 +239,18 @@ export class FortBattleGame {
 
 	private setupEnvironment(): void {
 		const config = this.logic.getConfig();
+		const theme = this.theme;
 
 		// Ground
-		this.ground = MeshBuilder.CreateGround('ground', { width: 140, height: 60 }, this.scene);
+		this.ground = MeshBuilder.CreateGround('ground', { width: 180, height: 90 }, this.scene);
 		this.ground.position.y = config.GROUND_Y;
 		const groundMat = new StandardMaterial('groundMat', this.scene);
-		groundMat.diffuseColor = new Color3(0.82, 0.72, 0.52);
+		groundMat.diffuseColor = this.color(theme.ground);
 		groundMat.specularColor = new Color3(0.1, 0.1, 0.1);
 		this.ground.material = groundMat;
 
 		// Invisible aiming plane at z=0 for mouse-to-world conversion
-		this.aimPlane = MeshBuilder.CreatePlane('aimPlane', { width: 200, height: 100 }, this.scene);
+		this.aimPlane = MeshBuilder.CreatePlane('aimPlane', { width: 220, height: 120 }, this.scene);
 		this.aimPlane.position.z = 0;
 		this.aimPlane.rotation.y = Math.PI; // face camera
 		this.aimPlane.isVisible = false;
@@ -249,14 +259,15 @@ export class FortBattleGame {
 		// Forts
 		for (let i = 0; i < 2; i++) {
 			const x = config.FORT_X[i];
-			const color = i === 0 ? new Color3(0.82, 0.48, 0.36) : new Color3(0.36, 0.55, 0.78);
-			const darker = color.scale(0.75);
+			const bodyColor = this.color(theme.fortBody);
+			const roofColor = this.color(theme.fortRoof);
+			const darker = bodyColor.scale(0.75);
 
 			const root = new TransformNode(`fortRoot${i}`, this.scene);
 			root.position.x = x;
 			this.fortRoots.push(root);
 
-			// Round Omani-style tower body
+			// Tower body
 			const body = MeshBuilder.CreateCylinder(`fortBody${i}`, {
 				height: config.FORT_HEIGHT,
 				diameter: config.FORT_RADIUS * 2,
@@ -265,25 +276,14 @@ export class FortBattleGame {
 			body.position.y = config.FORT_HEIGHT / 2;
 			body.parent = root;
 			const fortMat = new StandardMaterial(`fortMat${i}`, this.scene);
-			fortMat.diffuseColor = color;
+			fortMat.diffuseColor = bodyColor;
 			fortMat.specularColor = new Color3(0.1, 0.1, 0.1);
 			body.material = fortMat;
 
-			// Pointed conical roof
-			const roof = MeshBuilder.CreateCylinder(`fortRoof${i}`, {
-				height: 4,
-				diameterTop: 0,
-				diameterBottom: config.FORT_RADIUS * 2.1,
-				tessellation: 32
-			}, this.scene);
-			roof.position.y = config.FORT_HEIGHT + 2;
-			roof.parent = root;
-			const roofMat = new StandardMaterial(`roofMat${i}`, this.scene);
-			roofMat.diffuseColor = darker;
-			roofMat.specularColor = new Color3(0.1, 0.1, 0.1);
-			roof.material = roofMat;
+			// Country-specific roof
+			this.createFortRoof(root, roofColor, config);
 
-			// Recessed arched window near bottom (Omani-style)
+			// Recessed arched window near bottom
 			const archFrame = MeshBuilder.CreateTorus(`fortWindow${i}`, {
 				diameter: 1.7,
 				thickness: 0.22,
@@ -385,6 +385,165 @@ export class FortBattleGame {
 		windMat.diffuseColor = new Color3(1, 1, 0.9);
 		windMat.emissiveColor = new Color3(0.2, 0.2, 0.15);
 		this.windIndicator.material = windMat;
+
+		// Scenery
+		this.createMountains();
+		this.createPalmTrees();
+		this.createRocks();
+	}
+
+	private createFortRoof(parent: TransformNode, roofColor: Color3, config: FortBattleConfig): void {
+		const roofMat = new StandardMaterial(`roofMat${parent.name}`, this.scene);
+		roofMat.diffuseColor = roofColor;
+		roofMat.specularColor = new Color3(0.1, 0.1, 0.1);
+		const radius = config.FORT_RADIUS;
+		const y = config.FORT_HEIGHT;
+
+		switch (this.theme.roofStyle) {
+			case 'cone': {
+				const roof = MeshBuilder.CreateCylinder(`roof${parent.name}`, {
+					height: 4,
+					diameterTop: 0,
+					diameterBottom: radius * 2.1,
+					tessellation: 32
+				}, this.scene);
+				roof.position.y = y + 2;
+				roof.parent = parent;
+				roof.material = roofMat;
+				break;
+			}
+			case 'crenellated': {
+				const parapet = MeshBuilder.CreateCylinder(`roof${parent.name}`, {
+					height: 1.2,
+					diameter: radius * 2.2,
+					tessellation: 32
+				}, this.scene);
+				parapet.position.y = y + 0.6;
+				parapet.parent = parent;
+				parapet.material = roofMat;
+				for (let i = 0; i < 8; i++) {
+					const angle = (i / 8) * Math.PI * 2;
+					const cren = MeshBuilder.CreateBox(`cren${parent.name}_${i}`, { size: 0.8 }, this.scene);
+					cren.position = new Vector3(Math.cos(angle) * (radius + 0.2), y + 1.4, Math.sin(angle) * (radius + 0.2));
+					cren.parent = parent;
+					cren.material = roofMat;
+				}
+				break;
+			}
+			case 'dome': {
+				const dome = MeshBuilder.CreateSphere(`roof${parent.name}`, { diameter: radius * 2.3, slice: 0.5 }, this.scene);
+				dome.position.y = y + radius * 0.6;
+				dome.parent = parent;
+				dome.material = roofMat;
+				break;
+			}
+			case 'flat': {
+				const flat = MeshBuilder.CreateCylinder(`roof${parent.name}`, {
+					height: 0.6,
+					diameter: radius * 2.4,
+					tessellation: 32
+				}, this.scene);
+				flat.position.y = y + 0.3;
+				flat.parent = parent;
+				flat.material = roofMat;
+				break;
+			}
+			case 'stepped': {
+				for (let step = 0; step < 3; step++) {
+					const stepRoof = MeshBuilder.CreateCylinder(`roof${parent.name}_${step}`, {
+						height: 1.1,
+						diameter: radius * (2.2 - step * 0.5),
+						tessellation: 32
+					}, this.scene);
+					stepRoof.position.y = y + 0.55 + step * 0.9;
+					stepRoof.parent = parent;
+					stepRoof.material = roofMat;
+				}
+				break;
+			}
+		}
+	}
+
+	private createMountains(): void {
+		const mountainMat = new StandardMaterial('mountainMat', this.scene);
+		mountainMat.diffuseColor = this.color(this.theme.mountain);
+		mountainMat.specularColor = new Color3(0.05, 0.05, 0.05);
+
+		const positions = [
+			{ x: -60, z: 45, h: 28, w: 28 },
+			{ x: -25, z: 55, h: 18, w: 22 },
+			{ x: 20, z: 50, h: 24, w: 26 },
+			{ x: 60, z: 42, h: 20, w: 24 },
+			{ x: 85, z: 55, h: 15, w: 20 }
+		];
+
+		positions.forEach((p, i) => {
+			const mtn = MeshBuilder.CreateCylinder(`mountain${i}`, {
+				height: p.h,
+				diameterTop: 0,
+				diameterBottom: p.w,
+				tessellation: 7
+			}, this.scene);
+			mtn.position = new Vector3(p.x, p.h / 2, p.z);
+			mtn.material = mountainMat;
+		});
+	}
+
+	private createPalmTrees(): void {
+		const trunkMat = new StandardMaterial('trunkMat', this.scene);
+		trunkMat.diffuseColor = this.color(this.theme.trunk);
+		const frondMat = new StandardMaterial('frondMat', this.scene);
+		frondMat.diffuseColor = this.color(this.theme.frond);
+		frondMat.backFaceCulling = false;
+
+		const positions = [
+			{ x: -42, z: -18 },
+			{ x: -55, z: -14 },
+			{ x: 42, z: -18 },
+			{ x: 58, z: -16 },
+			{ x: -48, z: -22 }
+		];
+
+		positions.forEach((p, i) => {
+			const tree = new TransformNode(`palm${i}`, this.scene);
+			tree.position = new Vector3(p.x, 0, p.z);
+
+			const trunk = MeshBuilder.CreateCylinder(`palmTrunk${i}`, { height: 6, diameterTop: 0.28, diameterBottom: 0.42, tessellation: 8 }, this.scene);
+			trunk.position.y = 3;
+			trunk.parent = tree;
+			trunk.material = trunkMat;
+
+			for (let f = 0; f < 7; f++) {
+				const frond = MeshBuilder.CreatePlane(`palmFrond${i}_${f}`, { width: 0.5, height: 3.2 }, this.scene);
+				frond.position.y = 6;
+				frond.rotation.x = -0.5;
+				frond.rotation.y = (f / 7) * Math.PI * 2;
+				frond.rotation.z = 0.4;
+				frond.parent = tree;
+				frond.material = frondMat;
+			}
+		});
+	}
+
+	private createRocks(): void {
+		const rockMat = new StandardMaterial('rockMat', this.scene);
+		rockMat.diffuseColor = this.color(this.theme.rock);
+
+		const positions = [
+			{ x: -35, z: -12, s: 1.6 },
+			{ x: -62, z: -10, s: 2.2 },
+			{ x: 36, z: -11, s: 1.8 },
+			{ x: 66, z: -13, s: 2.0 },
+			{ x: -72, z: -8, s: 1.4 },
+			{ x: 74, z: -9, s: 1.5 }
+		];
+
+		positions.forEach((p, i) => {
+			const rock = MeshBuilder.CreateSphere(`rock${i}`, { diameter: p.s, segments: 3 }, this.scene);
+			rock.position = new Vector3(p.x, p.s * 0.25, p.z);
+			rock.scaling = new Vector3(1 + Math.random() * 0.4, 0.6 + Math.random() * 0.3, 1 + Math.random() * 0.4);
+			rock.material = rockMat;
+		});
 	}
 
 	private createArcher(parent: TransformNode, index: number, fortHeight: number): TransformNode {
@@ -564,6 +723,10 @@ export class FortBattleGame {
 
 	getMode(): FortBattleMode {
 		return this.mode;
+	}
+
+	getTheme(): FortTheme {
+		return this.theme;
 	}
 
 	adjustAngle(delta: number): void {

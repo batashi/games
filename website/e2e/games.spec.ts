@@ -28,12 +28,13 @@ test.describe('game smoke tests', () => {
 
 		// Wait for the page title and game header to render.
 		await expect(page).toHaveTitle(/معركة القلاع/);
-		await expect(page.getByRole('heading', { name: /معركة القلاع/ })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'معركة القلاع', exact: true })).toBeVisible();
 
-		// Wait for the Babylon.js canvas to be attached.
+		// Wait for the Babylon.js canvas and the mode picker to be ready.
 		const canvas = page.locator('canvas');
 		await expect(canvas).toBeAttached();
 		await expect(canvas).toBeVisible();
+		await expect(page.getByRole('button', { name: /ضد الكمبيوتر/ })).toBeVisible();
 
 		// Give async game initialization a moment to finish.
 		await page.waitForTimeout(2500);
@@ -47,6 +48,9 @@ test.describe('game smoke tests', () => {
 		const { errors } = captureConsoleErrors(page);
 
 		await page.goto('/play/archery');
+
+		// Wait for the mode picker before interacting.
+		await expect(page.getByRole('button', { name: /ضد الكمبيوتر/ })).toBeVisible();
 
 		// Pick "vs AI" mode on easy difficulty.
 		await page.getByRole('button', { name: /ضد الكمبيوتر/ }).click();
