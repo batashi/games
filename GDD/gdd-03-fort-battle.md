@@ -87,11 +87,34 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 |----------|-------------|
 | Aim | Adjust vertical angle with mouse/touch drag or Up/Down keys. |
 | Power | Hold to charge power meter (10–100%); release to shoot. |
-| Wind | Random wind value (-3 to +3) each turn affects arrow arc; shown by a sky indicator. |
-| Damage | Direct health damage on fort hit; 25 HP per hit. |
+| Wind | Random wind value each turn affects arrow arc; magnitude depends on difficulty; shown by a sky indicator. |
+| Damage | Direct health damage on fort hit; 25 HP per normal hit, 50 HP per powered hit. |
 | Physics | Gravity arc and wind drift. |
 | Aim Guide | Dotted trajectory line preview updates while aiming/charging. |
 | AI | Simulates aim and power with adjustable accuracy. Easy misses often; Hard accounts for wind. *(implemented: Easy/Medium/Hard)* |
+| Air Gifts | Falling collectibles that appear at the start of some turns. Shoot them to gain +25 health or a powered arrow for the next shot. |
+| Difficulty | Easy/Medium/Hard preset that controls wind cap, gift spawn rate, and AI level. |
+
+### 6.1 Air Gifts
+
+At the start of each turn, a gift may spawn in the air at a random horizontal position and a height between 18–32 units. The gift drifts slowly downward and is pushed slightly by the wind. A player collects the gift by hitting it with an arrow before it touches the ground.
+
+| Gift Type | Visual | Effect |
+|-----------|--------|--------|
+| Health crate | Green glowing box | Restores `+25 HP`, capped at the fort's initial health. |
+| Power arrow | Orange glowing box | The next shot deals `50 HP` damage (double a normal shot) and uses a larger arrow hitbox. The effect is consumed when fired. |
+
+If a gift reaches the ground without being collected, it disappears and a short "missed gift" message is shown.
+
+### 6.2 Difficulty
+
+Before a match, the player chooses a single difficulty preset. In **vs AI** mode this also sets the AI level; in **hotseat** mode it only affects game parameters.
+
+| Difficulty | Wind Range | Gift Spawn Chance | AI Level |
+|------------|------------|-------------------|----------|
+| Easy | -2 to +2 | ~50% per turn | Easy |
+| Medium | -3 to +3 | ~30% per turn | Medium |
+| Hard | -4 to +4 | ~15% per turn | Hard |
 
 ---
 
@@ -111,9 +134,10 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 | Forts | Two round Omani-style towers (body, conical roof, arched window) |
 | Characters | Procedural archer figure (body, head, keffiyeh, arms, bow, quiver) |
 | Props | Procedural arrow (shaft, metal head, fletching) |
-| Environment | Ground plane, sky color |
-| UI | Angle meter, power meter, wind indicator, health bars, turn message |
-| Particles | Hit particle burst |
+| Environment | Ground plane, sky color, mountains, palm trees, rocks |
+| UI | Angle meter, power meter, wind indicator, health bars, turn message, difficulty selector, power-shot indicator |
+| Props | Procedural arrow (shaft, metal head, fletching), health/power gift boxes |
+| Particles | Hit particle burst, gift collection burst |
 
 ### 7.2 Arrow Design
 
@@ -149,10 +173,12 @@ Country-specific skins and landmark silhouettes are future enhancements.
 
 ## 9. UI & Feedback
 
-- Angle, power, and wind HUD at the top center.
+- Angle, power, wind, active theme, and difficulty HUD at the top center.
+- "Power shot" indicator when the current player has collected a power-arrow gift.
 - Fort health bars at the top left/right.
-- Turn message and last-shot result message.
+- Turn message and last-shot/gift result message.
 - Mute button in the game header.
+- Difficulty selector on the mode picker.
 - Online panel: room code, turn timer, emoji reactions. *(future)*
 - Aim-assist toggle in settings for younger players. *(future)*
 
@@ -165,6 +191,7 @@ Country-specific skins and landmark silhouettes are future enhancements.
   - Arrow release whoosh
   - Fort impact thud
   - Miss sound
+  - Gift collection chime
   - Victory fanfare
 
 ---
@@ -252,6 +279,8 @@ Country-specific skins and landmark silhouettes are future enhancements.
 - Audio is synthesized at runtime via the Web Audio API; a mute toggle is exposed through the game header.
 - Input supports mouse/touch drag aiming, on-screen buttons, and keyboard shortcuts.
 - Current modes: single-player vs AI (Easy/Medium/Hard) and local 2-player hotseat, selected from an in-game mode picker.
+- A unified Easy/Medium/Hard difficulty preset controls wind cap, gift spawn chance, and AI level.
+- Air gifts spawn at the start of turns, fall under gravity/wind, and are collected by arrow collision. They grant +25 health (capped) or a powered 50-damage next shot.
 - The AI solves the same trajectory physics as the player (angle + power binary search with wind compensation) and applies difficulty-based aim error.
 
 ## 20. Technical Notes

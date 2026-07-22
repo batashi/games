@@ -1,3 +1,12 @@
+export type GameDifficulty = 'easy' | 'medium' | 'hard';
+export type GiftType = 'health' | 'power';
+
+export interface Gift {
+	type: GiftType;
+	position: Point2D;
+	active: boolean;
+}
+
 export interface FortBattleState {
 	healths: [number, number];
 	currentPlayer: number;
@@ -7,6 +16,9 @@ export interface FortBattleState {
 	gameState: 'aiming' | 'flying' | 'gameover';
 	winner: number | null;
 	message: string;
+	gift: { type: GiftType; x: number; y: number } | null;
+	powerShotActive: boolean;
+	difficulty: GameDifficulty;
 }
 
 export interface FortBattleConfig {
@@ -28,6 +40,20 @@ export interface FortBattleConfig {
 	BOUNDS: { minX: number; maxX: number; maxY: number };
 	/** Display names used in turn/win messages. Defaults to red/blue player names. */
 	playerNames?: [string, string];
+	/** Overall difficulty. Defaults to medium. */
+	difficulty?: GameDifficulty;
+	/** Chance (0-1) a gift spawns at the start of a turn. */
+	GIFT_SPAWN_CHANCE?: number;
+	/** Vertical fall speed of a gift (units/sec). */
+	GIFT_FALL_SPEED?: number;
+	/** Gift collision radius. */
+	GIFT_RADIUS?: number;
+	/** Horizontal drift multiplier from wind. */
+	GIFT_DRIFT?: number;
+	/** Damage dealt by a powered-up shot. */
+	POWER_DAMAGE?: number;
+	/** Wind magnitude cap. */
+	MAX_WIND?: number;
 }
 
 export const DEFAULT_FORT_BATTLE_CONFIG: FortBattleConfig = {
@@ -56,11 +82,23 @@ export interface Point2D {
 
 const DEFAULT_PLAYER_NAMES: [string, string] = ['اللاعب الأحمر', 'اللاعب الأزرق'];
 
+function difficultyDefaults(difficulty: GameDifficulty) {
+	switch (difficulty) {
+		case 'easy':
+			return { GIFT_SPAWN_CHANCE: 0.5, MAX_WIND: 2, GIFT_FALL_SPEED: 1.6 };
+		case 'hard':
+			return { GIFT_SPAWN_CHANCE: 0.15, MAX_WIND: 4, GIFT_FALL_SPEED: 2.4 };
+		case 'medium':
+		default:
+			return { GIFT_SPAWN_CHANCE: 0.3, MAX_WIND: 3, GIFT_FALL_SPEED: 2.0 };
+	}
+}
+
 export function arrowStartPosition(config: FortBattleConfig, playerIndex: number): Point2D {
 	const x =
 		config.FORT_X[playerIndex] +
-		(playerIndex === 0 ? config.FORT_RADIUS + 0.8 : -(config.FORT_RADIUS + 0.8));
-	const y = config.FORT_HEIGHT + 1.6;
+		(playerIndex === 0 ? config.FORT_RADIUS! + 0.8 : -(config.FORT_RADIUS! + 0.8));
+	const y = config.FORT_HEIGHT! + 1.6;
 	return { x, y };
 }
 
@@ -68,10 +106,11 @@ export interface FortBattleCallbacks {
 	onHit?: (fortIndex: number, position: Point2D) => void;
 	onMiss?: (message: string) => void;
 	onWin?: (winner: number) => void;
+	onGiftCollected?: (type: GiftType, position: Point2D) => void;
 }
 
 export class FortBattleLogic {
-	private config: FortBattleConfig;
+	private config: Required<FortBattleConfig>;
 	private onChange: (state: FortBattleState) => void;
 	private callbacks: FortBattleCallbacks;
 
@@ -89,13 +128,25 @@ export class FortBattleLogic {
 	private arrowFlying = false;
 	private lastMessage = '';
 
+	private gift: Gift | null = null;
+	private powerShotActive = false;
+
 	constructor(
 		onChange: (state: FortBattleState) => void,
 		config: Partial<FortBattleConfig> = {},
 		callbacks: FortBattleCallbacks = {}
 	) {
 		this.onChange = onChange;
-		this.config = { ...DEFAULT_FORT_BATTLE_CONFIG, ...config };
+		const difficulty = config.difficulty ?? 'medium';
+		this.config = {
+			...(DEFAULT_FORT_BATTLE_CONFIG as Required<FortBattleConfig>),
+			...difficultyDefaults(difficulty),
+			...config,
+			difficulty,
+			GIFT_RADIUS: 1.2,
+			GIFT_DRIFT: 0.3,
+			POWER_DAMAGE: 50
+		} as Required<FortBattleConfig>;
 		this.callbacks = callbacks;
 		this.resetGame();
 	}
@@ -115,7 +166,10 @@ export class FortBattleLogic {
 			wind: this.wind,
 			gameState: this.gameState,
 			winner: this.winner,
-			message: this.getMessage()
+			message: this.getMessage(),
+			gift: this.gift ? { type: this.gift.type, x: this.gift.position.x, y: this.gift.position.y } : null,
+			powerShotActive: this.powerShotActive,
+			difficulty: this.config.difficulty
 		};
 	}
 
@@ -139,8 +193,12 @@ export class FortBattleLogic {
 		return this.currentPlayer;
 	}
 
-	getConfig(): FortBattleConfig {
+	getConfig(): Required<FortBattleConfig> {
 		return { ...this.config };
+	}
+
+	getGift(): Gift | null {
+		return this.gift;
 	}
 
 	// --- Input actions -----------------------------------------------------
@@ -184,6 +242,8 @@ export class FortBattleLogic {
 		this.healths = this.getInitialHealths();
 		this.currentPlayer = 0;
 		this.winner = null;
+		this.powerShotActive = false;
+		this.gift = null;
 		this.resetTurn();
 	}
 
@@ -200,6 +260,20 @@ export class FortBattleLogic {
 		this.arrowPosition.y += this.arrowVelocity.y * dtClamped;
 
 		this.checkCollisions();
+	}
+
+	updateGift(dt: number): void {
+		if (!this.gift?.active || this.gameState === 'gameover') return;
+
+		const dtClamped = Math.min(dt, 0.05);
+		this.gift.position.y -= this.config.GIFT_FALL_SPEED * dtClamped;
+		this.gift.position.x += this.wind * this.config.GIFT_DRIFT * dtClamped;
+
+		if (this.gift.position.y <= this.config.GROUND_Y + this.config.GIFT_RADIUS) {
+			this.gift = null;
+			this.lastMessage = 'فاتتك الهدية!';
+			this.notify();
+		}
 	}
 
 	// --- Physics helpers ---------------------------------------------------
@@ -256,6 +330,12 @@ export class FortBattleLogic {
 	private checkCollisions(): void {
 		const pos = this.arrowPosition;
 
+		// Gift (must be collected before hitting anything else)
+		if (this.gift?.active && this.arrowIntersectsGift(pos)) {
+			this.collectGift();
+			return;
+		}
+
 		// Ground
 		if (pos.y <= this.config.GROUND_Y + this.config.ARROW_RADIUS) {
 			this.handleMiss('السهم وقع على الأرض');
@@ -290,9 +370,40 @@ export class FortBattleLogic {
 		);
 	}
 
+	private arrowIntersectsGift(arrowPos: Point2D): boolean {
+		if (!this.gift) return false;
+		const dx = arrowPos.x - this.gift.position.x;
+		const dy = arrowPos.y - this.gift.position.y;
+		return Math.sqrt(dx * dx + dy * dy) <= this.config.GIFT_RADIUS + this.config.ARROW_RADIUS;
+	}
+
+	private collectGift(): void {
+		if (!this.gift) return;
+		const type = this.gift.type;
+		const position = { ...this.gift.position };
+		this.arrowFlying = false;
+		this.gift = null;
+
+		if (type === 'health') {
+			this.healths[this.currentPlayer] = Math.min(
+				this.config.INITIAL_HEALTH,
+				this.healths[this.currentPlayer] + 25
+			);
+			this.lastMessage = '+25 صحة! 💚';
+		} else {
+			this.powerShotActive = true;
+			this.lastMessage = 'سهم قوي! 🔥';
+		}
+
+		this.callbacks.onGiftCollected?.(type, position);
+		this.switchPlayer();
+	}
+
 	private handleHit(fortIndex: number): void {
 		this.arrowFlying = false;
-		this.healths[fortIndex] = Math.max(0, this.healths[fortIndex] - this.config.DAMAGE);
+		const damage = this.powerShotActive ? this.config.POWER_DAMAGE : this.config.DAMAGE;
+		this.powerShotActive = false;
+		this.healths[fortIndex] = Math.max(0, this.healths[fortIndex] - damage);
 		this.callbacks.onHit?.(fortIndex, { ...this.arrowPosition });
 
 		if (this.healths[fortIndex] <= 0) {
@@ -326,8 +437,22 @@ export class FortBattleLogic {
 		this.charging = false;
 		this.chargeElapsedSeconds = 0;
 		this.arrowFlying = false;
-		this.wind = Math.floor(Math.random() * 7) - 3; // -3 to +3
+		const maxWind = this.config.MAX_WIND;
+		this.wind = Math.floor(Math.random() * (maxWind * 2 + 1)) - maxWind;
+		this.maybeSpawnGift();
 		this.notify();
+	}
+
+	private maybeSpawnGift(): void {
+		if (this.gift?.active) return;
+		if (Math.random() >= this.config.GIFT_SPAWN_CHANCE) return;
+
+		const type: GiftType = Math.random() < 0.5 ? 'health' : 'power';
+		const minX = this.config.BOUNDS.minX + 10;
+		const maxX = this.config.BOUNDS.maxX - 10;
+		const x = Math.random() * (maxX - minX) + minX;
+		const y = Math.random() * 14 + 18;
+		this.gift = { type, position: { x, y }, active: true };
 	}
 
 	// --- Messaging ---------------------------------------------------------

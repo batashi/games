@@ -19,11 +19,120 @@ describe('FortBattleLogic', () => {
 			expect(state.winner).toBeNull();
 			expect(state.angle).toBe(45);
 			expect(state.power).toBe(10);
+			expect(state.difficulty).toBe('medium');
+			expect(state.powerShotActive).toBe(false);
 		});
 
 		it('notifies on creation', () => {
 			const { onChange } = createLogic();
 			expect(onChange).toHaveBeenCalled();
+		});
+	});
+
+	describe('difficulty', () => {
+		it('applies medium defaults', () => {
+			const { logic } = createLogic();
+			const config = logic.getConfig();
+			expect(config.difficulty).toBe('medium');
+			expect(config.GIFT_SPAWN_CHANCE).toBe(0.3);
+			expect(config.MAX_WIND).toBe(3);
+		});
+
+		it('applies easy and hard parameters', () => {
+			const easy = createLogic({ difficulty: 'easy' }).logic.getConfig();
+			expect(easy.GIFT_SPAWN_CHANCE).toBe(0.5);
+			expect(easy.MAX_WIND).toBe(2);
+
+			const hard = createLogic({ difficulty: 'hard' }).logic.getConfig();
+			expect(hard.GIFT_SPAWN_CHANCE).toBe(0.15);
+			expect(hard.MAX_WIND).toBe(4);
+		});
+
+		it('clamps wind magnitude to the difficulty cap', () => {
+			const { logic } = createLogic({ difficulty: 'hard' });
+			for (let i = 0; i < 30; i++) {
+				logic.resetGame();
+				expect(Math.abs(logic.getState().wind)).toBeLessThanOrEqual(4);
+			}
+		});
+	});
+
+	describe('air gifts', () => {
+		it('spawns a gift when chance is 1', () => {
+			const { logic } = createLogic({ GIFT_SPAWN_CHANCE: 1 });
+			expect(logic.getGift()).not.toBeNull();
+			expect(logic.getState().gift).not.toBeNull();
+		});
+
+		it('does not spawn a gift when chance is 0', () => {
+			const { logic } = createLogic({ GIFT_SPAWN_CHANCE: 0 });
+			expect(logic.getGift()).toBeNull();
+		});
+
+		it('gift falls over time', () => {
+			const { logic } = createLogic({ GIFT_SPAWN_CHANCE: 1, GIFT_FALL_SPEED: 5 });
+			const startY = logic.getGift()!.position.y;
+			logic.updateGift(0.5);
+			expect(logic.getGift()!.position.y).toBeLessThan(startY);
+		});
+
+		it('collecting a health gift restores health up to the cap', () => {
+			const { logic } = createLogic({
+				GIFT_SPAWN_CHANCE: 1,
+				INITIAL_HEALTH: 80,
+				WIND_SCALE: 0
+			});
+			const gift = logic.getGift()!;
+			gift.type = 'health';
+
+			logic.startCharge();
+			logic.updateCharge(2);
+			logic.releaseCharge();
+
+			while (logic.getState().gameState === 'flying') {
+				gift.position = { ...logic.getArrowPosition() };
+				logic.updateFlight(0.05);
+			}
+
+			const state = logic.getState();
+			expect(state.healths[0]).toBe(80); // current player was already at cap after reset
+			expect(state.message).toContain('+25');
+		});
+
+		it('collecting a power gift doubles the next shot damage', () => {
+			const { logic } = createLogic({ GIFT_SPAWN_CHANCE: 1, WIND_SCALE: 0 });
+			const gift = logic.getGift()!;
+			gift.type = 'power';
+
+			logic.startCharge();
+			logic.updateCharge(2);
+			logic.releaseCharge();
+
+			while (logic.getState().gameState === 'flying') {
+				gift.position = { ...logic.getArrowPosition() };
+				logic.updateFlight(0.05);
+			}
+
+			expect(logic.getState().powerShotActive).toBe(true);
+
+			// Next turn: fire a powered shot at the enemy fort.
+			logic.startCharge();
+			logic.updateCharge(2);
+			logic.releaseCharge();
+
+			for (let i = 0; i < 400 && logic.getState().gameState === 'flying'; i++) {
+				logic.updateFlight(0.05);
+			}
+
+			expect(logic.getState().healths[0]).toBe(50); // player 1 hit player 0 with 50 damage
+		});
+
+		it('missed gifts disappear when they hit the ground', () => {
+			const { logic } = createLogic({ GIFT_SPAWN_CHANCE: 1, GIFT_FALL_SPEED: 50 });
+			while (logic.getGift()) {
+				logic.updateGift(0.1);
+			}
+			expect(logic.getState().message).toContain('فاتتك');
 		});
 	});
 
@@ -178,8 +287,8 @@ describe('FortBattleLogic', () => {
 		});
 
 		it('hits the enemy fort and deals damage', () => {
-			// Remove random wind so the default 45° shot is deterministic.
-			const { logic } = createLogic({ WIND_SCALE: 0 });
+			// Remove random wind and gifts so the default 45° shot is deterministic.
+			const { logic } = createLogic({ WIND_SCALE: 0, GIFT_SPAWN_CHANCE: 0 });
 			logic.startCharge();
 			logic.updateCharge(2); // max power
 			logic.releaseCharge();
@@ -195,11 +304,12 @@ describe('FortBattleLogic', () => {
 		});
 
 		it('declares a winner after two hits', () => {
-			// Reduce health and remove wind so player 0 wins on its second successful hit.
+			// Reduce health and remove wind/gifts so player 0 wins on its second successful hit.
 			const { logic } = createLogic({
 				INITIAL_HEALTH: 50,
 				DAMAGE: 25,
-				WIND_SCALE: 0
+				WIND_SCALE: 0,
+				GIFT_SPAWN_CHANCE: 0
 			});
 
 			let turns = 0;

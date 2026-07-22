@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import type { FortBattleState, FortBattleMode, AIDifficulty, FortTheme } from '$lib/games/fort-battle';
+	import type { FortBattleState, FortBattleMode, GameDifficulty, FortTheme } from '$lib/games/fort-battle';
 
 	let canvas: HTMLCanvasElement;
 	let game: import('$lib/games/fort-battle').FortBattleGame | null = null;
@@ -11,7 +11,7 @@
 
 	let phase = $state<'mode' | 'difficulty' | 'playing'>('mode');
 	let mode = $state<FortBattleMode>('hotseat');
-	let difficulty = $state<AIDifficulty>('medium');
+	let difficulty = $state<GameDifficulty>('medium');
 
 	onMount(() => {
 		// Preload the game module while the player picks a mode.
@@ -22,9 +22,13 @@
 		game?.dispose();
 	});
 
-	async function startGame(selectedMode: FortBattleMode, diff?: AIDifficulty) {
+	function selectMode(selectedMode: FortBattleMode) {
 		mode = selectedMode;
-		if (diff) difficulty = diff;
+		phase = 'difficulty';
+	}
+
+	async function startGame(selectedDifficulty: GameDifficulty) {
+		difficulty = selectedDifficulty;
 		const { FortBattleGame } = await import('$lib/games/fort-battle');
 		phase = 'playing';
 		game = new FortBattleGame(
@@ -80,6 +84,12 @@
 		return '—';
 	}
 
+	function difficultyLabel(d: GameDifficulty): string {
+		if (d === 'easy') return 'سهل';
+		if (d === 'hard') return 'صعب';
+		return 'متوسط';
+	}
+
 	let aiThinking = $derived(
 		mode === 'ai' && state !== null && state.currentPlayer === 1 && state.gameState !== 'gameover'
 	);
@@ -116,39 +126,41 @@
 						<button
 							type="button"
 							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-6 rounded-xl transition-colors"
-							onclick={() => (phase = 'difficulty')}
+							onclick={() => selectMode('ai')}
 						>
 							🤖 ضد الكمبيوتر
 						</button>
 						<button
 							type="button"
 							class="bg-white/10 hover:bg-white/20 text-cream font-bold py-3 px-6 rounded-xl transition-colors"
-							onclick={() => startGame('hotseat')}
+							onclick={() => selectMode('hotseat')}
 						>
 							👥 لاعبان على نفس الجهاز
 						</button>
 					</div>
 				{:else}
-					<p class="text-sm opacity-80 mb-4">اختر مستوى الصعوبة</p>
+					<p class="text-sm opacity-80 mb-4">
+						{mode === 'ai' ? 'اختر صعوبة الكمبيوتر والهدايا' : 'اختر صعوبة الهدايا والرياح'}
+					</p>
 					<div class="flex flex-col gap-3">
 						<button
 							type="button"
 							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-6 rounded-xl transition-colors"
-							onclick={() => startGame('ai', 'easy')}
+							onclick={() => startGame('easy')}
 						>
 							سهل
 						</button>
 						<button
 							type="button"
 							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-6 rounded-xl transition-colors"
-							onclick={() => startGame('ai', 'medium')}
+							onclick={() => startGame('medium')}
 						>
 							متوسط
 						</button>
 						<button
 							type="button"
 							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-6 rounded-xl transition-colors"
-							onclick={() => startGame('ai', 'hard')}
+							onclick={() => startGame('hard')}
 						>
 							صعب
 						</button>
@@ -195,6 +207,14 @@
 			{#if theme}
 				<div class="bg-charcoal/70 text-cream px-3 py-1.5 rounded-lg text-sm">
 					الساحة: <span class="font-bold">{theme.nameAr}</span>
+				</div>
+			{/if}
+			<div class="bg-charcoal/70 text-cream px-3 py-1.5 rounded-lg text-sm">
+				الصعوبة: <span class="font-bold">{difficultyLabel(state.difficulty)}</span>
+			</div>
+			{#if state.powerShotActive}
+				<div class="bg-orange-500/90 text-cream px-3 py-1.5 rounded-lg text-sm font-bold animate-pulse">
+					سهم قوي! 🔥
 				</div>
 			{/if}
 			<div class="bg-charcoal/70 text-cream px-3 py-1.5 rounded-lg text-sm">

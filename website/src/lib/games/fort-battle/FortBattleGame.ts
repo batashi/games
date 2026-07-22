@@ -13,17 +13,18 @@ import {
 	KeyboardEventTypes,
 	PointerEventTypes
 } from '@babylonjs/core';
-import { FortBattleLogic, type FortBattleState, type Point2D, type FortBattleConfig } from './FortBattleLogic';
+import { FortBattleLogic, type FortBattleState, type Point2D, type FortBattleConfig, type GameDifficulty, type GiftType } from './FortBattleLogic';
 import { computeAIShot, type AIDifficulty } from './FortBattleAI';
 import { pickRandomTheme, type FortTheme, type RGB } from './FortBattleTheme';
 
-export type { FortBattleState, AIDifficulty, FortTheme };
+export type { FortBattleState, AIDifficulty, FortTheme, GameDifficulty };
 
 export type FortBattleMode = 'hotseat' | 'ai';
 
 export interface FortBattleGameOptions {
 	mode?: FortBattleMode;
-	difficulty?: AIDifficulty;
+	/** Easy/medium/hard controls gift spawn rate, wind cap, and AI level. */
+	difficulty?: GameDifficulty;
 	/** If omitted, a random GCC country theme is picked per match. */
 	theme?: FortTheme;
 }
@@ -137,6 +138,24 @@ class GameAudio {
 			osc.stop(ctx!.currentTime + i * 0.12 + 0.4);
 		});
 	}
+
+	playPowerup() {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		[523, 659, 784, 1047].forEach((freq, i) => {
+			const osc = ctx!.createOscillator();
+			const gain = ctx!.createGain();
+			osc.type = 'sine';
+			osc.frequency.setValueAtTime(freq, ctx!.currentTime + i * 0.06);
+			gain.gain.setValueAtTime(0.0001, ctx!.currentTime + i * 0.06);
+			gain.gain.exponentialRampToValueAtTime(0.2, ctx!.currentTime + i * 0.06 + 0.02);
+			gain.gain.exponentialRampToValueAtTime(0.001, ctx!.currentTime + i * 0.06 + 0.25);
+			osc.connect(gain);
+			gain.connect(ctx!.destination);
+			osc.start(ctx!.currentTime + i * 0.06);
+			osc.stop(ctx!.currentTime + i * 0.06 + 0.3);
+		});
+	}
 }
 
 export class FortBattleGame {
@@ -157,13 +176,15 @@ export class FortBattleGame {
 	private aimGuideDots: Mesh[] = [];
 	private aimGuideLine!: Mesh;
 	private aimPlane!: Mesh;
+	private giftMesh: Mesh | null = null;
+	private giftGlow: Mesh | null = null;
 
 	private audio = new GameAudio();
 	private logic: FortBattleLogic;
 	private onChange: (state: FortBattleState) => void;
 
 	private mode: FortBattleMode;
-	private difficulty: AIDifficulty;
+	private difficulty: GameDifficulty;
 	private theme: FortTheme;
 	private aiTurnTimer: ReturnType<typeof setTimeout> | null = null;
 	private aiTurnActive = false;
@@ -193,11 +214,15 @@ export class FortBattleGame {
 					this.onStateChanged(state);
 				}
 			},
-			this.mode === 'ai' ? { playerNames: ['اللاعب', 'الكمبيوتر'] } : {},
+			{
+				difficulty: this.difficulty,
+				...(this.mode === 'ai' ? { playerNames: ['اللاعب', 'الكمبيوتر'] } : {})
+			},
 			{
 				onHit: (fortIndex, position) => this.onHit(fortIndex, position),
 				onMiss: (message) => this.onMiss(message),
-				onWin: (winner) => this.onWin(winner)
+				onWin: (winner) => this.onWin(winner),
+				onGiftCollected: (type, position) => this.onGiftCollected(type, position)
 			}
 		);
 
@@ -755,7 +780,7 @@ export class FortBattleGame {
 				return;
 			}
 			const state = this.logic.getState();
-			const shot = computeAIShot(this.logic.getConfig(), 1, 0, state.wind, this.difficulty);
+			const shot = computeAIShot(this.logic.getConfig(), 1, 0, state.wind, this.difficulty as AIDifficulty);
 			this.logic.setAngle(shot.angle);
 			this.aiTargetPower = shot.power;
 			this.beginCharge();
@@ -832,7 +857,13 @@ export class FortBattleGame {
 
 	private update(dt: number): void {
 		const state = this.logic.getState();
-		if (state.gameState === 'gameover') return;
+		if (state.gameState === 'gameover') {
+			this.disposeGiftMesh();
+			return;
+		}
+
+		this.logic.updateGift(dt);
+		this.updateGiftVisual(dt);
 
 		if (this.logic.isCharging()) {
 			const elapsed = (performance.now() - this.chargeStartTime) / 1000;
@@ -852,6 +883,52 @@ export class FortBattleGame {
 			this.arrowRoot.position.x = pos.x;
 			this.arrowRoot.position.y = pos.y;
 			this.updateArrowRotation();
+		}
+	}
+
+	private updateGiftVisual(dt: number): void {
+		const gift = this.logic.getGift();
+		if (!gift?.active) {
+			this.disposeGiftMesh();
+			return;
+		}
+
+		if (!this.giftMesh) {
+			this.createGiftMesh(gift.type);
+		}
+
+		const pos = this.toVector3(gift.position);
+		this.giftMesh!.position.copyFrom(pos);
+		this.giftGlow!.position.copyFrom(pos);
+		this.giftMesh!.rotation.y += dt * 1.5;
+		this.giftMesh!.rotation.z += dt * 0.5;
+	}
+
+	private createGiftMesh(type: GiftType): void {
+		const color = type === 'health' ? new Color3(0.2, 0.85, 0.3) : new Color3(1, 0.55, 0.1);
+
+		this.giftMesh = MeshBuilder.CreateBox('giftBox', { size: 1.4 }, this.scene);
+		const mat = new StandardMaterial('giftMat', this.scene);
+		mat.diffuseColor = color;
+		mat.emissiveColor = color.scale(0.35);
+		this.giftMesh.material = mat;
+
+		this.giftGlow = MeshBuilder.CreateSphere('giftGlow', { diameter: 2.2 }, this.scene);
+		const glowMat = new StandardMaterial('giftGlowMat', this.scene);
+		glowMat.diffuseColor = color;
+		glowMat.emissiveColor = color.scale(0.25);
+		glowMat.alpha = 0.35;
+		this.giftGlow.material = glowMat;
+	}
+
+	private disposeGiftMesh(): void {
+		if (this.giftMesh) {
+			this.giftMesh.dispose();
+			this.giftMesh = null;
+		}
+		if (this.giftGlow) {
+			this.giftGlow.dispose();
+			this.giftGlow = null;
 		}
 	}
 
@@ -890,18 +967,25 @@ export class FortBattleGame {
 		this.audio.playWin();
 	}
 
+	private onGiftCollected(type: GiftType, position: Point2D): void {
+		const color = type === 'health' ? new Color3(0.2, 0.85, 0.3) : new Color3(1, 0.55, 0.1);
+		this.spawnParticles(this.toVector3(position), color);
+		this.audio.playPowerup();
+	}
+
 	private updateWindVisual(wind: number): void {
 		const scale = Math.abs(wind) * 0.3 + 0.3;
 		this.windIndicator.scaling = new Vector3(scale, 1, 1);
 		this.windIndicator.rotation.z = wind >= 0 ? -Math.PI / 2 : Math.PI / 2;
 	}
 
-	private spawnParticles(position: Vector3): void {
+	private spawnParticles(position: Vector3, color?: Color3): void {
 		for (let i = 0; i < 8; i++) {
 			const particle = MeshBuilder.CreateSphere(`hit${i}`, { diameter: 0.5 + Math.random() * 0.4 }, this.scene);
 			particle.position = position.clone();
 			const mat = new StandardMaterial(`hitMat${i}`, this.scene);
-			mat.diffuseColor = new Color3(1, 0.5 + Math.random() * 0.2, 0.1);
+			const base = color ?? new Color3(1, 0.5 + Math.random() * 0.2, 0.1);
+			mat.diffuseColor = base;
 			particle.material = mat;
 
 			const vel = new Vector3((Math.random() - 0.5) * 6, Math.random() * 6, (Math.random() - 0.5) * 4);
@@ -934,6 +1018,7 @@ export class FortBattleGame {
 
 	dispose(): void {
 		this.clearAITurn();
+		this.disposeGiftMesh();
 		window.removeEventListener('resize', this.handleResize);
 		this.engine.dispose();
 	}
