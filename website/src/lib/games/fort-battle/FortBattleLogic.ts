@@ -26,6 +26,8 @@ export interface FortBattleConfig {
 	MAX_ANGLE: number;
 	MIN_ANGLE: number;
 	BOUNDS: { minX: number; maxX: number; maxY: number };
+	/** Display names used in turn/win messages. Defaults to red/blue player names. */
+	playerNames?: [string, string];
 }
 
 export const DEFAULT_FORT_BATTLE_CONFIG: FortBattleConfig = {
@@ -50,6 +52,16 @@ export const DEFAULT_FORT_BATTLE_CONFIG: FortBattleConfig = {
 export interface Point2D {
 	x: number;
 	y: number;
+}
+
+const DEFAULT_PLAYER_NAMES: [string, string] = ['اللاعب الأحمر', 'اللاعب الأزرق'];
+
+export function arrowStartPosition(config: FortBattleConfig, playerIndex: number): Point2D {
+	const x =
+		config.FORT_X[playerIndex] +
+		(playerIndex === 0 ? config.FORT_RADIUS + 0.8 : -(config.FORT_RADIUS + 0.8));
+	const y = config.FORT_HEIGHT + 1.6;
+	return { x, y };
 }
 
 export interface FortBattleCallbacks {
@@ -211,11 +223,7 @@ export class FortBattleLogic {
 	}
 
 	getArrowStartPosition(): Point2D {
-		const x =
-			this.config.FORT_X[this.currentPlayer] +
-			(this.currentPlayer === 0 ? this.config.FORT_RADIUS + 0.8 : -(this.config.FORT_RADIUS + 0.8));
-		const y = this.config.FORT_HEIGHT + 1.6;
-		return { x, y };
+		return arrowStartPosition(this.config, this.currentPlayer);
 	}
 
 	computeTrajectory(steps = 18, stepDelta = 0.12): Point2D[] {
@@ -324,18 +332,20 @@ export class FortBattleLogic {
 
 	// --- Messaging ---------------------------------------------------------
 
+	private get playerNames(): [string, string] {
+		return this.config.playerNames ?? DEFAULT_PLAYER_NAMES;
+	}
+
 	private getMessage(): string {
 		if (this.gameState === 'gameover' && this.winner !== null) {
-			return this.winner === 0 ? 'فاز اللاعب الأحمر! 🎉' : 'فاز اللاعب الأزرق! 🎉';
+			return `فاز ${this.playerNames[this.winner]}! 🎉`;
 		}
 		if (this.lastMessage && this.gameState === 'aiming') {
 			return this.lastMessage;
 		}
 		if (this.charging) return 'استمر بالضغط لشحن القوة...';
 		if (this.gameState === 'aiming') {
-			return this.currentPlayer === 0
-				? 'دور اللاعب الأحمر: حرك الماوس للتصويب ثم اضغط لشحن القوة'
-				: 'دور اللاعب الأزرق: حرك الماوس للتصويب ثم اضغط لشحن القوة';
+			return `دور ${this.playerNames[this.currentPlayer]}: حرك الماوس للتصويب ثم اضغط لشحن القوة`;
 		}
 		if (this.gameState === 'flying') return 'السهم في الجو...';
 		return '';

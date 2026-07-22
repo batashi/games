@@ -1,1 +1,2 @@
-export { FortBattleGame, type FortBattleState } from './FortBattleGame';
+export { FortBattleGame, type FortBattleState, type FortBattleMode, type FortBattleGameOptions } from './FortBattleGame';
+export type { AIDifficulty } from './FortBattleAI';

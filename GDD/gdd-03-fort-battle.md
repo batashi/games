@@ -91,7 +91,7 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 | Damage | Direct health damage on fort hit; 25 HP per hit. |
 | Physics | Gravity arc and wind drift. |
 | Aim Guide | Dotted trajectory line preview updates while aiming/charging. |
-| AI | Simulates aim and power with adjustable accuracy. Easy misses often; Hard accounts for wind. *(future)* |
+| AI | Simulates aim and power with adjustable accuracy. Easy misses often; Hard accounts for wind. *(implemented: Easy/Medium/Hard)* |
 
 ---
 
@@ -249,7 +249,8 @@ Country-specific skins and landmark silhouettes are future enhancements.
 - A dotted line + sphere trajectory preview is computed from the same physics formula used at fire time.
 - Audio is synthesized at runtime via the Web Audio API; a mute toggle is exposed through the game header.
 - Input supports mouse/touch drag aiming, on-screen buttons, and keyboard shortcuts.
-- Current mode: local 2-player hotseat.
+- Current modes: single-player vs AI (Easy/Medium/Hard) and local 2-player hotseat, selected from an in-game mode picker.
+- The AI solves the same trajectory physics as the player (angle + power binary search with wind compensation) and applies difficulty-based aim error.
 
 ## 20. Technical Notes
 

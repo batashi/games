@@ -14,8 +14,16 @@ import {
 	PointerEventTypes
 } from '@babylonjs/core';
 import { FortBattleLogic, type FortBattleState, type Point2D } from './FortBattleLogic';
+import { computeAIShot, type AIDifficulty } from './FortBattleAI';
 
-export type { FortBattleState };
+export type { FortBattleState, AIDifficulty };
+
+export type FortBattleMode = 'hotseat' | 'ai';
+
+export interface FortBattleGameOptions {
+	mode?: FortBattleMode;
+	difficulty?: AIDifficulty;
+}
 
 class GameAudio {
 	private ctx: AudioContext | null = null;
@@ -151,13 +159,25 @@ export class FortBattleGame {
 	private logic: FortBattleLogic;
 	private onChange: (state: FortBattleState) => void;
 
+	private mode: FortBattleMode;
+	private difficulty: AIDifficulty;
+	private aiTurnTimer: ReturnType<typeof setTimeout> | null = null;
+	private aiTurnActive = false;
+	private aiTargetPower = 0;
+
 	private chargeStartTime = 0;
 	private pendingTurnMessage = '';
 	private visualReady = false;
 
-	constructor(canvas: HTMLCanvasElement, onChange: (state: FortBattleState) => void) {
+	constructor(
+		canvas: HTMLCanvasElement,
+		onChange: (state: FortBattleState) => void,
+		options: FortBattleGameOptions = {}
+	) {
 		this.canvas = canvas;
 		this.onChange = onChange;
+		this.mode = options.mode ?? 'hotseat';
+		this.difficulty = options.difficulty ?? 'medium';
 
 		// Create the logic first so setupEnvironment() can read its config.
 		// Visual callbacks are deferred until the scene is fully built.
@@ -168,7 +188,7 @@ export class FortBattleGame {
 					this.onStateChanged(state);
 				}
 			},
-			{},
+			this.mode === 'ai' ? { playerNames: ['اللاعب', 'الكمبيوتر'] } : {},
 			{
 				onHit: (fortIndex, position) => this.onHit(fortIndex, position),
 				onMiss: (message) => this.onMiss(message),
@@ -460,7 +480,7 @@ export class FortBattleGame {
 	private setupInput(): void {
 		this.scene.onKeyboardObservable.add((kbInfo) => {
 			const state = this.logic.getState();
-			if (state.gameState === 'gameover') return;
+			if (state.gameState === 'gameover' || this.isAITurn()) return;
 
 			if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
 				switch (kbInfo.event.key) {
@@ -476,7 +496,7 @@ export class FortBattleGame {
 					case 'Spacebar':
 						kbInfo.event.preventDefault();
 						if (state.gameState === 'aiming' && !this.logic.isCharging()) {
-							this.startCharge();
+							this.beginCharge();
 						}
 						break;
 				}
@@ -492,7 +512,7 @@ export class FortBattleGame {
 		let pointerDown = false;
 		this.scene.onPointerObservable.add((pointerInfo) => {
 			const state = this.logic.getState();
-			if (state.gameState === 'gameover') return;
+			if (state.gameState === 'gameover' || this.isAITurn()) return;
 
 			if (pointerInfo.type === PointerEventTypes.POINTERMOVE) {
 				if (state.gameState === 'aiming' && !this.logic.isCharging()) {
@@ -501,7 +521,7 @@ export class FortBattleGame {
 			} else if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
 				if (state.gameState === 'aiming' && !this.logic.isCharging()) {
 					pointerDown = true;
-					this.startCharge();
+					this.beginCharge();
 				}
 			} else if (pointerInfo.type === PointerEventTypes.POINTERUP && pointerDown) {
 				pointerDown = false;
@@ -531,9 +551,60 @@ export class FortBattleGame {
 		this.logic.setAngle(Math.round(newAngle));
 	}
 
-	private startCharge(): void {
+	private beginCharge(): void {
 		this.logic.startCharge();
 		this.chargeStartTime = performance.now();
+	}
+
+	// --- Public controls (blocked while the AI is taking its turn) ----------
+
+	isAITurn(): boolean {
+		return this.mode === 'ai' && this.logic.getCurrentPlayer() === 1;
+	}
+
+	getMode(): FortBattleMode {
+		return this.mode;
+	}
+
+	adjustAngle(delta: number): void {
+		if (this.isAITurn()) return;
+		this.logic.adjustAngle(delta);
+	}
+
+	startCharge(): void {
+		if (this.isAITurn()) return;
+		this.beginCharge();
+	}
+
+	releaseCharge(): void {
+		if (this.isAITurn()) return;
+		this.logic.releaseCharge();
+	}
+
+	// --- AI turn driver ------------------------------------------------------
+
+	private scheduleAITurn(): void {
+		this.aiTurnActive = true;
+		this.aiTurnTimer = setTimeout(() => {
+			this.aiTurnTimer = null;
+			if (!this.isAITurn() || this.logic.getState().gameState !== 'aiming') {
+				this.aiTurnActive = false;
+				return;
+			}
+			const state = this.logic.getState();
+			const shot = computeAIShot(this.logic.getConfig(), 1, 0, state.wind, this.difficulty);
+			this.logic.setAngle(shot.angle);
+			this.aiTargetPower = shot.power;
+			this.beginCharge();
+		}, 1000);
+	}
+
+	private clearAITurn(): void {
+		if (this.aiTurnTimer !== null) {
+			clearTimeout(this.aiTurnTimer);
+			this.aiTurnTimer = null;
+		}
+		this.aiTurnActive = false;
 	}
 
 	private handleResize = (): void => {
@@ -603,6 +674,12 @@ export class FortBattleGame {
 		if (this.logic.isCharging()) {
 			const elapsed = (performance.now() - this.chargeStartTime) / 1000;
 			this.logic.updateCharge(elapsed);
+
+			// The AI releases as soon as the charged power reaches its target.
+			if (this.aiTurnActive && this.isAITurn() && this.logic.getState().power >= this.aiTargetPower) {
+				this.aiTurnActive = false;
+				this.logic.releaseCharge();
+			}
 		}
 
 		if (this.logic.isArrowFlying()) {
@@ -627,6 +704,10 @@ export class FortBattleGame {
 
 		if (this.pendingTurnMessage && state.gameState === 'aiming') {
 			this.pendingTurnMessage = '';
+		}
+
+		if (state.gameState === 'aiming' && this.isAITurn() && !this.aiTurnActive) {
+			this.scheduleAITurn();
 		}
 	}
 
@@ -684,10 +765,12 @@ export class FortBattleGame {
 	}
 
 	resetGame(): void {
+		this.clearAITurn();
 		this.logic.resetGame();
 	}
 
 	dispose(): void {
+		this.clearAITurn();
 		window.removeEventListener('resize', this.handleResize);
 		this.engine.dispose();
 	}
