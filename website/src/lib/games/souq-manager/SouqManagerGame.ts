@@ -407,33 +407,62 @@ export class SouqManagerGame {
 		soilMat.diffuseColor = new Color3(0.4, 0.3, 0.2);
 		root.material = soilMat;
 
-		const trunk = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.6, diameterTop: 0.12, diameterBottom: 0.22, tessellation: 8 }, this.scene));
-		trunk.position.y = 0.8;
+		// Tapered, slightly curved trunk built from stacked segments.
 		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
 		trunkMat.diffuseColor = new Color3(0.55, 0.4, 0.25);
-		trunk.material = trunkMat;
-		trunk.parent = root;
+		const trunkSegments = [
+			{ y: 0.35, h: 0.7, bottom: 0.26, top: 0.2 },
+			{ y: 0.9, h: 0.6, bottom: 0.2, top: 0.15 },
+			{ y: 1.35, h: 0.5, bottom: 0.15, top: 0.12 }
+		];
+		for (let i = 0; i < trunkSegments.length; i++) {
+			const seg = trunkSegments[i];
+			const trunk = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk${i}`, { height: seg.h, diameterTop: seg.top, diameterBottom: seg.bottom, tessellation: 8 }, this.scene));
+			trunk.position.y = seg.y;
+			trunk.position.x = i * 0.015;
+			trunk.material = trunkMat;
+			trunk.parent = root;
+		}
 
+		// Long, drooping fronds in two tiers, radiating around the crown.
 		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
 		leafMat.diffuseColor = new Color3(0.3, 0.55, 0.2);
-		for (let i = 0; i < 7; i++) {
-			const frond = MeshBuilder.CreateBox(`${name}-frond${i}`, { width: 0.12, height: 0.04, depth: 1.3 }, this.scene);
-			frond.position.y = 1.55;
-			frond.rotation.x = Math.PI / 3.5;
-			frond.rotation.y = (i / 7) * Math.PI * 2;
-			frond.position.x = Math.cos(frond.rotation.y) * 0.45;
-			frond.position.z = Math.sin(frond.rotation.y) * 0.45;
+		const frondCount = 12;
+		for (let i = 0; i < frondCount; i++) {
+			const angle = (i / frondCount) * Math.PI * 2;
+			const tier = i % 2 === 0 ? 1.55 : 1.68;
+			const length = i % 2 === 0 ? 1.2 : 1.0;
+			const frond = MeshBuilder.CreateBox(`${name}-frond${i}`, { width: 0.28, height: 0.04, depth: length }, this.scene);
+			frond.position.y = tier;
+			frond.position.x = Math.cos(angle) * 0.08;
+			frond.position.z = Math.sin(angle) * 0.08;
+			frond.rotation.y = angle;
+			frond.rotation.x = Math.PI / 2.4;
 			frond.material = leafMat;
 			frond.parent = root;
 		}
 
-		const dates = this.flatShade(MeshBuilder.CreateSphere(`${name}-dates`, { diameter: 0.32, segments: 8 }, this.scene));
-		dates.position.y = 1.35;
-		dates.position.z = 0.35;
+		// Hanging date clusters near the crown.
 		const datesMat = new StandardMaterial(`${name}-datesMat`, this.scene);
 		datesMat.diffuseColor = new Color3(0.75, 0.6, 0.15);
-		dates.material = datesMat;
-		dates.parent = root;
+		const clusterPositions = [
+			{ x: 0.18, y: 1.25, z: 0.18 },
+			{ x: -0.18, y: 1.2, z: 0.1 },
+			{ x: 0.05, y: 1.15, z: -0.2 }
+		];
+		for (let c = 0; c < clusterPositions.length; c++) {
+			const pos = clusterPositions[c];
+			for (let i = 0; i < 6; i++) {
+				const date = this.flatShade(MeshBuilder.CreateSphere(`${name}-date${c}-${i}`, { diameter: 0.1, segments: 6 }, this.scene));
+				date.position.set(
+					pos.x + (Math.random() - 0.5) * 0.1,
+					pos.y - (i * 0.08),
+					pos.z + (Math.random() - 0.5) * 0.08
+				);
+				date.material = datesMat;
+				date.parent = root;
+			}
+		}
 
 		return root;
 	}
