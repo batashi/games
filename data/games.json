@@ -1,7 +1,7 @@
 {
   "$schema": "./games.schema.json",
   "version": "1.0",
-  "lastUpdated": "2026-07-21",
+  "lastUpdated": "2026-07-24",
   "games": [
     {
       "id": "frankincense",
@@ -137,7 +137,7 @@
       "sessionLength": "2-4 min",
       "modes": ["single", "daily"],
       "countries": ["OM", "SA", "AE", "QA", "BH", "KW"],
-      "status": "coming-soon",
+      "status": "ready",
       "supportedPlatforms": ["desktop", "tablet", "mobile"],
       "heroImage": "/images/games/souq-manager-hero.webp",
       "thumbnail": "/images/games/souq-manager-thumb.webp",

@@ -6,9 +6,9 @@
 
 This repository is the planning and design home for the **GCC Kids Web Game Platform** (working title), a browser-based collection of culturally-themed games for children aged 7–12 across the Gulf Cooperation Council (GCC). It is maintained by **Aldoolab**.
 
-The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first playable game (Fort Battle) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
+The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first two playable games (Fort Battle and Souq al-Khaleej) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
 
-Four games are specified in the repository:
+Five games are specified in the repository:
 
 | ID | English Name | Arabic Name | Status |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Four games are specified in the repository:
 | `tictactoe` | Gulf Tic-Tac-Toe | تحدي إكس-أو الخليجي | Ready (design) |
 | `archery` | Fort Battle | معركة القلاع | Ready (design + playable prototype) |
 | `luban-sorter` | Luban Sorter | فرز اللبان | Ready (design) |
-| `souq-manager` | Souq al-Khaleej | سوق الخليج | In design / coming soon |
+| `souq-manager` | Souq al-Khaleej | سوق الخليج | Ready (design + playable prototype) |
 
 Additional games may be added to `data/games.json` as the catalogue grows.
 

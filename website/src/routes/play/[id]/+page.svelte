@@ -7,17 +7,27 @@
 	// Lazy-load game components so Babylon.js is only fetched for playable games.
 	let FortBattle = $state<typeof import('$lib/components/games/FortBattle.svelte').default | null>(null);
 	let fortBattleRef: import('$lib/components/games/FortBattle.svelte').default | null = $state(null);
+	let SouqManager = $state<typeof import('$lib/components/games/SouqManager.svelte').default | null>(null);
+	let souqManagerRef: import('$lib/components/games/SouqManager.svelte').default | null = $state(null);
 	let muted = $state(false);
 
 	onMount(async () => {
 		if (game.id === 'archery') {
 			FortBattle = (await import('$lib/components/games/FortBattle.svelte')).default;
 		}
+		if (game.id === 'souq-manager') {
+			SouqManager = (await import('$lib/components/games/SouqManager.svelte')).default;
+		}
 	});
 
 	function toggleMute() {
-		fortBattleRef?.toggleMute();
-		muted = fortBattleRef?.isMuted() ?? false;
+		if (game.id === 'archery') {
+			fortBattleRef?.toggleMute();
+			muted = fortBattleRef?.isMuted() ?? false;
+		} else if (game.id === 'souq-manager') {
+			souqManagerRef?.toggleMute();
+			muted = souqManagerRef?.isMuted() ?? false;
+		}
 	}
 </script>
 
@@ -61,6 +71,8 @@
 	<div class="flex-1 relative min-h-0 bg-gradient-to-br from-charcoal to-sea-dark/50">
 		{#if game.id === 'archery' && FortBattle}
 			<FortBattle bind:this={fortBattleRef} />
+		{:else if game.id === 'souq-manager' && SouqManager}
+			<SouqManager bind:this={souqManagerRef} />
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
 				<div>

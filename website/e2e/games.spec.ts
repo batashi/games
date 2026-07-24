@@ -80,4 +80,34 @@ test.describe('game smoke tests', () => {
 
 		expect(errors, `Unexpected console/page errors: ${errors.join('\n')}`).toHaveLength(0);
 	});
+
+	test('Souq al-Khaleej loads and starts a level without console errors', async ({ page }) => {
+		const { errors, warnings } = captureConsoleErrors(page);
+
+		await page.goto('/play/souq-manager');
+
+		// Wait for the page title and game header to render.
+		await expect(page).toHaveTitle(/سوق الخليج/);
+		await expect(page.getByRole('heading', { name: 'سوق الخليج', exact: true })).toBeVisible();
+
+		// Wait for the Babylon.js canvas and the level picker to be ready.
+		const canvas = page.locator('canvas');
+		await expect(canvas).toBeAttached();
+		await expect(canvas).toBeVisible();
+		await expect(page.locator('[data-level="1"]')).toBeVisible();
+
+		// Start level 1.
+		await page.locator('[data-level="1"]').click();
+
+		// The HUD should appear once the level starts.
+		await expect(page.getByText('الهدف')).toBeVisible();
+		await expect(page.getByText('الوقت')).toBeVisible();
+		await expect(page.getByText('الرصيد')).toBeVisible();
+
+		// Give async game initialization a moment to finish.
+		await page.waitForTimeout(2500);
+
+		expect(errors, `Unexpected console/page errors: ${errors.join('\n')}`).toHaveLength(0);
+		console.log('Console warnings:', warnings);
+	});
 });
