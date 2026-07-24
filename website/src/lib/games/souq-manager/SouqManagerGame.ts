@@ -256,13 +256,7 @@ export class SouqManagerGame {
 			root.position.y = 0;
 
 			this.camelTemplate = root;
-
-			// Debug: place one camel in the middle of the scene so it is easy to verify.
-			const debug = root.clone('camel-debug', null);
-			debug!.setEnabled(true);
-			debug!.position = new Vector3(2, 0, 2);
-			debug!.rotation.y = -Math.PI / 4;
-			console.log('Camel model loaded and placed at (2,0,2)');
+			console.log('Camel model loaded');
 		} catch (err) {
 			console.warn('Failed to load camel glTF:', err);
 		}
@@ -762,8 +756,8 @@ export class SouqManagerGame {
 	}
 
 	private pickAnimalType(): AnimalType {
-		// Force camel for glTF visibility testing.
-		return 'camel';
+		const animals: AnimalType[] = ['camel', 'falcon', 'oryx', 'fox', 'goat', 'sheep'];
+		return animals[Math.floor(Math.random() * animals.length)];
 	}
 
 	private syncCashier(queueLength: number): void {
