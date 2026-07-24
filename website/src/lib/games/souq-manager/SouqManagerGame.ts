@@ -170,10 +170,12 @@ export class SouqManagerGame {
 
 	private lastState: SouqManagerState | null = null;
 	private handleResize: () => void;
+	private handleKeydown: (e: KeyboardEvent) => void;
 	private disposed = false;
 	private time = 0;
 
 	private customerAnimals = new Map<number, AnimalType>();
+	private decorativeCamel: EntityMesh | null = null;
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -205,9 +207,18 @@ export class SouqManagerGame {
 		this.setupCamera();
 		this.setupEnvironment();
 		this.setupInput();
+		this.setupDecorativeCamel();
 
 		this.handleResize = () => this.engine.resize();
 		window.addEventListener('resize', this.handleResize);
+
+		this.handleKeydown = (e: KeyboardEvent) => {
+			if (e.code === 'Space') {
+				e.preventDefault();
+				this.unload();
+			}
+		};
+		window.addEventListener('keydown', this.handleKeydown);
 
 		this.engine.runRenderLoop(() => {
 			if (this.disposed) return;
@@ -548,6 +559,12 @@ export class SouqManagerGame {
 			current = current.parent;
 		}
 		return false;
+	}
+
+	private setupDecorativeCamel(): void {
+		this.decorativeCamel = this.createAnimalMesh('camel', 0.7);
+		this.decorativeCamel.root.position.set(-8, 0, 5);
+		this.decorativeCamel.root.rotation.y = Math.PI / 4;
 	}
 
 	private syncScene(): void {
@@ -1037,6 +1054,10 @@ export class SouqManagerGame {
 		this.logic.startLevel(level);
 	}
 
+	unload(): void {
+		this.logic.unloadAtContext();
+	}
+
 	restartLevel(): void {
 		this.logic.restartLevel();
 	}
@@ -1070,6 +1091,8 @@ export class SouqManagerGame {
 		this.disposed = true;
 		this.audio.stopMusic();
 		window.removeEventListener('resize', this.handleResize);
+		window.removeEventListener('keydown', this.handleKeydown);
+		this.decorativeCamel?.root.dispose();
 		this.engine.dispose();
 	}
 }

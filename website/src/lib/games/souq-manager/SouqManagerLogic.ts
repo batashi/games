@@ -104,6 +104,7 @@ export interface SouqManagerState {
 	message: string;
 	totalCoinsEarned: number;
 	reputation: number;
+	canUnloadHere: boolean;
 }
 
 export interface SouqLevelConfig {
@@ -300,6 +301,9 @@ export class SouqManagerLogic {
 	private nextCustomerId = 1;
 	private nextWorkerId = 1;
 
+	private playerNearStationId: number | null = null;
+	private playerNearShelfId: number | null = null;
+
 	private persistentUpgrades = {
 		playerSpeedBonus: 0,
 		playerCapacityBonus: 0,
@@ -375,7 +379,10 @@ export class SouqManagerLogic {
 			unlockedGoods: [...this.levelConfig.unlockedGoods],
 			message: this.getMessage(),
 			totalCoinsEarned: this.totalCoinsEarned,
-			reputation: this.reputation
+			reputation: this.reputation,
+			canUnloadHere:
+				this.player.carrying !== null &&
+				(this.playerNearStationId !== null || this.playerNearShelfId !== null)
 		};
 	}
 
@@ -434,14 +441,75 @@ export class SouqManagerLogic {
 				return;
 			}
 		}
-		for (const shelf of this.shelves) {
-			if (distance(this.player.position, shelf.position) < 1) {
-				this.interactWithShelf(shelf);
-				return;
-			}
-		}
 		if (distance(this.player.position, this.cashierMat.position) < 1) {
 			this.collectPayments();
+		}
+	}
+
+	unloadAtContext(): void {
+		if (this.gameState !== 'playing') return;
+		if (!this.player.carrying) return;
+
+		const station = this.findNearestStation(this.player.position, 1.2);
+		if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
+			station.input = this.player.carrying;
+			this.player.carrying = null;
+			station.status = 'processing';
+			station.progress = 0;
+			this.updatePlayerContext();
+			this.notify();
+			return;
+		}
+
+		const shelf = this.findNearestShelf(this.player.position, 1.2);
+		if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
+			shelf.items.push(this.player.carrying);
+			this.player.carrying = null;
+			this.updatePlayerContext();
+			this.notify();
+		}
+	}
+
+	private findNearestStation(position: Point2D, radius: number): Station | null {
+		let nearest: Station | null = null;
+		let best = radius * radius;
+		for (const station of this.stations) {
+			const d2 = (station.position.x - position.x) ** 2 + (station.position.y - position.y) ** 2;
+			if (d2 < best) {
+				best = d2;
+				nearest = station;
+			}
+		}
+		return nearest;
+	}
+
+	private findNearestShelf(position: Point2D, radius: number): Shelf | null {
+		let nearest: Shelf | null = null;
+		let best = radius * radius;
+		for (const shelf of this.shelves) {
+			const d2 = (shelf.position.x - position.x) ** 2 + (shelf.position.y - position.y) ** 2;
+			if (d2 < best) {
+				best = d2;
+				nearest = shelf;
+			}
+		}
+		return nearest;
+	}
+
+	private updatePlayerContext(): void {
+		this.playerNearStationId = null;
+		this.playerNearShelfId = null;
+		if (this.gameState !== 'playing' || !this.player.carrying) return;
+
+		const station = this.findNearestStation(this.player.position, 1.2);
+		if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
+			this.playerNearStationId = station.id;
+			return;
+		}
+
+		const shelf = this.findNearestShelf(this.player.position, 1.2);
+		if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
+			this.playerNearShelfId = shelf.id;
 		}
 	}
 
@@ -471,16 +539,8 @@ export class SouqManagerLogic {
 			return;
 		}
 
-		// Processing stations.
-		if (station.status === 'idle') {
-			if (!this.player.carrying) return;
-			if (this.canStationAccept(station, this.player.carrying)) {
-				station.input = this.player.carrying;
-				this.player.carrying = null;
-				station.status = 'processing';
-				station.progress = 0;
-			}
-		} else if (station.status === 'ready' && !this.player.carrying) {
+		// Processing stations: auto-collect finished output; deposit input is manual (unload action).
+		if (station.status === 'ready' && !this.player.carrying) {
 			this.player.carrying = station.output;
 			station.output = null;
 			station.input = null;
@@ -571,6 +631,7 @@ export class SouqManagerLogic {
 		const clampedDt = Math.min(dt, 0.05);
 		this.updateTimer(clampedDt);
 		this.updatePlayer(clampedDt);
+		this.updatePlayerContext();
 		this.updateStations(clampedDt);
 		this.updateWorkers(clampedDt);
 		this.updateCustomers(clampedDt);
@@ -694,7 +755,9 @@ export class SouqManagerLogic {
 				const shelf = this.findShelfWithFinishedGood(customer.desiredGood);
 				if (shelf) {
 					this.removeFinishedGoodFromShelf(shelf, customer.desiredGood);
-					customer.target = { ...this.cashierMat.position };
+					if (!this.cashierMat.queue.includes(customer.id)) {
+						this.cashierMat.queue.push(customer.id);
+					}
 					customer.state = 'walkingToCashier';
 				} else {
 					customer.state = 'entering';
@@ -702,12 +765,15 @@ export class SouqManagerLogic {
 				}
 			}
 
-			if (customer.state === 'walkingToCashier' && customer.target && distance(customer.position, customer.target) < 0.3) {
-				customer.state = 'paying';
-				customer.target = null;
-				if (!this.cashierMat.queue.includes(customer.id)) {
-					this.cashierMat.queue.push(customer.id);
+			if (customer.state === 'walkingToCashier' || customer.state === 'paying') {
+				const index = this.cashierMat.queue.indexOf(customer.id);
+				if (index !== -1) {
+					customer.target = this.getCashierQueuePosition(index);
 				}
+			}
+
+			if (customer.state === 'walkingToCashier' && customer.target && distance(customer.position, customer.target) < 0.2) {
+				customer.state = 'paying';
 			}
 
 			if (customer.state === 'paying') {
@@ -729,6 +795,18 @@ export class SouqManagerLogic {
 			if (!c.target) return false;
 			return distance(c.position, c.target) > 0.3;
 		});
+	}
+
+	private getCashierQueuePosition(index: number): Point2D {
+		const base = this.cashierMat.position;
+		if (index <= 0) return { ...base };
+		const spacing = 0.9;
+		const side = index % 2 === 1 ? -1 : 1;
+		const row = Math.floor((index + 1) / 2);
+		return {
+			x: base.x + side * spacing,
+			y: base.y + row * spacing
+		};
 	}
 
 	private findShelfWithFinishedGood(good: GoodType): Shelf | null {

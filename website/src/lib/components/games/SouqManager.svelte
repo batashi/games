@@ -48,6 +48,10 @@
 		phase = 'playing';
 	}
 
+	function unload() {
+		game?.unload();
+	}
+
 	export function toggleMute() {
 		muted = !muted;
 		game?.setMuted(muted);
@@ -121,11 +125,22 @@
 			</div>
 		</div>
 
+		<!-- Unload action -->
+		{#if state.canUnloadHere}
+			<button
+				type="button"
+				class="absolute bottom-32 left-1/2 -translate-x-1/2 bg-sun hover:bg-sun-dark text-charcoal font-bold py-2 px-6 rounded-xl shadow-lg transition-colors"
+				onclick={unload}
+			>
+				ضع السلعة هنا (Space)
+			</button>
+		{/if}
+
 		<!-- Hint -->
 		<div class="absolute bottom-20 left-4 right-4 text-cream/90 text-xs bg-charcoal/60 px-3 py-2 rounded-lg pointer-events-none text-center leading-relaxed">
 			سلاسل الإنتاج: النخلة ← التجفيف ← التعبئة &nbsp;|&nbsp; البن الأخضر ← المحمص ← الهاون ← الدلة &nbsp;|&nbsp; اللبان الخام ← الفرز ← التعبئة
 			<br />
-			ضع السلعة الجاهزة على الرف، ثم اذهب إلى بساط الصندوق لتحصيل العملات.
+			اقف بالقرب من المحطة أو الرف واضغط Space (أو الزر) لوضع السلعة.
 		</div>
 	{/if}
 

@@ -195,7 +195,8 @@ After the core three chains are polished, additional goods may be added as level
 
 - Customers spawn at the entrance based on level spawn rate and max capacity.
 - Each customer has a preferred good; if unavailable, they wait briefly, then may leave.
-- Customers walk to the shelf, take the item, then move to the cashier mat.
+- Customers walk to the shelf, take the item, then join a spaced left/right queue at the cashier mat.
+- Queue slots keep customers inside the play area and prevent overlap.
 - If a customer waits too long at the cashier, they leave without paying.
 
 ### 6.4 Player Actions
@@ -206,9 +207,7 @@ After the core three chains are polished, additional goods may be added as level
 | Plant | Tap the palm plot while carrying a sapling. |
 | Harvest | Tap a ripe palm plot. |
 | Carry | Walk near a finished product to pick it up automatically. |
-| Process | Carry an intermediate good to the correct station and tap it. |
-| Pack | Carry dried dates or sorted luban to the packaging table. |
-| Stock shelf | Carry a finished good to an empty shelf slot. |
+| Process / Pack / Stock | Carry the good to the correct station or shelf, then press `Space` (or tap the on-screen unload button) to place it. |
 | Collect payment | Walk to the cashier mat. |
 
 ### 6.5 Workers
@@ -270,8 +269,8 @@ After the core three chains are polished, additional goods may be added as level
 
 | Device | Input |
 |--------|-------|
-| Desktop | Mouse click / drag to move the child merchant; click stations, shelves, or cashier to interact. |
-| Tablet / Mobile | Touch and drag to move; tap targets to interact. |
+| Desktop | Mouse click / drag to move the child merchant; click stations, shelves, or cashier to move to them. Press `Space` to unload a carried item at the nearest station or shelf. |
+| Tablet / Mobile | Touch and drag to move; tap targets to move to them. Tap the on-screen "ضع السلعة هنا" button to unload a carried item. |
 
 ---
 
