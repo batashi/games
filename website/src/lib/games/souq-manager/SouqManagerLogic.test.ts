@@ -110,11 +110,10 @@ describe('SouqManagerLogic', () => {
 			logic.movePlayerToStation(palm.id);
 			simulateTime(logic, 1);
 
-			// Dry.
+			// Dry (auto-unload on arrival).
 			const drying = stationByType(logic, 'dryingMat');
 			logic.movePlayerToStation(drying.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			simulateTime(logic, 4);
 
 			// Collect dried dates.
@@ -122,11 +121,10 @@ describe('SouqManagerLogic', () => {
 			simulateTime(logic, 1);
 			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'dried' });
 
-			// Pack.
+			// Pack (auto-unload on arrival).
 			const packaging = stationByType(logic, 'packagingTable');
 			logic.movePlayerToStation(packaging.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			simulateTime(logic, 3);
 
 			// Collect packed dates.
@@ -134,12 +132,31 @@ describe('SouqManagerLogic', () => {
 			simulateTime(logic, 1);
 			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'packed' });
 
-			// Place on shelf.
+			// Place on shelf (auto-unload on arrival).
 			const shelf = logic.getState().shelves[0];
 			logic.movePlayerToShelf(shelf.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			expect(logic.getState().shelves[0].items).toContainEqual({ type: 'dates', stage: 'packed' });
+		});
+
+		it('auto-unloads carried items when arriving at a valid station or shelf', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
+			logic.startLevel(1);
+
+			// Harvest fresh dates.
+			const palm = stationByType(logic, 'palmPlot');
+			logic.movePlayerToStation(palm.id);
+			simulateTime(logic, 6);
+			logic.movePlayerToStation(palm.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'fresh' });
+
+			// Walking to the drying mat should deposit them automatically.
+			const drying = stationByType(logic, 'dryingMat');
+			logic.movePlayerToStation(drying.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toBeNull();
+			expect(logic.getState().stations.find((s) => s.id === drying.id)?.status).toBe('processing');
 		});
 	});
 
@@ -154,31 +171,28 @@ describe('SouqManagerLogic', () => {
 			simulateTime(logic, 1);
 			expect(logic.getState().player.carrying).toEqual({ type: 'qahwa', stage: 'beans' });
 
-			// Roast.
+			// Roast (auto-unload on arrival).
 			const brazier = stationByType(logic, 'brazier');
 			logic.movePlayerToStation(brazier.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			simulateTime(logic, 4);
 			logic.movePlayerToStation(brazier.id);
 			simulateTime(logic, 1);
 			expect(logic.getState().player.carrying).toEqual({ type: 'qahwa', stage: 'roasted' });
 
-			// Grind.
+			// Grind (auto-unload on arrival).
 			const mortar = stationByType(logic, 'mortar');
 			logic.movePlayerToStation(mortar.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			simulateTime(logic, 3);
 			logic.movePlayerToStation(mortar.id);
 			simulateTime(logic, 1);
 			expect(logic.getState().player.carrying).toEqual({ type: 'qahwa', stage: 'ground' });
 
-			// Brew.
+			// Brew (auto-unload on arrival).
 			const dallah = stationByType(logic, 'dallah');
 			logic.movePlayerToStation(dallah.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			simulateTime(logic, 4);
 			logic.movePlayerToStation(dallah.id);
 			simulateTime(logic, 1);
@@ -199,7 +213,6 @@ describe('SouqManagerLogic', () => {
 			const sorting = stationByType(logic, 'sortingMat');
 			logic.movePlayerToStation(sorting.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			simulateTime(logic, 3);
 			logic.movePlayerToStation(sorting.id);
 			simulateTime(logic, 1);
@@ -208,7 +221,6 @@ describe('SouqManagerLogic', () => {
 			const packaging = stationByType(logic, 'packagingTable');
 			logic.movePlayerToStation(packaging.id);
 			simulateTime(logic, 1);
-			logic.unloadAtContext();
 			simulateTime(logic, 3);
 			logic.movePlayerToStation(packaging.id);
 			simulateTime(logic, 1);

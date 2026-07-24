@@ -458,13 +458,36 @@ export class SouqManagerLogic {
 	}
 
 	private handlePlayerArrival(): void {
+		// Auto-deposit carried items when the player arrives at a valid station or shelf.
+		if (this.player.carrying) {
+			const station = this.findNearestStation(this.player.position, 1.2);
+			if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
+				station.input = this.player.carrying;
+				this.player.carrying = null;
+				station.status = 'processing';
+				station.progress = 0;
+				this.updatePlayerContext();
+				this.notify();
+				return;
+			}
+
+			const shelf = this.findNearestShelf(this.player.position, 1.2);
+			if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
+				shelf.items.push(this.player.carrying);
+				this.player.carrying = null;
+				this.updatePlayerContext();
+				this.notify();
+				return;
+			}
+		}
+
 		for (const station of this.stations) {
-			if (distance(this.player.position, station.position) < 1) {
+			if (distance(this.player.position, station.position) < 1.2) {
 				this.interactWithStation(station);
 				return;
 			}
 		}
-		if (distance(this.player.position, this.cashierMat.position) < 1) {
+		if (distance(this.player.position, this.cashierMat.position) < 1.2) {
 			this.collectPayments();
 		}
 	}
@@ -596,7 +619,7 @@ export class SouqManagerLogic {
 			return;
 		}
 
-		// Processing stations: auto-collect finished output; deposit input is manual (unload action).
+		// Processing stations: auto-collect finished output; deposit input happens automatically on arrival.
 		if (station.status === 'ready' && !this.player.carrying) {
 			this.player.carrying = station.output;
 			station.output = null;
@@ -909,7 +932,7 @@ export class SouqManagerLogic {
 		if (this.gameState === 'menu') return 'اختر مستوى لبدء اللعب';
 		if (this.player.carrying) {
 			const item = this.player.carrying;
-			return `تحمل ${this.itemName(item)} — ضعه في المحطة أو الرف المناسب`;
+			return `تحمل ${this.itemName(item)} — اذهب إلى المحطة أو الرف المناسب`;
 		}
 		if (this.cashierMat.queue.length > 0) return 'زبون ينتظر الدفع! اذهب إلى بساط الصندوق';
 		if (this.stations.some((s) => s.status === 'ready')) return 'محطة جاهزة! اجمع الإنتاج';

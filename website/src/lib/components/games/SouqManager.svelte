@@ -138,7 +138,7 @@
 						class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-2 px-5 rounded-xl shadow-lg transition-colors"
 						onclick={unload}
 					>
-						ضع السلعة (Space)
+						ضع السلعة
 					</button>
 				{/if}
 				{#if state.canTemporaryDrop}
@@ -166,7 +166,7 @@
 		<div class="absolute bottom-20 left-4 right-4 text-cream/90 text-xs bg-charcoal/60 px-3 py-2 rounded-lg pointer-events-none text-center leading-relaxed">
 			سلاسل الإنتاج: النخلة ← التجفيف ← التعبئة &nbsp;|&nbsp; البن الأخضر ← المحمص ← الهاون ← الدلة &nbsp;|&nbsp; اللبان الخام ← الفرز ← التعبئة
 			<br />
-			Space لوضع السلعة في المحطة/الرف — T لوضع مؤقت على بساط الاستراحة.
+			السلعة تُوضع تلقائياً عند الوصول — T لوضع مؤقت على بساط الاستراحة.
 		</div>
 	{/if}
 
