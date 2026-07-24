@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Game } from '$lib/types/game';
-	import { MODE_LABELS, COUNTRY_LABELS } from '$lib/types/game';
+	import { MODE_LABELS, PLATFORM_LABELS } from '$lib/types/game';
 
 	interface Props {
 		game: Game;
@@ -10,6 +10,7 @@
 
 	let isReady = $derived(game.status === 'ready');
 	let modeLabels = $derived(game.modes.map((mode) => MODE_LABELS[mode]?.ar ?? mode).join(' • '));
+	let platformLabels = $derived(game.supportedPlatforms.map((p) => PLATFORM_LABELS[p]));
 </script>
 
 <article class="group bg-cream rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-sand-dark/20 flex flex-col h-full">
@@ -35,6 +36,11 @@
 		<div class="flex flex-wrap gap-2 mb-4">
 			<span class="text-xs bg-sand text-charcoal px-2 py-1 rounded-full">{game.genreLabelAr}</span>
 			<span class="text-xs bg-sand text-charcoal px-2 py-1 rounded-full">{game.ageRange}</span>
+			{#each platformLabels as platform}
+				<span class="text-xs bg-sand text-charcoal px-2 py-1 rounded-full" title={platform.ar}>
+					{platform.icon} {platform.ar}
+				</span>
+			{/each}
 		</div>
 
 		<div class="mt-auto space-y-3">

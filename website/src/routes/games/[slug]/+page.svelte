@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { MODE_LABELS, COUNTRY_LABELS } from '$lib/types/game';
+	import { MODE_LABELS, COUNTRY_LABELS, PLATFORM_LABELS } from '$lib/types/game';
 
 	let { data } = $props();
 	let game = $derived(data.game);
 
 	let isReady = $derived(game.status === 'ready');
 	let modeLabels = $derived(game.modes.map((mode) => MODE_LABELS[mode]?.ar ?? mode));
+	let platformLabels = $derived(game.supportedPlatforms.map((p) => PLATFORM_LABELS[p]));
 </script>
 
 <svelte:head>
@@ -85,6 +86,17 @@
 					{#each game.countries as code}
 						<span class="bg-sand text-charcoal px-3 py-1 rounded-full text-sm font-medium">
 							{COUNTRY_LABELS[code].flag} {COUNTRY_LABELS[code].ar}
+						</span>
+					{/each}
+				</div>
+			</div>
+
+			<div class="bg-cream rounded-2xl shadow-lg p-6">
+				<h3 class="font-bold text-xl text-charcoal mb-4">الأجهزة المدعومة</h3>
+				<div class="flex flex-wrap gap-2">
+					{#each platformLabels as platform}
+						<span class="bg-sand text-charcoal px-3 py-1 rounded-full text-sm font-medium">
+							{platform.icon} {platform.ar}
 						</span>
 					{/each}
 				</div>

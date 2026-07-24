@@ -16,7 +16,7 @@ export interface Game {
 	modes: string[];
 	countries: string[];
 	status: 'ready' | 'beta' | 'coming-soon';
-	supportedPlatforms: string[];
+	supportedPlatforms: ('desktop' | 'tablet' | 'mobile')[];
 	heroImage: string;
 	thumbnail: string;
 	video: string;
@@ -55,4 +55,10 @@ export const COUNTRY_LABELS: Record<string, { ar: string; en: string; flag: stri
 	QA: { ar: 'قطر', en: 'Qatar', flag: '🇶🇦' },
 	BH: { ar: 'البحرين', en: 'Bahrain', flag: '🇧🇭' },
 	KW: { ar: 'الكويت', en: 'Kuwait', flag: '🇰🇼' }
+};
+
+export const PLATFORM_LABELS: Record<'desktop' | 'tablet' | 'mobile', { ar: string; icon: string }> = {
+	desktop: { ar: 'كمبيوتر', icon: '🖥️' },
+	tablet: { ar: 'تابلت', icon: '📱' },
+	mobile: { ar: 'جوال', icon: '📲' }
 };

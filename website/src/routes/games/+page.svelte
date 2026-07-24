@@ -1,17 +1,22 @@
 <script lang="ts">
 	import { getAllGames } from '$lib/data/games';
 	import GameCard from '$lib/components/GameCard.svelte';
-	import { COUNTRY_LABELS } from '$lib/types/game';
+	import { COUNTRY_LABELS, PLATFORM_LABELS } from '$lib/types/game';
 
 	const games = getAllGames();
 	const countries = ['ALL', 'OM', 'SA', 'AE', 'QA', 'BH', 'KW'] as const;
+	const platforms = ['ALL', 'desktop', 'tablet', 'mobile'] as const;
+	type Platform = 'desktop' | 'tablet' | 'mobile';
 
 	let selectedCountry = $state<string>('ALL');
+	let selectedPlatform = $state<typeof platforms[number]>('ALL');
 
 	const filteredGames = $derived(
-		selectedCountry === 'ALL'
-			? games
-			: games.filter((game) => game.countries.includes(selectedCountry))
+		games.filter((game) => {
+			const countryMatch = selectedCountry === 'ALL' || game.countries.includes(selectedCountry);
+			const platformMatch = selectedPlatform === 'ALL' || game.supportedPlatforms.includes(selectedPlatform as Platform);
+			return countryMatch && platformMatch;
+		})
 	);
 
 	const readyCount = games.filter((g) => g.status === 'ready').length;
@@ -55,6 +60,22 @@
 					</button>
 				{/each}
 			</div>
+
+			<div class="flex flex-wrap gap-2">
+				{#each platforms as platform}
+					<button
+						type="button"
+						class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors {selectedPlatform === platform ? 'bg-sea text-cream' : 'bg-sand text-charcoal hover:bg-sand-dark'}"
+						onclick={() => selectedPlatform = platform}
+					>
+						{#if platform === 'ALL'}
+							كل الأجهزة
+						{:else}
+							{PLATFORM_LABELS[platform].icon} {PLATFORM_LABELS[platform].ar}
+						{/if}
+					</button>
+				{/each}
+			</div>
 		</div>
 	</div>
 </section>
@@ -69,7 +90,7 @@
 			</div>
 		{:else}
 			<div class="text-center py-20">
-				<p class="text-xl text-charcoal/70">لا توجد ألعاب متاحة لهذا البلد حالياً.</p>
+				<p class="text-xl text-charcoal/70">لا توجد ألعاب متاحة بهذا التصفّح حالياً.</p>
 			</div>
 		{/if}
 	</div>
