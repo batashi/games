@@ -216,6 +216,57 @@ describe('SouqManagerLogic', () => {
 		});
 	});
 
+	describe('temporary drop area', () => {
+		it('places carried item on the resting mat and frees the player', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
+			logic.startLevel(1);
+
+			const palm = stationByType(logic, 'palmPlot');
+			logic.movePlayerToStation(palm.id);
+			simulateTime(logic, 6);
+			logic.movePlayerToStation(palm.id);
+			simulateTime(logic, 1);
+
+			const carrying = logic.getState().player.carrying;
+			expect(carrying).not.toBeNull();
+
+			const dropped = logic.dropItemTemporarily();
+			expect(dropped).toBe(true);
+			expect(logic.getState().player.carrying).toBeNull();
+			expect(logic.getState().temporaryDrop?.item).toEqual(carrying);
+			expect(logic.getState().canTemporaryDrop).toBe(false);
+		});
+
+		it('collects the temporary drop when walking over it', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
+			logic.startLevel(1);
+
+			logic['player'].carrying = { type: 'dates', stage: 'fresh' };
+			logic.dropItemTemporarily();
+			expect(logic.getState().temporaryDrop).not.toBeNull();
+
+			// Move player onto the temporary drop mat.
+			logic.setPlayerTarget({ x: 0, y: -5 });
+			simulateTime(logic, 1);
+
+			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'fresh' });
+			expect(logic.getState().temporaryDrop).toBeNull();
+		});
+
+		it('loses the temporary drop after the timer expires', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
+			logic.startLevel(1);
+
+			logic['player'].carrying = { type: 'dates', stage: 'fresh' };
+			logic.dropItemTemporarily();
+			expect(logic.getState().temporaryDrop).not.toBeNull();
+
+			simulateTime(logic, 12);
+
+			expect(logic.getState().temporaryDrop).toBeNull();
+		});
+	});
+
 	describe('customers and payments', () => {
 		it('customer buys packed dates and pays at cashier', () => {
 			const { logic, callbacks } = createLogic({

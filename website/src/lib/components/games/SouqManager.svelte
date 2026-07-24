@@ -52,6 +52,10 @@
 		game?.unload();
 	}
 
+	function dropTemporarily() {
+		game?.dropTemporarily();
+	}
+
 	export function toggleMute() {
 		muted = !muted;
 		game?.setMuted(muted);
@@ -125,22 +129,44 @@
 			</div>
 		</div>
 
-		<!-- Unload action -->
-		{#if state.canUnloadHere}
-			<button
-				type="button"
-				class="absolute bottom-32 left-1/2 -translate-x-1/2 bg-sun hover:bg-sun-dark text-charcoal font-bold py-2 px-6 rounded-xl shadow-lg transition-colors"
-				onclick={unload}
-			>
-				ضع السلعة هنا (Space)
-			</button>
+		<!-- Action buttons -->
+		{#if state.canUnloadHere || state.canTemporaryDrop}
+			<div class="absolute bottom-32 left-1/2 -translate-x-1/2 flex gap-2">
+				{#if state.canUnloadHere}
+					<button
+						type="button"
+						class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-2 px-5 rounded-xl shadow-lg transition-colors"
+						onclick={unload}
+					>
+						ضع السلعة (Space)
+					</button>
+				{/if}
+				{#if state.canTemporaryDrop}
+					<button
+						type="button"
+						class="bg-sea hover:bg-sea-dark text-cream font-bold py-2 px-5 rounded-xl shadow-lg transition-colors"
+						onclick={dropTemporarily}
+					>
+						وضع مؤقت (T)
+					</button>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Temporary drop timer -->
+		{#if state.temporaryDrop}
+			<div class="absolute top-36 left-4 right-4 flex justify-center pointer-events-none">
+				<div class="bg-danger/90 text-cream px-4 py-1 rounded-lg text-sm font-bold">
+					سلعة مؤقتة تختفي خلال {Math.ceil(state.temporaryDrop.life)} ثانية
+				</div>
+			</div>
 		{/if}
 
 		<!-- Hint -->
 		<div class="absolute bottom-20 left-4 right-4 text-cream/90 text-xs bg-charcoal/60 px-3 py-2 rounded-lg pointer-events-none text-center leading-relaxed">
 			سلاسل الإنتاج: النخلة ← التجفيف ← التعبئة &nbsp;|&nbsp; البن الأخضر ← المحمص ← الهاون ← الدلة &nbsp;|&nbsp; اللبان الخام ← الفرز ← التعبئة
 			<br />
-			اقف بالقرب من المحطة أو الرف واضغط Space (أو الزر) لوضع السلعة.
+			Space لوضع السلعة في المحطة/الرف — T لوضع مؤقت على بساط الاستراحة.
 		</div>
 	{/if}
 

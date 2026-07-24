@@ -87,6 +87,13 @@ export interface SouqCashierMat {
 
 export type SouqGameState = 'menu' | 'playing' | 'levelComplete' | 'levelFailed';
 
+export interface TemporaryDrop {
+	item: Item;
+	position: Point2D;
+	life: number;
+	maxLife: number;
+}
+
 export interface SouqManagerState {
 	gameState: SouqGameState;
 	level: number;
@@ -105,6 +112,8 @@ export interface SouqManagerState {
 	totalCoinsEarned: number;
 	reputation: number;
 	canUnloadHere: boolean;
+	temporaryDrop: TemporaryDrop | null;
+	canTemporaryDrop: boolean;
 }
 
 export interface SouqLevelConfig {
@@ -277,6 +286,9 @@ function canPackage(item: Item): boolean {
 	);
 }
 
+const TEMPORARY_DROP_POSITION: Point2D = { x: 0, y: -5 };
+const TEMPORARY_DROP_LIFE = 10;
+
 export class SouqManagerLogic {
 	private config: Required<SouqManagerConfig>;
 	private onChange: (state: SouqManagerState) => void;
@@ -303,6 +315,7 @@ export class SouqManagerLogic {
 
 	private playerNearStationId: number | null = null;
 	private playerNearShelfId: number | null = null;
+	private temporaryDrop: TemporaryDrop | null = null;
 
 	private persistentUpgrades = {
 		playerSpeedBonus: 0,
@@ -382,7 +395,16 @@ export class SouqManagerLogic {
 			reputation: this.reputation,
 			canUnloadHere:
 				this.player.carrying !== null &&
-				(this.playerNearStationId !== null || this.playerNearShelfId !== null)
+				(this.playerNearStationId !== null || this.playerNearShelfId !== null),
+			temporaryDrop: this.temporaryDrop
+				? {
+						item: { ...this.temporaryDrop.item },
+						position: { ...this.temporaryDrop.position },
+						life: this.temporaryDrop.life,
+						maxLife: this.temporaryDrop.maxLife
+					}
+				: null,
+			canTemporaryDrop: this.player.carrying !== null && this.temporaryDrop === null
 		};
 	}
 
@@ -403,6 +425,7 @@ export class SouqManagerLogic {
 		this.nextCustomerId = 1;
 		this.customers = [];
 		this.workers = [];
+		this.temporaryDrop = null;
 		this.player = this.createPlayer();
 		this.stations = this.createStations();
 		this.shelves = this.createShelves();
@@ -510,6 +533,40 @@ export class SouqManagerLogic {
 		const shelf = this.findNearestShelf(this.player.position, 1.2);
 		if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
 			this.playerNearShelfId = shelf.id;
+		}
+	}
+
+	dropItemTemporarily(): boolean {
+		if (this.gameState !== 'playing') return false;
+		if (!this.player.carrying || this.temporaryDrop) return false;
+		this.temporaryDrop = {
+			item: this.player.carrying,
+			position: { ...TEMPORARY_DROP_POSITION },
+			life: TEMPORARY_DROP_LIFE,
+			maxLife: TEMPORARY_DROP_LIFE
+		};
+		this.player.carrying = null;
+		this.updatePlayerContext();
+		this.notify();
+		return true;
+	}
+
+	private collectTemporaryDrop(): void {
+		if (!this.temporaryDrop || this.player.carrying) return;
+		if (distance(this.player.position, this.temporaryDrop.position) < 1.2) {
+			this.player.carrying = this.temporaryDrop.item;
+			this.temporaryDrop = null;
+			this.updatePlayerContext();
+			this.notify();
+		}
+	}
+
+	private updateTemporaryDrop(dt: number): void {
+		if (!this.temporaryDrop) return;
+		this.temporaryDrop.life -= dt;
+		if (this.temporaryDrop.life <= 0) {
+			this.temporaryDrop = null;
+			this.notify();
 		}
 	}
 
@@ -631,10 +688,12 @@ export class SouqManagerLogic {
 		const clampedDt = Math.min(dt, 0.05);
 		this.updateTimer(clampedDt);
 		this.updatePlayer(clampedDt);
+		this.collectTemporaryDrop();
 		this.updatePlayerContext();
 		this.updateStations(clampedDt);
 		this.updateWorkers(clampedDt);
 		this.updateCustomers(clampedDt);
+		this.updateTemporaryDrop(clampedDt);
 		this.spawnCustomers(clampedDt);
 		this.checkLevelEnd();
 		this.notify();

@@ -165,6 +165,9 @@ export class SouqManagerGame {
 	private carryingMesh: Mesh | null = null;
 	private stationItemMeshes = new Map<number, Mesh>();
 	private shelfItemMeshes = new Map<number, Mesh[]>();
+	private temporaryDropMat: Mesh | null = null;
+	private temporaryDropItemMesh: Mesh | null = null;
+	private temporaryDropRing: Mesh | null = null;
 	private coinLabels: { mesh: Mesh; life: number }[] = [];
 	private highlight: HighlightLayer;
 
@@ -216,6 +219,10 @@ export class SouqManagerGame {
 			if (e.code === 'Space') {
 				e.preventDefault();
 				this.unload();
+			}
+			if (e.code === 'KeyT') {
+				e.preventDefault();
+				this.dropTemporarily();
 			}
 		};
 		window.addEventListener('keydown', this.handleKeydown);
@@ -282,6 +289,12 @@ export class SouqManagerGame {
 		const cashierMat = new StandardMaterial('cashierMat', this.scene);
 		cashierMat.diffuseColor = new Color3(0.2, 0.6, 0.4);
 		this.cashierMesh.material = cashierMat;
+
+		this.temporaryDropMat = MeshBuilder.CreateGround('temporaryDropMat', { width: 1.6, height: 1.2 }, this.scene);
+		this.temporaryDropMat.position = new Vector3(0, 0.01, -5);
+		const tempMatMat = new StandardMaterial('temporaryDropMatMat', this.scene);
+		tempMatMat.diffuseColor = new Color3(0.72, 0.52, 0.38);
+		this.temporaryDropMat.material = tempMatMat;
 	}
 
 	private setupStations(): void {
@@ -577,6 +590,7 @@ export class SouqManagerGame {
 		this.syncWorkers(state.workers);
 		this.syncCustomers(state.customers);
 		this.syncCashier(state.cashierMat.queue.length);
+		this.syncTemporaryDrop(state.temporaryDrop);
 	}
 
 	private syncStations(stations: Station[]): void {
@@ -662,6 +676,38 @@ export class SouqManagerGame {
 				goodMeshes[j].setEnabled(true);
 			}
 			this.shelfItemMeshes.set(i, goodMeshes);
+		}
+	}
+
+	private syncTemporaryDrop(drop: { item: Item; position: { x: number; y: number }; life: number; maxLife: number } | null): void {
+		if (drop) {
+			if (!this.temporaryDropItemMesh) {
+				this.temporaryDropItemMesh = this.createItemMesh(drop.item);
+			}
+			this.temporaryDropItemMesh.setEnabled(true);
+			this.temporaryDropItemMesh.position.x = drop.position.x;
+			this.temporaryDropItemMesh.position.z = drop.position.y;
+			this.temporaryDropItemMesh.position.y = 0.5 + Math.abs(Math.sin(this.time * 4)) * 0.1;
+			this.temporaryDropItemMesh.rotation.y = this.time;
+
+			if (!this.temporaryDropRing) {
+				this.temporaryDropRing = MeshBuilder.CreateCylinder('temporaryDropRing', { height: 0.02, diameter: 1 }, this.scene);
+				const ringMat = new StandardMaterial('temporaryDropRingMat', this.scene);
+				ringMat.diffuseColor = new Color3(1, 0.85, 0.2);
+				this.temporaryDropRing.material = ringMat;
+			}
+			this.temporaryDropRing.setEnabled(true);
+			this.temporaryDropRing.position.x = drop.position.x;
+			this.temporaryDropRing.position.z = drop.position.y;
+			this.temporaryDropRing.position.y = 0.05;
+			const ratio = Math.max(0, drop.life / drop.maxLife);
+			const scale = 0.25 + 0.75 * ratio;
+			this.temporaryDropRing.scaling.x = scale;
+			this.temporaryDropRing.scaling.z = scale;
+			this.temporaryDropRing.scaling.y = 1;
+		} else {
+			this.temporaryDropItemMesh?.setEnabled(false);
+			this.temporaryDropRing?.setEnabled(false);
 		}
 	}
 
@@ -1058,6 +1104,10 @@ export class SouqManagerGame {
 		this.logic.unloadAtContext();
 	}
 
+	dropTemporarily(): void {
+		this.logic.dropItemTemporarily();
+	}
+
 	restartLevel(): void {
 		this.logic.restartLevel();
 	}
@@ -1093,6 +1143,9 @@ export class SouqManagerGame {
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('keydown', this.handleKeydown);
 		this.decorativeCamel?.root.dispose();
+		this.temporaryDropMat?.dispose();
+		this.temporaryDropItemMesh?.dispose();
+		this.temporaryDropRing?.dispose();
 		this.engine.dispose();
 	}
 }

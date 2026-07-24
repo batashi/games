@@ -199,7 +199,14 @@ After the core three chains are polished, additional goods may be added as level
 - Queue slots keep customers inside the play area and prevent overlap.
 - If a customer waits too long at the cashier, they leave without paying.
 
-### 6.4 Player Actions
+### 6.4 Temporary Drop (Resting Mat)
+
+- The play area contains a single **resting mat** near the front of the souq.
+- The child can place any carried item on the mat to free their hands (useful when capacity is full or when a better task appears).
+- The item remains on the mat for a limited time and can be reclaimed by walking over it.
+- If the timer expires, the item spoils and must be produced again — there is no permanent "bin" for wasting goods.
+
+### 6.5 Player Actions
 
 | Action | How |
 |--------|-----|
@@ -208,9 +215,11 @@ After the core three chains are polished, additional goods may be added as level
 | Harvest | Tap a ripe palm plot. |
 | Carry | Walk near a finished product to pick it up automatically. |
 | Process / Pack / Stock | Carry the good to the correct station or shelf, then press `Space` (or tap the on-screen unload button) to place it. |
+| Temporary drop | Press `T` (or tap "وضع مؤقت") to place a carried item on the resting mat. This frees the child’s hands. The item stays on the mat for a limited time and can be recovered; if ignored too long, it spoils and must be remade. |
+| Collect temporary item | Walk over the resting mat to pick the item back up. |
 | Collect payment | Walk to the cashier mat. |
 
-### 6.5 Workers
+### 6.6 Workers
 
 - Workers are hired on the level-complete shop screen or during endless mode using coins.
 - Each worker has a single role assigned by the player:
@@ -220,7 +229,7 @@ After the core three chains are polished, additional goods may be added as level
 - Workers move slower than the upgraded child but scale with upgrades.
 - Later levels require workers to manage multiple chains and hit the coin target.
 
-### 6.6 Hints & Feedback
+### 6.7 Hints & Feedback
 
 - **Station glow:** A station glows when it is ready for the next step.
 - **Shelf glow:** Shelves glow when stock is low.
@@ -269,8 +278,8 @@ After the core three chains are polished, additional goods may be added as level
 
 | Device | Input |
 |--------|-------|
-| Desktop | Mouse click / drag to move the child merchant; click stations, shelves, or cashier to move to them. Press `Space` to unload a carried item at the nearest station or shelf. |
-| Tablet / Mobile | Touch and drag to move; tap targets to move to them. Tap the on-screen "ضع السلعة هنا" button to unload a carried item. |
+| Desktop | Mouse click / drag to move the child merchant; click stations, shelves, or cashier to move to them. Press `Space` to unload at the nearest station or shelf; press `T` for a temporary drop on the resting mat. |
+| Tablet / Mobile | Touch and drag to move; tap targets to move to them. Tap the on-screen "ضع السلعة" button to unload, or "وضع مؤقت" to place the item on the resting mat. |
 
 ---
 
