@@ -66,6 +66,7 @@ export interface SouqCustomer {
 	id: number;
 	position: Point2D;
 	target: Point2D | null;
+	targetShelfId: number | null;
 	state: 'entering' | 'shopping' | 'walkingToCashier' | 'paying' | 'leaving';
 	desiredGood: GoodType;
 	patience: number;
@@ -289,6 +290,20 @@ function canPackage(item: Item): boolean {
 const TEMPORARY_DROP_POSITION: Point2D = { x: 0, y: -5 };
 const TEMPORARY_DROP_LIFE = 10;
 
+const PLAY_BOUNDS = {
+	minX: -11,
+	maxX: 11,
+	minY: -9,
+	maxY: 9
+};
+
+function clampToBounds(point: Point2D): Point2D {
+	return {
+		x: Math.max(PLAY_BOUNDS.minX, Math.min(PLAY_BOUNDS.maxX, point.x)),
+		y: Math.max(PLAY_BOUNDS.minY, Math.min(PLAY_BOUNDS.maxY, point.y))
+	};
+}
+
 export class SouqManagerLogic {
 	private config: Required<SouqManagerConfig>;
 	private onChange: (state: SouqManagerState) => void;
@@ -351,28 +366,32 @@ export class SouqManagerLogic {
 
 	private createStations(): Station[] {
 		return [
-			{ id: 0, type: 'palmPlot', position: { x: -7, y: -2 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.palmPlot.time, status: 'idle', assignedWorkerId: null },
-			{ id: 1, type: 'dryingMat', position: { x: -4, y: -2 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.dryingMat.time, status: 'idle', assignedWorkerId: null },
-			{ id: 2, type: 'packagingTable', position: { x: -1, y: -2 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.packagingTable.time, status: 'idle', assignedWorkerId: null },
-			{ id: 3, type: 'greenBeans', position: { x: -7, y: 1 }, input: null, output: null, progress: 0, processingTime: 0, status: 'idle', assignedWorkerId: null },
-			{ id: 4, type: 'brazier', position: { x: -4, y: 1 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.brazier.time, status: 'idle', assignedWorkerId: null },
-			{ id: 5, type: 'mortar', position: { x: -1, y: 1 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.mortar.time, status: 'idle', assignedWorkerId: null },
-			{ id: 6, type: 'dallah', position: { x: 2, y: 1 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.dallah.time, status: 'idle', assignedWorkerId: null },
-			{ id: 7, type: 'rawResin', position: { x: -7, y: 4 }, input: null, output: null, progress: 0, processingTime: 0, status: 'idle', assignedWorkerId: null },
-			{ id: 8, type: 'sortingMat', position: { x: -4, y: 4 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.sortingMat.time, status: 'idle', assignedWorkerId: null }
+			// Dates zone (top-left).
+			{ id: 0, type: 'palmPlot', position: { x: -9, y: 6 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.palmPlot.time, status: 'idle', assignedWorkerId: null },
+			{ id: 1, type: 'dryingMat', position: { x: -6, y: 6 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.dryingMat.time, status: 'idle', assignedWorkerId: null },
+			{ id: 2, type: 'packagingTable', position: { x: -3, y: 6 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.packagingTable.time, status: 'idle', assignedWorkerId: null },
+			// Qahwa zone (center).
+			{ id: 3, type: 'greenBeans', position: { x: 0, y: 6 }, input: null, output: null, progress: 0, processingTime: 0, status: 'idle', assignedWorkerId: null },
+			{ id: 4, type: 'brazier', position: { x: 3, y: 6 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.brazier.time, status: 'idle', assignedWorkerId: null },
+			{ id: 5, type: 'mortar', position: { x: 3, y: 3 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.mortar.time, status: 'idle', assignedWorkerId: null },
+			{ id: 6, type: 'dallah', position: { x: 0, y: 3 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.dallah.time, status: 'idle', assignedWorkerId: null },
+			// Luban zone (right).
+			{ id: 7, type: 'rawResin', position: { x: 6, y: 6 }, input: null, output: null, progress: 0, processingTime: 0, status: 'idle', assignedWorkerId: null },
+			{ id: 8, type: 'sortingMat', position: { x: 6, y: 3 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.sortingMat.time, status: 'idle', assignedWorkerId: null },
+			{ id: 9, type: 'packagingTable', position: { x: 6, y: 0 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.packagingTable.time, status: 'idle', assignedWorkerId: null }
 		];
 	}
 
 	private createShelves(): Shelf[] {
 		return [
-			{ id: 0, position: { x: 3, y: -1 }, capacity: this.levelConfig.shelfCapacity, items: [] },
-			{ id: 1, position: { x: 5, y: -1 }, capacity: this.levelConfig.shelfCapacity, items: [] },
-			{ id: 2, position: { x: 3, y: 2 }, capacity: this.levelConfig.shelfCapacity, items: [] }
+			{ id: 0, position: { x: -4, y: -4 }, capacity: this.levelConfig.shelfCapacity, items: [] },
+			{ id: 1, position: { x: 0, y: -4 }, capacity: this.levelConfig.shelfCapacity, items: [] },
+			{ id: 2, position: { x: 4, y: -4 }, capacity: this.levelConfig.shelfCapacity, items: [] }
 		];
 	}
 
 	private createCashierMat(): SouqCashierMat {
-		return { position: { x: 6, y: -4 }, queue: [] };
+		return { position: { x: 8, y: -4 }, queue: [] };
 	}
 
 	getState(): SouqManagerState {
@@ -387,7 +406,7 @@ export class SouqManagerLogic {
 			stations: this.stations.map((s) => ({ ...s, position: { ...s.position }, input: s.input ? { ...s.input } : null, output: s.output ? { ...s.output } : null })),
 			shelves: this.shelves.map((s) => ({ ...s, position: { ...s.position }, items: s.items.map((i) => ({ ...i })) })),
 			cashierMat: { ...this.cashierMat, position: { ...this.cashierMat.position }, queue: [...this.cashierMat.queue] },
-			customers: this.customers.map((c) => ({ ...c, position: { ...c.position }, target: c.target ? { ...c.target } : null })),
+			customers: this.customers.map((c) => ({ ...c, position: { ...c.position }, target: c.target ? { ...c.target } : null, targetShelfId: c.targetShelfId })),
 			workers: this.workers.map((w) => ({ ...w, position: { ...w.position }, target: w.target ? { ...w.target } : null })),
 			unlockedGoods: [...this.levelConfig.unlockedGoods],
 			message: this.getMessage(),
@@ -439,7 +458,7 @@ export class SouqManagerLogic {
 
 	setPlayerTarget(target: Point2D): void {
 		if (this.gameState !== 'playing') return;
-		this.player.target = { ...target };
+		this.player.target = clampToBounds({ ...target });
 		this.notify();
 	}
 
@@ -795,8 +814,9 @@ export class SouqManagerLogic {
 		if (!desired) return;
 		this.customers.push({
 			id: this.nextCustomerId++,
-			position: { x: 8, y: 5 },
+			position: clampToBounds({ x: 8, y: 5 }),
 			target: null,
+			targetShelfId: null,
 			state: 'entering',
 			desiredGood: desired,
 			patience: this.config.customerPatience,
@@ -817,19 +837,21 @@ export class SouqManagerLogic {
 			if (customer.state === 'entering') {
 				const shelf = this.findShelfWithFinishedGood(customer.desiredGood);
 				if (shelf) {
-					customer.target = { ...shelf.position };
+					customer.targetShelfId = shelf.id;
+					customer.target = clampToBounds(this.getShelfSlotPosition(shelf, customer.id));
 					customer.state = 'shopping';
 				} else {
 					customer.patience -= dt;
 					if (customer.patience <= 0) {
 						customer.state = 'leaving';
-						customer.target = { x: 8, y: 8 };
+						customer.target = clampToBounds({ x: 8, y: 8 });
 					}
 				}
 				continue;
 			}
 
 			if (customer.target) {
+				customer.target = clampToBounds(customer.target);
 				customer.position = moveTowards(customer.position, customer.target, this.config.customerSpeed, dt);
 			}
 
@@ -840,17 +862,19 @@ export class SouqManagerLogic {
 					if (!this.cashierMat.queue.includes(customer.id)) {
 						this.cashierMat.queue.push(customer.id);
 					}
+					customer.targetShelfId = null;
 					customer.state = 'walkingToCashier';
 				} else {
 					customer.state = 'entering';
 					customer.target = null;
+					customer.targetShelfId = null;
 				}
 			}
 
 			if (customer.state === 'walkingToCashier' || customer.state === 'paying') {
 				const index = this.cashierMat.queue.indexOf(customer.id);
 				if (index !== -1) {
-					customer.target = this.getCashierQueuePosition(index);
+					customer.target = clampToBounds(this.getCashierQueuePosition(index));
 				}
 			}
 
@@ -868,7 +892,7 @@ export class SouqManagerLogic {
 			}
 
 			if (customer.state === 'leaving' && !customer.target) {
-				customer.target = { x: 8, y: 8 };
+				customer.target = clampToBounds({ x: 8, y: 8 });
 			}
 		}
 
@@ -889,6 +913,26 @@ export class SouqManagerLogic {
 			x: base.x + side * spacing,
 			y: base.y + row * spacing
 		};
+	}
+
+	private getShelfSlotPosition(shelf: Shelf, customerId: number): Point2D {
+		const index = this.getShelfSlotIndex(shelf, customerId);
+		const side = index % 2 === 0 ? -1 : 1;
+		const row = Math.floor(index / 2);
+		const sideSpacing = 0.7;
+		const backSpacing = 0.8;
+		return {
+			x: shelf.position.x + side * sideSpacing,
+			y: shelf.position.y + backSpacing * (row + 1)
+		};
+	}
+
+	private getShelfSlotIndex(shelf: Shelf, customerId: number): number {
+		const queue = this.customers
+			.filter((c) => c.targetShelfId === shelf.id && c.id <= customerId)
+			.sort((a, b) => a.id - b.id);
+		const index = queue.findIndex((c) => c.id === customerId);
+		return index === -1 ? 0 : index;
 	}
 
 	private findShelfWithFinishedGood(good: GoodType): Shelf | null {

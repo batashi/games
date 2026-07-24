@@ -31,6 +31,12 @@ function stationByType(logic: SouqManagerLogic, type: StationType) {
 	return logic.getState().stations.find((s) => s.type === type)!;
 }
 
+function stationByTypeNear(logic: SouqManagerLogic, type: StationType, x: number, y: number) {
+	return logic.getState().stations.find(
+		(s) => s.type === type && Math.abs(s.position.x - x) < 1 && Math.abs(s.position.y - y) < 1
+	)!;
+}
+
 describe('SouqManagerLogic', () => {
 	describe('initial state', () => {
 		it('starts in menu state', () => {
@@ -122,7 +128,7 @@ describe('SouqManagerLogic', () => {
 			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'dried' });
 
 			// Pack (auto-unload on arrival).
-			const packaging = stationByType(logic, 'packagingTable');
+			const packaging = stationByTypeNear(logic, 'packagingTable', -3, 6);
 			logic.movePlayerToStation(packaging.id);
 			simulateTime(logic, 1);
 			simulateTime(logic, 3);
@@ -218,7 +224,7 @@ describe('SouqManagerLogic', () => {
 			simulateTime(logic, 1);
 			expect(logic.getState().player.carrying).toEqual({ type: 'luban', stage: 'sorted' });
 
-			const packaging = stationByType(logic, 'packagingTable');
+			const packaging = stationByTypeNear(logic, 'packagingTable', 6, 0);
 			logic.movePlayerToStation(packaging.id);
 			simulateTime(logic, 1);
 			simulateTime(logic, 3);
@@ -276,6 +282,81 @@ describe('SouqManagerLogic', () => {
 			simulateTime(logic, 12);
 
 			expect(logic.getState().temporaryDrop).toBeNull();
+		});
+	});
+
+	describe('customer spacing and bounds', () => {
+		it('assigns left and right slots to customers at the same shelf', () => {
+			const { logic } = createLogic({ playerSpeed: 50, customerSpeed: 50, customerPatience: 60 });
+			logic.startLevel(1);
+
+			// Stock shelf 0 with two packed dates.
+			logic['shelves'][0].items.push({ type: 'dates', stage: 'packed' });
+			logic['shelves'][0].items.push({ type: 'dates', stage: 'packed' });
+
+			// Spawn two customers wanting dates.
+			logic['customers'] = [
+				{
+					id: 1,
+					position: { x: 8, y: 5 },
+					target: null,
+					targetShelfId: null,
+					state: 'entering',
+					desiredGood: 'dates',
+					patience: 60,
+					paid: false
+				},
+				{
+					id: 2,
+					position: { x: 8, y: 5 },
+					target: null,
+					targetShelfId: null,
+					state: 'entering',
+					desiredGood: 'dates',
+					patience: 60,
+					paid: false
+				}
+			];
+			logic['nextCustomerId'] = 3;
+
+			// Let them pick targets.
+			logic.update(0.05);
+
+			const targets = logic['customers'].map((c) => c.target);
+			expect(targets[0]).not.toBeNull();
+			expect(targets[1]).not.toBeNull();
+			expect(targets[0]!.x).not.toBeCloseTo(targets[1]!.x, 1);
+		});
+
+		it('keeps customer targets inside the play-space bounds', () => {
+			const { logic } = createLogic({ playerSpeed: 50, customerSpeed: 50, customerPatience: 60 });
+			logic.startLevel(1);
+			logic['shelves'][0].items.push({ type: 'dates', stage: 'packed' });
+			logic['customers'] = [
+				{
+					id: 1,
+					position: { x: 8, y: 5 },
+					target: null,
+					targetShelfId: null,
+					state: 'entering',
+					desiredGood: 'dates',
+					patience: 60,
+					paid: false
+				}
+			];
+			logic['nextCustomerId'] = 2;
+
+			logic.update(0.05);
+			simulateTime(logic, 2);
+
+			const state = logic.getState();
+			for (const customer of state.customers) {
+				if (!customer.target) continue;
+				expect(customer.target.x).toBeGreaterThanOrEqual(-11);
+				expect(customer.target.x).toBeLessThanOrEqual(11);
+				expect(customer.target.y).toBeGreaterThanOrEqual(-9);
+				expect(customer.target.y).toBeLessThanOrEqual(9);
+			}
 		});
 	});
 

@@ -174,7 +174,8 @@ After the core three chains are polished, additional goods may be added as level
 |---------|---------|-------|
 | **Palm plot** | Plant sapling → wait → harvest fresh dates | Dates chain |
 | **Drying mat** | Fresh dates → dried dates | Dates chain |
-| **Packaging table** | Dried dates → palm-leaf box; sorted luban → cloth pouch | Dates, Luban |
+| **Packaging table (dates)** | Dried dates → palm-leaf box | Dates |
+| **Packaging table (luban)** | Sorted luban → cloth pouch | Luban |
 | **Coffee brazier** | Green beans → roasted beans | Qahwa chain |
 | **Stone mortar** | Roasted beans → ground coffee | Qahwa chain |
 | **Dallah station** | Ground coffee → brewed qahwa | Qahwa chain |
@@ -182,6 +183,17 @@ After the core three chains are polished, additional goods may be added as level
 | **Raw-goods corner** | Stores green coffee beans and raw luban resin | Qahwa, Luban |
 | **Shelves** | Holds finished goods for sale | All |
 | **Cashier mat** | Customers pay here | All |
+
+#### 6.1.1 Souq Layout
+
+The stall is arranged into clearly separated zones so each production stream is easy to read and reach, while all finished goods end up in one front selling area:
+
+- **Dates zone** — palm plot, drying mat, and dates packaging table clustered together.
+- **Qahwa zone** — green beans sack, brazier, mortar, and dallah clustered together.
+- **Luban zone** — frankincense tree, sorting mat, and luban packaging table clustered together.
+- **Selling zone** — all shelves and the cashier mat clustered in the front of the souq, regardless of which good they hold.
+
+This keeps every product near its source and processing steps, but lets customers find every finished good in one compact display area.
 
 ### 6.2 Production Rules
 
@@ -195,8 +207,9 @@ After the core three chains are polished, additional goods may be added as level
 
 - Customers spawn at the entrance based on level spawn rate and max capacity.
 - Each customer has a preferred good; if unavailable, they wait briefly, then may leave.
-- Customers walk to the shelf, take the item, then join a spaced left/right queue at the cashier mat.
-- Queue slots keep customers inside the play area and prevent overlap.
+- Customers walk to a **left or right slot** beside the target shelf, take the item, then join a spaced left/right queue at the cashier mat.
+- If both left and right slots at a shelf are occupied, additional customers form a short line behind the shelf.
+- All customer movement and waiting positions are clamped inside the visible play area so animals never stack on the same point or walk off-screen.
 - If a customer waits too long at the cashier, they leave without paying.
 
 ### 6.4 Temporary Drop (Resting Mat)
@@ -214,7 +227,7 @@ After the core three chains are polished, additional goods may be added as level
 | Plant | Tap the palm plot while carrying a sapling. |
 | Harvest | Tap a ripe palm plot. |
 | Carry | Walk near a finished product to pick it up automatically. |
-| Process / Pack / Stock | Carry the good to the correct station or shelf, then press `Space` (or tap the on-screen unload button) to place it. |
+| Process / Pack / Stock | Carry the good to the correct station or shelf; it is placed automatically on arrival. `Space` (or the on-screen unload button) remains as a manual fallback. |
 | Temporary drop | Press `T` (or tap "وضع مؤقت") to place a carried item on the resting mat. This frees the child’s hands. The item stays on the mat for a limited time and can be recovered; if ignored too long, it spoils and must be remade. |
 | Collect temporary item | Walk over the resting mat to pick the item back up. |
 | Collect payment | Walk to the cashier mat. |
