@@ -12,7 +12,8 @@ import {
 	Mesh,
 	TransformNode,
 	PointerEventTypes,
-	HighlightLayer
+	HighlightLayer,
+	VertexData
 } from '@babylonjs/core';
 import {
 	SouqManagerLogic,
@@ -407,38 +408,31 @@ export class SouqManagerGame {
 		soilMat.diffuseColor = new Color3(0.4, 0.3, 0.2);
 		root.material = soilMat;
 
-		// Tapered, slightly curved trunk built from stacked segments.
+		// Faceted trunk with flared base, matching low-poly reference.
 		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
-		trunkMat.diffuseColor = new Color3(0.55, 0.4, 0.25);
-		const trunkSegments = [
-			{ y: 0.35, h: 0.7, bottom: 0.26, top: 0.2 },
-			{ y: 0.9, h: 0.6, bottom: 0.2, top: 0.15 },
-			{ y: 1.35, h: 0.5, bottom: 0.15, top: 0.12 }
-		];
-		for (let i = 0; i < trunkSegments.length; i++) {
-			const seg = trunkSegments[i];
-			const trunk = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk${i}`, { height: seg.h, diameterTop: seg.top, diameterBottom: seg.bottom, tessellation: 8 }, this.scene));
-			trunk.position.y = seg.y;
-			trunk.position.x = i * 0.015;
-			trunk.material = trunkMat;
-			trunk.parent = root;
-		}
+		trunkMat.diffuseColor = new Color3(0.55, 0.38, 0.24);
+		const trunk = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.4, diameterTop: 0.12, diameterBottom: 0.18, tessellation: 6 }, this.scene));
+		trunk.position.y = 0.75;
+		trunk.material = trunkMat;
+		trunk.parent = root;
 
-		// Long, drooping fronds in two tiers, radiating around the crown.
+		const trunkFlare = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunkFlare`, { height: 0.25, diameterTop: 0.22, diameterBottom: 0.32, tessellation: 6 }, this.scene));
+		trunkFlare.position.y = 0.18;
+		trunkFlare.material = trunkMat;
+		trunkFlare.parent = root;
+
+		// Diamond low-poly fronds radiating from the crown.
 		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
-		leafMat.diffuseColor = new Color3(0.3, 0.55, 0.2);
-		const frondCount = 12;
+		leafMat.diffuseColor = new Color3(0.32, 0.58, 0.22);
+		const frondCount = 8;
 		for (let i = 0; i < frondCount; i++) {
 			const angle = (i / frondCount) * Math.PI * 2;
-			const tier = i % 2 === 0 ? 1.55 : 1.68;
-			const length = i % 2 === 0 ? 1.2 : 1.0;
-			const frond = MeshBuilder.CreateBox(`${name}-frond${i}`, { width: 0.28, height: 0.04, depth: length }, this.scene);
-			frond.position.y = tier;
-			frond.position.x = Math.cos(angle) * 0.08;
-			frond.position.z = Math.sin(angle) * 0.08;
+			const frond = this.createDiamondFrond(`${name}-frond${i}`, 1.1, 0.42, leafMat);
+			frond.position.y = 1.5;
+			frond.position.x = Math.cos(angle) * 0.06;
+			frond.position.z = Math.sin(angle) * 0.06;
 			frond.rotation.y = angle;
-			frond.rotation.x = Math.PI / 2.4;
-			frond.material = leafMat;
+			frond.rotation.x = -Math.PI / 6;
 			frond.parent = root;
 		}
 
@@ -465,6 +459,33 @@ export class SouqManagerGame {
 		}
 
 		return root;
+	}
+
+	private createDiamondFrond(name: string, length: number, width: number, material: StandardMaterial): Mesh {
+		const mesh = new Mesh(name, this.scene);
+		const halfBack = length * 0.25;
+		const positions = [
+			0, 0, 0,
+			-width, 0, halfBack,
+			0, 0, length,
+			width, 0, halfBack,
+			0, 0, -halfBack
+		];
+		const indices = [
+			0, 1, 2,
+			0, 2, 3,
+			0, 3, 4,
+			0, 4, 1
+		];
+		const normals: number[] = [];
+		VertexData.ComputeNormals(positions, indices, normals);
+		const vertexData = new VertexData();
+		vertexData.positions = positions;
+		vertexData.indices = indices;
+		vertexData.normals = normals;
+		vertexData.applyToMesh(mesh);
+		mesh.material = material;
+		return this.flatShade(mesh);
 	}
 
 	private createFrankincenseTree(name: string): Mesh {
