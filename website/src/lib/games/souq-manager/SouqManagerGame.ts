@@ -167,6 +167,7 @@ export class SouqManagerGame {
 	private cashierMesh: Mesh | null = null;
 	private carryingMesh: Mesh | null = null;
 	private stationItemMeshes = new Map<number, Mesh>();
+	private stationDateMeshes = new Map<number, Mesh[]>();
 	private shelfItemMeshes = new Map<number, Mesh[]>();
 	private temporaryDropMat: Mesh | null = null;
 	private temporaryDropItemMesh: Mesh | null = null;
@@ -358,6 +359,9 @@ export class SouqManagerGame {
 			mesh.position.y = 0;
 			mesh.metadata = { stationId: station.id };
 			this.stationMeshes.set(station.id, mesh);
+			if (mesh.metadata?.dates) {
+				this.stationDateMeshes.set(station.id, mesh.metadata.dates as Mesh[]);
+			}
 		}
 	}
 
@@ -403,23 +407,29 @@ export class SouqManagerGame {
 	}
 
 	private createPalmTree(name: string): Mesh {
-		const root = this.flatShade(MeshBuilder.CreateCylinder(`${name}-soil`, { height: 0.05, diameter: 2.2, tessellation: 8 }, this.scene));
-		const soilMat = new StandardMaterial(`${name}-soilMat`, this.scene);
-		soilMat.diffuseColor = new Color3(0.4, 0.3, 0.2);
-		root.material = soilMat;
-
-		// Faceted trunk with flared base, matching low-poly reference.
 		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
 		trunkMat.diffuseColor = new Color3(0.55, 0.38, 0.24);
-		const trunk = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.4, diameterTop: 0.12, diameterBottom: 0.18, tessellation: 6 }, this.scene));
-		trunk.position.y = 0.75;
-		trunk.material = trunkMat;
-		trunk.parent = root;
 
-		const trunkFlare = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunkFlare`, { height: 0.25, diameterTop: 0.22, diameterBottom: 0.32, tessellation: 6 }, this.scene));
-		trunkFlare.position.y = 0.18;
-		trunkFlare.material = trunkMat;
-		trunkFlare.parent = root;
+		// Faceted, smoothly bent trunk built from stacked hexagonal segments.
+		// The bottom segment is returned as the root mesh.
+		const trunkSegments = [
+			{ y: 0.15, h: 0.35, bottom: 0.26, top: 0.22, x: 0, z: 0 },
+			{ y: 0.5, h: 0.4, bottom: 0.22, top: 0.18, x: 0.02, z: 0.01 },
+			{ y: 0.9, h: 0.45, bottom: 0.18, top: 0.15, x: 0.04, z: 0.02 },
+			{ y: 1.3, h: 0.45, bottom: 0.15, top: 0.12, x: 0.02, z: 0.01 },
+			{ y: 1.65, h: 0.25, bottom: 0.12, top: 0.1, x: 0, z: 0 }
+		];
+		const root = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk0`, { height: trunkSegments[0].h, diameterTop: trunkSegments[0].top, diameterBottom: trunkSegments[0].bottom, tessellation: 6 }, this.scene));
+		root.position.set(trunkSegments[0].x, trunkSegments[0].y, trunkSegments[0].z);
+		root.material = trunkMat;
+
+		for (let i = 1; i < trunkSegments.length; i++) {
+			const seg = trunkSegments[i];
+			const trunk = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk${i}`, { height: seg.h, diameterTop: seg.top, diameterBottom: seg.bottom, tessellation: 6 }, this.scene));
+			trunk.position.set(seg.x, seg.y, seg.z);
+			trunk.material = trunkMat;
+			trunk.parent = root;
+		}
 
 		// Diamond low-poly fronds radiating from the crown.
 		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
@@ -429,7 +439,7 @@ export class SouqManagerGame {
 		for (let i = 0; i < frondCount; i++) {
 			const angle = (i / frondCount) * Math.PI * 2;
 			const frond = this.createDiamondFrond(`${name}-frond${i}`, 1.1, 0.42, leafMat);
-			frond.position.y = 1.55;
+			frond.position.y = 1.78;
 			frond.position.x = Math.cos(angle) * 0.06;
 			frond.position.z = Math.sin(angle) * 0.06;
 			frond.rotation.y = angle;
@@ -437,13 +447,14 @@ export class SouqManagerGame {
 			frond.parent = root;
 		}
 
-		// Hanging date clusters near the crown.
+		// Hanging date clusters near the crown (hidden until harvest-ready).
 		const datesMat = new StandardMaterial(`${name}-datesMat`, this.scene);
 		datesMat.diffuseColor = new Color3(0.75, 0.6, 0.15);
+		const dateMeshes: Mesh[] = [];
 		const clusterPositions = [
-			{ x: 0.18, y: 1.25, z: 0.18 },
-			{ x: -0.18, y: 1.2, z: 0.1 },
-			{ x: 0.05, y: 1.15, z: -0.2 }
+			{ x: 0.18, y: 1.5, z: 0.18 },
+			{ x: -0.18, y: 1.45, z: 0.1 },
+			{ x: 0.05, y: 1.4, z: -0.2 }
 		];
 		for (let c = 0; c < clusterPositions.length; c++) {
 			const pos = clusterPositions[c];
@@ -455,10 +466,13 @@ export class SouqManagerGame {
 					pos.z + (Math.random() - 0.5) * 0.08
 				);
 				date.material = datesMat;
+				date.setEnabled(false);
 				date.parent = root;
+				dateMeshes.push(date);
 			}
 		}
 
+		root.metadata = { dates: dateMeshes };
 		return root;
 	}
 
@@ -722,6 +736,17 @@ export class SouqManagerGame {
 				this.highlight.addMesh(mesh, new Color3(1, 0.9, 0.3));
 			} else {
 				this.highlight.removeMesh(mesh);
+			}
+
+			// Show/hide palm date clusters based on harvest readiness.
+			if (station.type === 'palmPlot') {
+				const dateMeshes = this.stationDateMeshes.get(station.id);
+				if (dateMeshes) {
+					const showDates = station.status === 'ready' && station.output !== null;
+					for (const date of dateMeshes) {
+						date.setEnabled(showDates);
+					}
+				}
 			}
 
 			// Emit smoke/steam from active braziers and dallahs.
