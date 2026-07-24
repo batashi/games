@@ -11,8 +11,10 @@ import {
 	Mesh,
 	TransformNode,
 	PointerEventTypes,
-	HighlightLayer
+	HighlightLayer,
+	SceneLoader
 } from '@babylonjs/core';
+import '@babylonjs/loaders/glTF';
 import {
 	SouqManagerLogic,
 	type SouqManagerState,
@@ -144,7 +146,7 @@ export class SouqManagerAudio {
 
 interface EntityMesh {
 	root: TransformNode;
-	body: Mesh;
+	body: TransformNode;
 }
 
 export class SouqManagerGame {
@@ -174,6 +176,7 @@ export class SouqManagerGame {
 	private time = 0;
 
 	private customerAnimals = new Map<number, AnimalType>();
+	private camelTemplate: TransformNode | null = null;
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -221,6 +224,41 @@ export class SouqManagerGame {
 
 		this.logic.startLevel(options.level ?? 1);
 		this.audio.playMusic();
+		this.loadCamelModel();
+	}
+
+	private async loadCamelModel(): Promise<void> {
+		try {
+			const result = await SceneLoader.ImportMeshAsync('', '/models/camel/', 'camel.gltf', this.scene);
+			const root = new TransformNode('camel-template', this.scene);
+			for (const mesh of result.meshes) {
+				if (!mesh.parent) {
+					mesh.parent = root;
+				}
+			}
+			root.setEnabled(false);
+
+			let minY = Infinity;
+			let maxY = -Infinity;
+			for (const mesh of result.meshes) {
+				if (!mesh.getBoundingInfo) continue;
+				const b = mesh.getBoundingInfo().boundingBox;
+				for (const point of b.vectorsWorld) {
+					minY = Math.min(minY, point.y);
+					maxY = Math.max(maxY, point.y);
+				}
+			}
+			const height = maxY - minY;
+			if (height > 0.001) {
+				const targetHeight = 1.1;
+				root.scaling.scaleInPlace(targetHeight / height);
+			}
+			root.position.y = 0;
+
+			this.camelTemplate = root;
+		} catch (err) {
+			console.warn('Failed to load camel glTF:', err);
+		}
 	}
 
 	private setupLights(): void {
@@ -766,6 +804,12 @@ export class SouqManagerGame {
 
 		switch (type) {
 			case 'camel': {
+				if (this.camelTemplate) {
+					const camelRoot = this.camelTemplate.clone(`camel-customer-${Math.random()}`, null);
+					camelRoot!.setEnabled(true);
+					camelRoot!.position.y = 0;
+					return { root: camelRoot!, body: camelRoot! };
+				}
 				mat.diffuseColor = new Color3(0.75, 0.55, 0.35);
 				body = MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.3 }, this.scene);
 				body.scaling.y = 0.7;

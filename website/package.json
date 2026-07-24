@@ -32,6 +32,7 @@
 	},
 	"dependencies": {
 		"@babylonjs/core": "^9.17.1",
-		"@babylonjs/gui": "^9.17.1"
+		"@babylonjs/gui": "^9.17.1",
+		"@babylonjs/loaders": "^9.18.0"
 	}
 }
