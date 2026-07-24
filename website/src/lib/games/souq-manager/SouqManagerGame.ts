@@ -424,15 +424,16 @@ export class SouqManagerGame {
 		// Diamond low-poly fronds radiating from the crown.
 		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
 		leafMat.diffuseColor = new Color3(0.32, 0.58, 0.22);
+		leafMat.backFaceCulling = false;
 		const frondCount = 8;
 		for (let i = 0; i < frondCount; i++) {
 			const angle = (i / frondCount) * Math.PI * 2;
 			const frond = this.createDiamondFrond(`${name}-frond${i}`, 1.1, 0.42, leafMat);
-			frond.position.y = 1.5;
+			frond.position.y = 1.55;
 			frond.position.x = Math.cos(angle) * 0.06;
 			frond.position.z = Math.sin(angle) * 0.06;
 			frond.rotation.y = angle;
-			frond.rotation.x = -Math.PI / 6;
+			frond.rotation.x = -Math.PI / 5;
 			frond.parent = root;
 		}
 
@@ -471,11 +472,12 @@ export class SouqManagerGame {
 			width, 0, halfBack,
 			0, 0, -halfBack
 		];
+		// Counter-clockwise when viewed from +Y so the top face renders.
 		const indices = [
-			0, 1, 2,
-			0, 2, 3,
-			0, 3, 4,
-			0, 4, 1
+			0, 2, 1,
+			0, 3, 2,
+			0, 4, 3,
+			0, 1, 4
 		];
 		const normals: number[] = [];
 		VertexData.ComputeNormals(positions, indices, normals);
@@ -485,7 +487,7 @@ export class SouqManagerGame {
 		vertexData.normals = normals;
 		vertexData.applyToMesh(mesh);
 		mesh.material = material;
-		return this.flatShade(mesh);
+		return mesh;
 	}
 
 	private createFrankincenseTree(name: string): Mesh {
