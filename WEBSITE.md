@@ -235,7 +235,10 @@ Each game object contains:
 3. **Write Arabic and English copy** for description, how-to-play, and cultural note.
 4. **Generate the detail page** automatically from the JSON entry.
    - The website builder creates `/games/:slug` and `/play/:id` routes at build time.
+   - The detail page displays the **supported devices** (`desktop`, `tablet`, `mobile`) from `supportedPlatforms`.
 5. **Add the game card** to the catalogue grid automatically — no extra page needed.
+   - Each card shows the genre, age range, and **supported device badges**.
+   - The catalogue page includes a **device filter** so visitors can show only games available on their device.
 6. **Publish a blog post** announcing the new game (optional but recommended).
 7. **Update the sitemap** by rebuilding the static site.
 

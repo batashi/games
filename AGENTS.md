@@ -6,7 +6,7 @@
 
 This repository is the planning and design home for the **GCC Kids Web Game Platform** (working title), a browser-based collection of culturally-themed games for children aged 7–12 across the Gulf Cooperation Council (GCC). It is maintained by **Aldoolab**.
 
-**Important:** At the moment this is a **documentation-only repository**. The runnable HTML/CSS/JS prototype described in `README.md` was removed in a previous commit (`9f24ef2 chore: remove prototype game code, keep documentation only`). There is no build system, no source code, and no package manifest checked in. All current value is in the design documents, architecture framework, and game metadata.
+The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first playable game (Fort Battle) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
 
 Three games are fully specified and catalogued:
 
@@ -14,17 +14,17 @@ Three games are fully specified and catalogued:
 |---|---|---|---|
 | `frankincense` | Frankincense Collector Runner | مغامرة جامع اللبان | Ready (design) |
 | `tictactoe` | Gulf Tic-Tac-Toe | تحدي إكس-أو الخليجي | Ready (design) |
-| `archery` | Fort Battle | معركة القلاع | Ready (design) |
+| `archery` | Fort Battle | معركة القلاع | Ready (design + playable prototype) |
 
-Seventeen additional games are listed in `README.md` as "Coming Soon" but have not been designed yet.
+Seventeen additional games are listed in `data/games.json` as "Coming Soon" but have not been designed yet.
 
 ## 2. Repository Layout
 
 ```
 /root
-├── README.md                   # Quick-start and catalogue (describes removed prototype)
 ├── FRAMEWORK.md                # Main English technical blueprint (authoritative)
 ├── WEBSITE.md                  # Specification for the public marketing/discovery website
+├── DEPLOYMENT.md               # Development, testing, release, and deployment guide
 ├── AGENTS.md                   # This file
 ├── data/
 │   └── games.json              # Single source of truth for game metadata
@@ -32,53 +32,76 @@ Seventeen additional games are listed in `README.md` as "Coming Soon" but have n
 │   ├── gdd-01-frankincense-runner.md
 │   ├── gdd-02-gulf-tic-tac-toe.md
 │   └── gdd-03-fort-battle.md
-└── .gitignore                  # Excludes tool configs, logs, and shell files
+└── website/                    # SvelteKit + Vite + Babylon.js application
+    ├── src/
+    │   ├── lib/
+    │   │   ├── components/     # Svelte components
+    │   │   ├── games/          # One folder per game
+    │   │   └── ...
+    │   └── routes/             # SvelteKit pages
+    ├── e2e/                    # Playwright E2E tests
+    ├── package.json
+    ├── playwright.config.ts
+    ├── vitest.config.ts
+    └── build/                  # Production build output (generated)
 ```
 
-No `package.json`, `vite.config.ts`, `tsconfig.json`, source directories, or build configuration exist yet.
+## 3. Technology Stack
 
-## 3. Technology Stack (Planned)
-
-The framework documents propose the following stack for a future implementation. It is **not yet present** in the repository:
+The active implementation lives under `website/` and uses the following stack:
 
 | Layer | Technology |
 |---|---|
 | Build tool | Vite |
 | Language | TypeScript (strict mode) |
-| App shell | Svelte 5 or Vue 3 |
+| App shell | Svelte 5 (runes mode) |
 | Game engine | Babylon.js (3D-first) |
-| Styling | CSS custom properties + optional Tailwind CSS |
-| Multiplayer server | Colyseus |
-| Backend / auth / database | Supabase |
+| Styling | Tailwind CSS + CSS custom properties |
+| Multiplayer server | Colyseus (planned; not yet integrated) |
+| Backend / auth / database | Supabase (planned; not yet integrated) |
 | Unit tests | Vitest |
 | E2E tests | Playwright |
-| Linting / formatting | ESLint + Prettier |
+| Linting / formatting | ESLint + Prettier (configured via Vite/SvelteKit defaults) |
 
 **Note on engine choice:** `FRAMEWORK.md` selects **Babylon.js** as the default engine. Treat it as the authoritative technical source unless a maintainer explicitly overrides it.
 
 ## 4. Build and Run Commands
 
-Because there is no build system or runnable code, there are no project build or test commands right now.
+All build and test commands are run from `website/`:
 
-- To preview the future prototype described in `README.md`, the document suggests serving static files over HTTP:
-  ```bash
-  cd /root
-  python3 -m http.server 8080
-  ```
-  However, **this will currently serve only the directory listing and markdown files** because the HTML/CSS/JS assets no longer exist.
+```bash
+cd /root/website
+npm install
+npm run dev              # Start the Vite dev server
+npm run build          # Production build; output goes to website/build/
+npm run preview        # Preview the production build locally
+npm run check          # Type-check with svelte-check
+npm test               # Run Vitest unit tests
+npm run e2e            # Run Playwright E2E tests against the production build
+```
 
-- To read the documentation, open any `.md` file directly.
+For the full release and deployment procedure, see `DEPLOYMENT.md`.
+
+To read the documentation, open any `.md` file directly.
 
 ## 5. Code Organization
 
-There is no source code to organize yet. Work is structured by document type:
+Documentation remains structured by document type:
 
 - **`FRAMEWORK.md`** — Architecture, tech stack, migration roadmap, code-quality standards, child-safety rules, and asset pipeline.
 - **`WEBSITE.md`** — Public website requirements, SEO, analytics, ads policy, and integration with the game app.
+- **`DEPLOYMENT.md`** — Development, testing, release, and deployment workflow.
 - **`GDD/*.md`** — Individual Game Design Documents, one per implemented game.
 - **`data/games.json`** — Shared metadata used by both the game app and the website.
 
-When implementation starts, `FRAMEWORK.md` section 4 prescribes a layout under `src/` with `shell/`, `core/`, `games/`, and `server/` folders.
+The active implementation is in `website/`:
+
+- `website/src/lib/components/` — Svelte components (cards, layout, game wrappers).
+- `website/src/lib/games/` — One folder per game, containing logic, presentation, and tests.
+- `website/src/lib/types/` — Shared TypeScript types and label dictionaries.
+- `website/src/routes/` — SvelteKit pages (home, games, game detail, play launcher).
+- `website/e2e/` — Playwright smoke tests.
+- `website/build/` — Production build output (generated, not committed).
 
 ## 6. Data Contract: `data/games.json`
 
@@ -100,7 +123,7 @@ Key fields for each game entry:
 | `modes` | Array of modes: `single`, `local`, `online`, `async`, `daily`, `practice`, `coop`, `team` |
 | `countries` | GCC country codes: `OM`, `SA`, `AE`, `QA`, `BH`, `KW` |
 | `status` | `ready`, `beta`, or `coming-soon` |
-| `supportedPlatforms` | `desktop`, `tablet`, `mobile` |
+| `supportedPlatforms` | `desktop`, `tablet`, `mobile` — surfaced in the website as device badges, a catalogue filter, and a detail-page section |
 | `heroImage` / `thumbnail` / `video` | Asset paths |
 | `howToPlayAr` / `howToPlayEn` | Step-by-step instructions |
 | `culturalNoteAr` / `culturalNoteEn` | Cultural context paragraph |
@@ -111,27 +134,33 @@ The JSON file declares `"$schema": "./games.schema.json"`, but that schema file 
 
 ## 7. Development Conventions
 
-Until coding begins, follow these document-level conventions:
-
 - **Primary language for docs:** English. The framework and internal documentation are maintained in English; the public-facing platform, games, and website remain **Arabic-first**.
 - **Game design documents:** Use the existing `GDD/*.md` structure (Elevator Pitch, Game Identity, GameConfig Contract, Core Loop, Mechanics, Controls, UI/Feedback, Audio, Safety, Monetization, Technical Notes).
-- **Commit style:** The project uses conventional commit prefixes such as `docs:`, `chore:`, `docs(framework):`, etc. Continue using them.
+- **Commit style:** The project uses conventional commit prefixes such as `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`, etc. Continue using them.
 - **Game metadata:** When a new game is designed, add it to `data/games.json` and create a matching `GDD/gdd-NN-game-name.md` file.
 - **File naming:** Use lowercase, hyphens, and descriptive names (e.g., `gdd-01-frankincense-runner.md`).
+- **Code changes:** Run the validation gates in `DEPLOYMENT.md` before merging or deploying.
 
 ## 8. Testing Strategy
 
-No test infrastructure exists. The framework plans for:
+The following test infrastructure is in place under `website/`:
 
-- **Unit tests (Vitest):** win detection, AI selection, network validators, score sorting.
-- **E2E tests (Playwright):** launching a game, hosting/joining a room, completing a match, mute/fullscreen buttons.
+- **Unit tests (Vitest):** pure game logic files (`*Logic.ts`) with matching `*Logic.test.ts`. Cover state transitions, win/lose, physics, collision, input clamping, and edge cases.
+- **E2E tests (Playwright):** smoke tests under `website/e2e/` run against the production build. Each shipped game must have a test that loads `/play/[id]`, verifies the canvas, and asserts zero page/console errors.
 - **Manual QA:** real tablets, throttled networks, RTL Arabic layout.
 
 ## 9. Deployment
 
-No deployment pipeline exists. The framework proposes:
+The current deployment is manual:
 
-- **Frontend:** static hosting on Vercel, Netlify, Cloudflare Pages, or GitHub Pages with HTTPS enforced.
+- **Production server:** static files are served from `/var/www/games.aldoolab.com`.
+- **Public URL:** `https://games.aldoolab.com`.
+- **Release steps:** build with `npm run build`, copy `website/build/` to `/var/www/games.aldoolab.com`, and verify with `curl`.
+- **Detailed procedure:** see `DEPLOYMENT.md`.
+
+Future improvements remain as proposed in `FRAMEWORK.md`:
+
+- **Frontend:** automated static hosting on Vercel, Netlify, Cloudflare Pages, or GitHub Pages with HTTPS enforced.
 - **Backend:** Node.js/Colyseus on Railway, Render, Fly.io, or a VPS; Redis for scaling.
 - **Database:** Supabase PostgreSQL with row-level security and backups.
 
@@ -148,8 +177,9 @@ These are non-negotiable project rules carried through all documents:
 
 ## 11. Notes for Future Agents
 
-- Do not assume a build system, framework, or engine is installed. Check the file tree first.
 - `FRAMEWORK.md` is the authoritative technical spec; `WEBSITE.md` is the authoritative website spec; `data/games.json` is the authoritative metadata source.
-- Do not add a `package.json`, Vite config, or source tree unless explicitly asked or unless you are implementing the framework migration roadmap.
-- If you generate code, match the planned stack (Vite + TypeScript + Svelte/Vue + Babylon.js + Colyseus + Supabase) and the child-safety rules above.
+- The active build system, source tree, and tests live under `website/`. Run commands from that directory.
+- If you generate code, match the existing stack (Vite + TypeScript + Svelte 5 + Babylon.js + Tailwind CSS) and the child-safety rules above.
+- Run `npm run check`, `npm test`, and `npm run e2e` before committing TypeScript or game-logic changes. See `DEPLOYMENT.md` for the full release checklist.
 - If you modify `data/games.json`, keep Arabic and English fields in sync and preserve the existing structure.
+- Keep `AGENTS.md`, `DEPLOYMENT.md`, and `WEBSITE.md` current whenever build, deployment, or data workflows change.
