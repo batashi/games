@@ -264,8 +264,8 @@ This keeps every product near its source and processing steps, but lets customer
   - Stone mortar and dallah station.
   - Luban sorting mat with small resin piles.
 - **Characters:**
-  - **Player:** A low-poly child merchant in a simple white thobe-style garment.
-  - **Customers:** Low-poly animal silhouettes (camel, falcon, oryx, fox, goat, sheep) with small cultural accessories.
+  - **Player:** A cute stylized cat merchant in a simple white thobe-style garment.
+  - **Customers:** Full low-poly sculpts of iconic GCC animals (camel, falcon, oryx, fox, goat, sheep) with big expressive eyes, small cultural accessories, and idle animations: tail wags, wing flaps, head bobs, and ear twitches.
   - **Workers:** Young apprentice children or helper animals in simple traditional clothing.
 - **Environment:** Sand floor, stone walls, palm-wood beams, distant mosque silhouette, warm sunset lantern lighting.
 - **Camera:** Fixed isometric view, slightly angled, touch-friendly.
