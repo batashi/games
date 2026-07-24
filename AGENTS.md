@@ -8,15 +8,17 @@ This repository is the planning and design home for the **GCC Kids Web Game Plat
 
 The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first playable game (Fort Battle) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
 
-Three games are fully specified and catalogued:
+Four games are specified in the repository:
 
 | ID | English Name | Arabic Name | Status |
 |---|---|---|---|
 | `frankincense` | Frankincense Collector Runner | مغامرة جامع اللبان | Ready (design) |
 | `tictactoe` | Gulf Tic-Tac-Toe | تحدي إكس-أو الخليجي | Ready (design) |
 | `archery` | Fort Battle | معركة القلاع | Ready (design + playable prototype) |
+| `luban-sorter` | Luban Sorter | فرز اللبان | Ready (design) |
+| `souq-manager` | Souq al-Khaleej | سوق الخليج | In design / coming soon |
 
-Seventeen additional games are listed in `data/games.json` as "Coming Soon" but have not been designed yet.
+Additional games may be added to `data/games.json` as the catalogue grows.
 
 ## 2. Repository Layout
 
@@ -31,7 +33,9 @@ Seventeen additional games are listed in `data/games.json` as "Coming Soon" but 
 ├── GDD/
 │   ├── gdd-01-frankincense-runner.md
 │   ├── gdd-02-gulf-tic-tac-toe.md
-│   └── gdd-03-fort-battle.md
+│   ├── gdd-03-fort-battle.md
+│   ├── gdd-04-luban-sorter.md
+│   └── gdd-05-souq-manager.md
 └── website/                    # SvelteKit + Vite + Babylon.js application
     ├── src/
     │   ├── lib/

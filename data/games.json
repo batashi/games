@@ -119,6 +119,47 @@
       "metaTitleEn": "Fort Battle — Strategic Archery Game for Kids",
       "metaDescriptionAr": "العب معركة القلاع مجاناً. وجه سهامك ودمر قلعة العدو في لعبة رماية خليجية.",
       "metaDescriptionEn": "Play Fort Battle for free. Aim your arrows and destroy the enemy fort in a Gulf-themed archery game."
+    },
+    {
+      "id": "souq-manager",
+      "slug": "souq-alkhaleej",
+      "nameAr": "سوق الخليج",
+      "nameEn": "Souq al-Khaleej",
+      "taglineAr": "أدير دكانك في السوق الخليجي واكسب العملات",
+      "taglineEn": "Run your Gulf souq stall and earn coins",
+      "descriptionAr": "ادير دكاناً تقليدياً في سوق خليجي. املأ الأرفف بالتمور واللبان والعود، خدم الزبائن، ووظف مساعدين لتحقيق هدف كل مستوى قبل انتهاء الوقت.",
+      "descriptionEn": "Run a traditional stall in a Gulf souq. Stock shelves with dates, frankincense, and oud, serve customers, and hire helpers to hit each level's target before time runs out.",
+      "icon": "🏪",
+      "genre": "shop-simulation",
+      "genreLabelAr": "إدارة متجر",
+      "genreLabelEn": "Shop Simulation",
+      "ageRange": "7-11",
+      "sessionLength": "2-4 min",
+      "modes": ["single", "daily"],
+      "countries": ["OM", "SA", "AE", "QA", "BH", "KW"],
+      "status": "coming-soon",
+      "supportedPlatforms": ["desktop", "tablet", "mobile"],
+      "heroImage": "/images/games/souq-manager-hero.webp",
+      "thumbnail": "/images/games/souq-manager-thumb.webp",
+      "video": "/videos/souq-manager-loop.webm",
+      "howToPlayAr": [
+        "اسحب اللاعب إلى الصندوق لأخذ السلعة",
+        "ضع السلعة على الرف الفارغ",
+        "انتقل إلى مكان الدفع لتحصيل العملات",
+        "وظف مساعدين بين المستويات لتسريع العمل"
+      ],
+      "howToPlayEn": [
+        "Drag the player to the crate to pick up a good",
+        "Place the good on an empty shelf",
+        "Move to the cashier mat to collect coins",
+        "Hire helpers between levels to speed things up"
+      ],
+      "culturalNoteAr": "الأسواق التقليدية (السواق) كانت قلب الحياة الاقتصادية والاجتماعية في الخليج، حيث تباع التوابل والتمور واللبان والعود وتجتمع فيها العائلات.",
+      "culturalNoteEn": "Traditional markets (souqs) were the economic and social heart of the Gulf, where spices, dates, frankincense, and oud were sold and families gathered.",
+      "metaTitleAr": "سوق الخليج - لعبة إدارة متجر للأطفال",
+      "metaTitleEn": "Souq al-Khaleej — GCC Shop Sim for Kids",
+      "metaDescriptionAr": "العب سوق الخليج مجاناً. أدير دكانك التقليدي، خدم الزبائن، ووظف مساعدين في لعبة إدارة متجر خليجية.",
+      "metaDescriptionEn": "Play Souq al-Khaleej for free. Run your traditional stall, serve customers, and hire helpers in a Gulf-themed shop sim."
     }
   ]
 }
