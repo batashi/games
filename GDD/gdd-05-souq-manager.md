@@ -61,9 +61,12 @@ Each level represents a busier market day. In endless mode, the child keeps the 
 - **Era:** Pre-oil Gulf — no modern technology, no plastics, no electric lighting.
 - **Location:** An open-air corner of a stone souq with palm-wood beams, sand floor, hanging brass lanterns, clay ovens, woven mats, and a distant mosque silhouette at sunset.
 - **Stall:** A low wooden counter covered with woven palm baskets, clay jars, brass scales, a small charcoal brazier for roasting coffee, and a hand-woven striped awning.
-- **Player:** A young Gulf child merchant wearing a simple white thobe-style garment, moving busily between production stations, shelves, and cashier mat.
+- **Shelves:** Finished goods are displayed on small woven floor mats or low palm-leaf baskets rather than tall modern shelves, keeping the stall close to the sand.
+- **Sources:** Each raw good comes from its own designated source — dates from a planted date palm, luban from a small frankincense tree, and qahwa beans from a burlap sack of green coffee beans.
+- **Player:** A young Gulf child merchant wearing a simple white thobe-style garment, moving busily between production stations, mats, and cashier mat.
 - **Customers:** Beloved and iconic animals of the GCC region, each dressed or accessorized with a tiny cultural hint.
 - **Workers:** Young apprentice helpers (other children or friendly animals) who can be hired to tend stations, carry goods, or handle payments.
+- **Visual Style:** Characters are built from simple, readable low-poly shapes with a gentle walking bob, avoiding plain cylinders.
 
 ### 3.2 Customers (Animal Visitors)
 
@@ -96,7 +99,7 @@ Every good is made by hand through a short production chain and shown as a physi
 
 | Stage | Visual | Action |
 |-------|--------|--------|
-| **Green beans** | Small sack of pale green coffee beans | Stored at the raw-goods corner. |
+| **Green beans** | Small burlap sack of pale green coffee beans | Stored at the raw-goods corner. |
 | **Roasting** | Beans in a small brass pan over a charcoal brazier | Child tends the pan until browned. |
 | **Ground coffee** | Dark powder in a stone mortar | Child grinds roasted beans. |
 | **Brewed qahwa** | Steam rising from a brass dallah | Child brews the ground coffee. |
@@ -108,7 +111,7 @@ Every good is made by hand through a short production chain and shown as a physi
 
 | Stage | Visual | Action |
 |-------|--------|--------|
-| **Raw resin** | Small lumps of golden luban resin | Stored at the raw-goods corner. |
+| **Raw resin** | Golden luban resin collected from a small frankincense tree | Tapped from the tree and collected at the raw-goods corner. |
 | **Sorted resin** | Resin graded by size on a woven mat | Child sorts the lumps. |
 | **Packed luban** | Sorted resin in a small cloth pouch | Child packs at the packaging table. |
 | **Shelf ready** | Cloth pouch on the shelf | Customer buys it. |

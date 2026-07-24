@@ -30,6 +30,8 @@ export interface SouqManagerGameOptions {
 	config?: SouqManagerConfig;
 }
 
+type AnimalType = 'camel' | 'falcon' | 'oryx' | 'fox' | 'goat' | 'sheep';
+
 export class SouqManagerAudio {
 	private ctx: AudioContext | null = null;
 	private muted = false;
@@ -169,6 +171,9 @@ export class SouqManagerGame {
 	private lastState: SouqManagerState | null = null;
 	private handleResize: () => void;
 	private disposed = false;
+	private time = 0;
+
+	private customerAnimals = new Map<number, AnimalType>();
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -207,6 +212,7 @@ export class SouqManagerGame {
 		this.engine.runRenderLoop(() => {
 			if (this.disposed) return;
 			const dt = this.engine.getDeltaTime() / 1000;
+			this.time += dt;
 			this.logic.update(dt);
 			this.syncScene();
 			this.updateCoinLabels(dt);
@@ -284,56 +290,212 @@ export class SouqManagerGame {
 		const mat = new StandardMaterial(`stationMat-${type}`, this.scene);
 		switch (type) {
 			case 'palmPlot':
-				mesh = MeshBuilder.CreateCylinder(`station-${type}`, { height: 0.2, diameter: 2.5 }, this.scene);
-				mat.diffuseColor = new Color3(0.4, 0.3, 0.2);
+				mesh = this.createPalmTree(`station-${type}`);
 				break;
 			case 'dryingMat':
 				mesh = MeshBuilder.CreateGround(`station-${type}`, { width: 1.6, height: 1.2 }, this.scene);
 				mat.diffuseColor = new Color3(0.75, 0.65, 0.45);
+				mesh.material = mat;
 				break;
 			case 'packagingTable':
 				mesh = MeshBuilder.CreateBox(`station-${type}`, { width: 1.6, height: 0.8, depth: 1 }, this.scene);
 				mat.diffuseColor = new Color3(0.6, 0.4, 0.25);
+				mesh.material = mat;
 				break;
 			case 'brazier':
-				mesh = MeshBuilder.CreateCylinder(`station-${type}`, { height: 0.5, diameter: 0.8 }, this.scene);
-				mat.diffuseColor = new Color3(0.25, 0.2, 0.2);
+				mesh = this.createBrazier(`station-${type}`);
 				break;
 			case 'mortar':
-				mesh = MeshBuilder.CreateCylinder(`station-${type}`, { height: 0.6, diameter: 0.6 }, this.scene);
-				mat.diffuseColor = new Color3(0.55, 0.55, 0.55);
+				mesh = this.createMortar(`station-${type}`);
 				break;
 			case 'dallah':
-				mesh = MeshBuilder.CreateCylinder(`station-${type}`, { height: 1, diameter: 0.6 }, this.scene);
-				mat.diffuseColor = new Color3(0.85, 0.7, 0.2);
+				mesh = this.createDallah(`station-${type}`);
 				break;
 			case 'sortingMat':
 				mesh = MeshBuilder.CreateGround(`station-${type}`, { width: 1.4, height: 1 }, this.scene);
 				mat.diffuseColor = new Color3(0.8, 0.7, 0.5);
+				mesh.material = mat;
 				break;
 			case 'greenBeans':
-				mesh = MeshBuilder.CreateBox(`station-${type}`, { width: 0.8, height: 0.8, depth: 0.6 }, this.scene);
-				mat.diffuseColor = new Color3(0.4, 0.6, 0.3);
+				mesh = this.createCoffeeSack(`station-${type}`);
 				break;
 			case 'rawResin':
-				mesh = MeshBuilder.CreateBox(`station-${type}`, { width: 0.8, height: 0.5, depth: 0.8 }, this.scene);
-				mat.diffuseColor = new Color3(0.9, 0.8, 0.5);
+				mesh = this.createFrankincenseTree(`station-${type}`);
 				break;
 		}
-		mesh.material = mat;
 		return mesh;
+	}
+
+	private createPalmTree(name: string): Mesh {
+		const root = MeshBuilder.CreateCylinder(`${name}-soil`, { height: 0.05, diameter: 2.2 }, this.scene);
+		const soilMat = new StandardMaterial(`${name}-soilMat`, this.scene);
+		soilMat.diffuseColor = new Color3(0.4, 0.3, 0.2);
+		root.material = soilMat;
+
+		const trunk = MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.6, diameterTop: 0.12, diameterBottom: 0.22 }, this.scene);
+		trunk.position.y = 0.8;
+		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
+		trunkMat.diffuseColor = new Color3(0.55, 0.4, 0.25);
+		trunk.material = trunkMat;
+		trunk.parent = root;
+
+		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
+		leafMat.diffuseColor = new Color3(0.3, 0.55, 0.2);
+		for (let i = 0; i < 7; i++) {
+			const frond = MeshBuilder.CreateBox(`${name}-frond${i}`, { width: 0.12, height: 0.04, depth: 1.3 }, this.scene);
+			frond.position.y = 1.55;
+			frond.rotation.x = Math.PI / 3.5;
+			frond.rotation.y = (i / 7) * Math.PI * 2;
+			frond.position.x = Math.cos(frond.rotation.y) * 0.45;
+			frond.position.z = Math.sin(frond.rotation.y) * 0.45;
+			frond.material = leafMat;
+			frond.parent = root;
+		}
+
+		const dates = MeshBuilder.CreateSphere(`${name}-dates`, { diameter: 0.32 }, this.scene);
+		dates.position.y = 1.35;
+		dates.position.z = 0.35;
+		const datesMat = new StandardMaterial(`${name}-datesMat`, this.scene);
+		datesMat.diffuseColor = new Color3(0.75, 0.6, 0.15);
+		dates.material = datesMat;
+		dates.parent = root;
+
+		return root;
+	}
+
+	private createFrankincenseTree(name: string): Mesh {
+		const root = MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.1, diameterTop: 0.1, diameterBottom: 0.18 }, this.scene);
+		root.position.y = 0.55;
+		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
+		trunkMat.diffuseColor = new Color3(0.45, 0.35, 0.25);
+		root.material = trunkMat;
+
+		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
+		leafMat.diffuseColor = new Color3(0.35, 0.5, 0.25);
+		for (let i = 0; i < 5; i++) {
+			const branch = MeshBuilder.CreateSphere(`${name}-leaf${i}`, { diameter: 0.55 }, this.scene);
+			branch.position.y = 1.05 + Math.random() * 0.25;
+			branch.position.x = (Math.random() - 0.5) * 0.5;
+			branch.position.z = (Math.random() - 0.5) * 0.5;
+			branch.scaling.y = 0.6;
+			branch.material = leafMat;
+			branch.parent = root;
+		}
+
+		const resinMat = new StandardMaterial(`${name}-resinMat`, this.scene);
+		resinMat.diffuseColor = new Color3(0.95, 0.85, 0.45);
+		for (let i = 0; i < 4; i++) {
+			const lump = MeshBuilder.CreateSphere(`${name}-resin${i}`, { diameter: 0.14 }, this.scene);
+			lump.position.y = 0.08;
+			lump.position.x = 0.25 + (i % 2) * 0.2;
+			lump.position.z = (i < 2 ? -0.15 : 0.15);
+			lump.material = resinMat;
+			lump.parent = root;
+		}
+
+		return root;
+	}
+
+	private createCoffeeSack(name: string): Mesh {
+		const root = MeshBuilder.CreateSphere(`${name}-sack`, { diameter: 0.8 }, this.scene);
+		root.position.y = 0.35;
+		root.scaling.y = 0.85;
+		const sackMat = new StandardMaterial(`${name}-sackMat`, this.scene);
+		sackMat.diffuseColor = new Color3(0.65, 0.55, 0.35);
+		root.material = sackMat;
+
+		const top = MeshBuilder.CreateCylinder(`${name}-top`, { height: 0.08, diameterTop: 0.35, diameterBottom: 0.5 }, this.scene);
+		top.position.y = 0.55;
+		const topMat = new StandardMaterial(`${name}-topMat`, this.scene);
+		topMat.diffuseColor = new Color3(0.55, 0.45, 0.3);
+		top.material = topMat;
+		top.parent = root;
+
+		const beanMat = new StandardMaterial(`${name}-beanMat`, this.scene);
+		beanMat.diffuseColor = new Color3(0.4, 0.6, 0.3);
+		for (let i = 0; i < 5; i++) {
+			const bean = MeshBuilder.CreateSphere(`${name}-bean${i}`, { diameter: 0.1 }, this.scene);
+			bean.position.y = 0.5;
+			bean.position.x = (Math.random() - 0.5) * 0.25;
+			bean.position.z = (Math.random() - 0.5) * 0.25;
+			bean.material = beanMat;
+			bean.parent = root;
+		}
+
+		return root;
+	}
+
+	private createBrazier(name: string): Mesh {
+		const root = MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.35, diameter: 0.85, tessellation: 16 }, this.scene);
+		root.position.y = 0.2;
+		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
+		bowlMat.diffuseColor = new Color3(0.25, 0.2, 0.2);
+		root.material = bowlMat;
+
+		const coal = MeshBuilder.CreateSphere(`${name}-coal`, { diameter: 0.5 }, this.scene);
+		coal.position.y = 0.18;
+		coal.scaling.y = 0.4;
+		const coalMat = new StandardMaterial(`${name}-coalMat`, this.scene);
+		coalMat.diffuseColor = new Color3(0.15, 0.12, 0.1);
+		coal.material = coalMat;
+		coal.parent = root;
+
+		return root;
+	}
+
+	private createMortar(name: string): Mesh {
+		const root = MeshBuilder.CreateSphere(`${name}-bowl`, { diameter: 0.6 }, this.scene);
+		root.position.y = 0.3;
+		root.scaling.y = 0.65;
+		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
+		bowlMat.diffuseColor = new Color3(0.5, 0.5, 0.5);
+		root.material = bowlMat;
+
+		const pestle = MeshBuilder.CreateCylinder(`${name}-pestle`, { height: 0.5, diameter: 0.1 }, this.scene);
+		pestle.position.y = 0.55;
+		pestle.rotation.z = 0.3;
+		const pestleMat = new StandardMaterial(`${name}-pestleMat`, this.scene);
+		pestleMat.diffuseColor = new Color3(0.4, 0.35, 0.3);
+		pestle.material = pestleMat;
+		pestle.parent = root;
+
+		return root;
+	}
+
+	private createDallah(name: string): Mesh {
+		const root = MeshBuilder.CreateSphere(`${name}-body`, { diameter: 0.65 }, this.scene);
+		root.position.y = 0.45;
+		root.scaling.y = 1.1;
+		const bodyMat = new StandardMaterial(`${name}-bodyMat`, this.scene);
+		bodyMat.diffuseColor = new Color3(0.85, 0.7, 0.2);
+		root.material = bodyMat;
+
+		const neck = MeshBuilder.CreateCylinder(`${name}-neck`, { height: 0.45, diameter: 0.22 }, this.scene);
+		neck.position.y = 0.95;
+		neck.material = bodyMat;
+		neck.parent = root;
+
+		const spout = MeshBuilder.CreateCylinder(`${name}-spout`, { height: 0.45, diameterTop: 0.08, diameterBottom: 0.16 }, this.scene);
+		spout.position.y = 0.75;
+		spout.position.x = 0.35;
+		spout.rotation.z = -Math.PI / 3;
+		spout.material = bodyMat;
+		spout.parent = root;
+
+		return root;
 	}
 
 	private setupShelves(): void {
 		const state = this.logic.getState();
 		for (const shelf of state.shelves) {
-			const mesh = MeshBuilder.CreateBox(`shelf${shelf.id}`, { width: 1.8, height: 1, depth: 0.8 }, this.scene);
+			const mesh = MeshBuilder.CreateGround(`shelf${shelf.id}`, { width: 1.6, height: 1 }, this.scene);
 			const mat = new StandardMaterial(`shelfMat${shelf.id}`, this.scene);
-			mat.diffuseColor = new Color3(0.65, 0.45, 0.3);
+			mat.diffuseColor = new Color3(0.72, 0.6, 0.42);
+			mat.alpha = 0.95;
 			mesh.material = mat;
 			mesh.position.x = shelf.position.x;
 			mesh.position.z = shelf.position.y;
-			mesh.position.y = 0.5;
+			mesh.position.y = 0.02;
 			this.shelfMeshes.push(mesh);
 		}
 	}
@@ -346,12 +508,13 @@ export class SouqManagerGame {
 
 			const point = { x: pick.pickedPoint.x, y: pick.pickedPoint.z };
 
-			if (pick.pickedMesh && pick.pickedMesh.metadata && typeof pick.pickedMesh.metadata.stationId === 'number') {
-				this.logic.movePlayerToStation(pick.pickedMesh.metadata.stationId);
+			const stationId = this.findStationId(pick.pickedMesh);
+			if (stationId !== null) {
+				this.logic.movePlayerToStation(stationId);
 				return;
 			}
 
-			if (pick.pickedMesh === this.cashierMesh) {
+			if (pick.pickedMesh === this.cashierMesh || this.isChildOf(pick.pickedMesh, this.cashierMesh)) {
 				this.logic.movePlayerToCashier();
 				return;
 			}
@@ -366,13 +529,34 @@ export class SouqManagerGame {
 		});
 	}
 
+	private findStationId(mesh: import('@babylonjs/core').AbstractMesh | null): number | null {
+		let current: import('@babylonjs/core').Node | null = mesh;
+		while (current) {
+			if (current.metadata && typeof current.metadata.stationId === 'number') {
+				return current.metadata.stationId;
+			}
+			current = current.parent;
+		}
+		return null;
+	}
+
+	private isChildOf(mesh: import('@babylonjs/core').AbstractMesh | null, parent: Mesh | null): boolean {
+		if (!mesh || !parent) return false;
+		let current: import('@babylonjs/core').Node | null = mesh.parent;
+		while (current) {
+			if (current === parent) return true;
+			current = current.parent;
+		}
+		return false;
+	}
+
 	private syncScene(): void {
 		const state = this.lastState;
 		if (!state) return;
 
 		this.syncStations(state.stations);
 		this.syncShelves(state.shelves);
-		this.syncPlayer(state.player.position, state.player.carrying);
+		this.syncPlayer(state.player);
 		this.syncWorkers(state.workers);
 		this.syncCustomers(state.customers);
 		this.syncCashier(state.cashierMat.queue.length);
@@ -393,7 +577,7 @@ export class SouqManagerGame {
 				}
 				itemMesh.position.x = mesh.position.x;
 				itemMesh.position.z = mesh.position.z;
-				itemMesh.position.y = 1.2;
+				itemMesh.position.y = station.type === 'palmPlot' || station.type === 'rawResin' ? 0.35 : 0.7;
 				itemMesh.setEnabled(true);
 			} else if (itemMesh) {
 				itemMesh.setEnabled(false);
@@ -457,35 +641,40 @@ export class SouqManagerGame {
 			for (let j = 0; j < goodMeshes.length; j++) {
 				goodMeshes[j].position.x = mesh.position.x + (j % 2 === 0 ? -0.35 : 0.35);
 				goodMeshes[j].position.z = mesh.position.z + (j < 2 ? -0.15 : 0.15);
-				goodMeshes[j].position.y = 1.25;
+				goodMeshes[j].position.y = 0.15;
 				goodMeshes[j].setEnabled(true);
 			}
 			this.shelfItemMeshes.set(i, goodMeshes);
 		}
 	}
 
-	private syncPlayer(position: { x: number; y: number }, carrying: Item | null): void {
+	private syncPlayer(player: { position: { x: number; y: number }; target: { x: number; y: number } | null; carrying: Item | null }): void {
 		if (!this.playerMesh) {
-			this.playerMesh = this.createCharacterMesh(new Color3(0.95, 0.95, 0.95), 0.5);
+			this.playerMesh = this.createChildMesh(0.5);
 		}
-		this.playerMesh.root.position.x = position.x;
-		this.playerMesh.root.position.z = position.y;
-		this.playerMesh.root.position.y = 0;
+		this.playerMesh.root.position.x = player.position.x;
+		this.playerMesh.root.position.z = player.position.y;
+		this.playerMesh.root.position.y = this.walkBob(player.target !== null);
 
-		if (carrying) {
+		if (player.carrying) {
 			if (!this.carryingMesh) {
-				this.carryingMesh = this.createItemMesh(carrying);
+				this.carryingMesh = this.createItemMesh(player.carrying);
 			}
 			this.carryingMesh.setEnabled(true);
 			this.carryingMesh.position.x = this.playerMesh.root.position.x;
 			this.carryingMesh.position.z = this.playerMesh.root.position.z;
-			this.carryingMesh.position.y = 1.3;
+			this.carryingMesh.position.y = this.playerMesh.root.position.y + 1.1;
 		} else if (this.carryingMesh) {
 			this.carryingMesh.setEnabled(false);
 		}
 	}
 
-	private syncWorkers(workers: { id: number; position: { x: number; y: number } }[]): void {
+	private walkBob(moving: boolean): number {
+		if (!moving) return 0;
+		return Math.abs(Math.sin(this.time * 10)) * 0.12;
+	}
+
+	private syncWorkers(workers: { id: number; position: { x: number; y: number }; target: { x: number; y: number } | null }[]): void {
 		for (const [id, mesh] of this.workerMeshes) {
 			if (!workers.find((w) => w.id === id)) {
 				mesh.root.dispose();
@@ -495,45 +684,41 @@ export class SouqManagerGame {
 		for (const worker of workers) {
 			let entity = this.workerMeshes.get(worker.id);
 			if (!entity) {
-				entity = this.createCharacterMesh(new Color3(0.6, 0.8, 0.6), 0.42);
+				entity = this.createChildMesh(0.42, new Color3(0.6, 0.8, 0.6));
 				this.workerMeshes.set(worker.id, entity);
 			}
 			entity.root.position.x = worker.position.x;
 			entity.root.position.z = worker.position.y;
-			entity.root.position.y = 0;
+			entity.root.position.y = this.walkBob(worker.target !== null);
 		}
 	}
 
-	private syncCustomers(customers: { id: number; position: { x: number; y: number }; desiredGood: GoodType; state: string }[]): void {
+	private syncCustomers(customers: { id: number; position: { x: number; y: number }; desiredGood: GoodType; state: string; target: { x: number; y: number } | null }[]): void {
 		for (const [id, mesh] of this.customerMeshes) {
 			if (!customers.find((c) => c.id === id)) {
 				mesh.root.dispose();
 				this.customerMeshes.delete(id);
+				this.customerAnimals.delete(id);
 			}
 		}
 		for (const customer of customers) {
 			let entity = this.customerMeshes.get(customer.id);
 			if (!entity) {
-				const color = this.customerColor(customer.desiredGood);
-				entity = this.createCharacterMesh(color, 0.48);
+				const animal = this.pickAnimalType();
+				this.customerAnimals.set(customer.id, animal);
+				entity = this.createAnimalMesh(animal, 0.48);
 				this.customerMeshes.set(customer.id, entity);
 			}
 			entity.root.position.x = customer.position.x;
 			entity.root.position.z = customer.position.y;
-			entity.root.position.y = 0;
-			entity.body.scaling.y = customer.state === 'paying' ? 0.85 : 1;
+			entity.root.position.y = this.walkBob(customer.target !== null);
+			entity.body.scaling.y = customer.state === 'paying' ? 0.9 : 1;
 		}
 	}
 
-	private customerColor(desiredGood: GoodType): Color3 {
-		switch (desiredGood) {
-			case 'dates':
-				return new Color3(0.75, 0.55, 0.35); // camel tan
-			case 'qahwa':
-				return new Color3(0.4, 0.25, 0.15); // falcon brown
-			case 'luban':
-				return new Color3(0.95, 0.9, 0.75); // oryx cream
-		}
+	private pickAnimalType(): AnimalType {
+		const animals: AnimalType[] = ['camel', 'falcon', 'oryx', 'fox', 'goat', 'sheep'];
+		return animals[Math.floor(Math.random() * animals.length)];
 	}
 
 	private syncCashier(queueLength: number): void {
@@ -545,21 +730,193 @@ export class SouqManagerGame {
 		}
 	}
 
-	private createCharacterMesh(color: Color3, scale: number): EntityMesh {
-		const root = new TransformNode('char', this.scene);
-		const body = MeshBuilder.CreateCylinder('body', { height: 0.9, diameter: scale * 1.2 }, this.scene);
+	private createChildMesh(scale: number, robeColor: Color3 = new Color3(0.95, 0.95, 0.95)): EntityMesh {
+		const root = new TransformNode('child', this.scene);
+
+		const body = MeshBuilder.CreateSphere('body', { diameter: scale * 1.1 }, this.scene);
 		body.position.y = 0.45;
-		const mat = new StandardMaterial('bodyMat', this.scene);
-		mat.diffuseColor = color;
-		body.material = mat;
+		body.scaling.y = 1.3;
+		const robeMat = new StandardMaterial('robeMat', this.scene);
+		robeMat.diffuseColor = robeColor;
+		body.material = robeMat;
 		body.parent = root;
 
-		const head = MeshBuilder.CreateSphere('head', { diameter: scale * 0.8 }, this.scene);
-		head.position.y = 1.05;
-		head.material = mat;
+		const head = MeshBuilder.CreateSphere('head', { diameter: scale * 0.75 }, this.scene);
+		head.position.y = 0.98;
+		const skinMat = new StandardMaterial('skinMat', this.scene);
+		skinMat.diffuseColor = new Color3(0.82, 0.65, 0.5);
+		head.material = skinMat;
 		head.parent = root;
 
+		const cover = MeshBuilder.CreateSphere('cover', { diameter: scale * 0.85 }, this.scene);
+		cover.position.y = 1.06;
+		cover.scaling.y = 0.55;
+		const coverMat = new StandardMaterial('coverMat', this.scene);
+		coverMat.diffuseColor = new Color3(0.92, 0.92, 0.92);
+		cover.material = coverMat;
+		cover.parent = root;
+
 		return { root, body };
+	}
+
+	private createAnimalMesh(type: AnimalType, scale: number): EntityMesh {
+		const root = new TransformNode(`${type}-customer`, this.scene);
+		let body: Mesh;
+		const mat = new StandardMaterial(`${type}Mat`, this.scene);
+
+		switch (type) {
+			case 'camel': {
+				mat.diffuseColor = new Color3(0.75, 0.55, 0.35);
+				body = MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.3 }, this.scene);
+				body.scaling.y = 0.7;
+				body.scaling.z = 1.3;
+				body.position.y = 0.5;
+				body.material = mat;
+				body.parent = root;
+
+				const hump = MeshBuilder.CreateSphere('camel-hump', { diameter: scale * 0.6 }, this.scene);
+				hump.position.y = 0.85;
+				hump.position.z = -0.15;
+				hump.scaling.y = 0.8;
+				hump.material = mat;
+				hump.parent = root;
+
+				const neck = MeshBuilder.CreateCylinder('camel-neck', { height: 0.5, diameterTop: 0.18, diameterBottom: 0.25 }, this.scene);
+				neck.position.y = 0.85;
+				neck.position.z = 0.45;
+				neck.rotation.x = -0.4;
+				neck.material = mat;
+				neck.parent = root;
+
+				const head = MeshBuilder.CreateSphere('camel-head', { diameter: scale * 0.55 }, this.scene);
+				head.position.y = 1.1;
+				head.position.z = 0.65;
+				head.material = mat;
+				head.parent = root;
+				break;
+			}
+			case 'falcon': {
+				mat.diffuseColor = new Color3(0.5, 0.3, 0.18);
+				body = MeshBuilder.CreateSphere('falcon-body', { diameter: scale }, this.scene);
+				body.scaling.z = 1.4;
+				body.position.y = 0.55;
+				body.material = mat;
+				body.parent = root;
+
+				const wingL = MeshBuilder.CreateBox('falcon-wingL', { width: 0.08, height: 0.02, depth: 0.7 }, this.scene);
+				wingL.position.set(-0.35, 0.6, 0);
+				wingL.rotation.z = 0.25;
+				wingL.material = mat;
+				wingL.parent = root;
+
+				const wingR = MeshBuilder.CreateBox('falcon-wingR', { width: 0.08, height: 0.02, depth: 0.7 }, this.scene);
+				wingR.position.set(0.35, 0.6, 0);
+				wingR.rotation.z = -0.25;
+				wingR.material = mat;
+				wingR.parent = root;
+
+				const beak = MeshBuilder.CreateCylinder('falcon-beak', { height: 0.25, diameterTop: 0, diameterBottom: 0.12 }, this.scene);
+				beak.position.set(0, 0.65, 0.65);
+				beak.rotation.x = Math.PI / 2;
+				const beakMat = new StandardMaterial('beakMat', this.scene);
+				beakMat.diffuseColor = new Color3(0.9, 0.7, 0.2);
+				beak.material = beakMat;
+				beak.parent = root;
+				break;
+			}
+			case 'oryx': {
+				mat.diffuseColor = new Color3(0.95, 0.9, 0.8);
+				body = MeshBuilder.CreateSphere('oryx-body', { diameter: scale * 1.1 }, this.scene);
+				body.scaling.z = 1.3;
+				body.position.y = 0.5;
+				body.material = mat;
+				body.parent = root;
+
+				const head = MeshBuilder.CreateSphere('oryx-head', { diameter: scale * 0.55 }, this.scene);
+				head.position.set(0, 0.85, 0.55);
+				head.material = mat;
+				head.parent = root;
+
+				const hornMat = new StandardMaterial('hornMat', this.scene);
+				hornMat.diffuseColor = new Color3(0.9, 0.85, 0.7);
+				for (const side of [-1, 1]) {
+					const horn = MeshBuilder.CreateCylinder(`oryx-horn${side}`, { height: 0.6, diameter: 0.06 }, this.scene);
+					horn.position.set(side * 0.18, 1.2, 0.55);
+					horn.rotation.z = side * 0.35;
+					horn.material = hornMat;
+					horn.parent = root;
+				}
+				break;
+			}
+			case 'fox': {
+				mat.diffuseColor = new Color3(0.9, 0.45, 0.2);
+				body = MeshBuilder.CreateSphere('fox-body', { diameter: scale }, this.scene);
+				body.scaling.z = 1.3;
+				body.position.y = 0.45;
+				body.material = mat;
+				body.parent = root;
+
+				const head = MeshBuilder.CreateSphere('fox-head', { diameter: scale * 0.6 }, this.scene);
+				head.position.set(0, 0.75, 0.55);
+				head.material = mat;
+				head.parent = root;
+
+				const tail = MeshBuilder.CreateCylinder('fox-tail', { height: 0.55, diameterTop: 0.08, diameterBottom: 0.25 }, this.scene);
+				tail.position.set(0, 0.55, -0.55);
+				tail.rotation.x = -0.6;
+				tail.material = mat;
+				tail.parent = root;
+
+				const earMat = new StandardMaterial('earMat', this.scene);
+				earMat.diffuseColor = new Color3(0.85, 0.4, 0.18);
+				for (const side of [-1, 1]) {
+					const ear = MeshBuilder.CreateCylinder(`fox-ear${side}`, { height: 0.22, diameterTop: 0, diameterBottom: 0.12 }, this.scene);
+					ear.position.set(side * 0.18, 0.95, 0.55);
+					ear.material = earMat;
+					ear.parent = root;
+				}
+				break;
+			}
+			case 'goat': {
+				mat.diffuseColor = new Color3(0.9, 0.9, 0.9);
+				body = MeshBuilder.CreateSphere('goat-body', { diameter: scale * 1.05 }, this.scene);
+				body.scaling.z = 1.25;
+				body.position.y = 0.48;
+				body.material = mat;
+				body.parent = root;
+
+				const head = MeshBuilder.CreateSphere('goat-head', { diameter: scale * 0.55 }, this.scene);
+				head.position.set(0, 0.8, 0.5);
+				head.material = mat;
+				head.parent = root;
+
+				const hornMat = new StandardMaterial('hornMat', this.scene);
+				hornMat.diffuseColor = new Color3(0.5, 0.45, 0.4);
+				for (const side of [-1, 1]) {
+					const horn = MeshBuilder.CreateCylinder(`goat-horn${side}`, { height: 0.35, diameterTop: 0.04, diameterBottom: 0.1 }, this.scene);
+					horn.position.set(side * 0.2, 1.05, 0.5);
+					horn.rotation.z = side * 0.5;
+					horn.material = hornMat;
+					horn.parent = root;
+				}
+				break;
+			}
+			case 'sheep': {
+				mat.diffuseColor = new Color3(0.95, 0.95, 0.95);
+				body = MeshBuilder.CreateSphere('sheep-body', { diameter: scale * 1.15 }, this.scene);
+				body.position.y = 0.48;
+				body.material = mat;
+				body.parent = root;
+
+				const head = MeshBuilder.CreateSphere('sheep-head', { diameter: scale * 0.55 }, this.scene);
+				head.position.set(0, 0.82, 0.45);
+				head.material = mat;
+				head.parent = root;
+				break;
+			}
+		}
+
+		return { root, body: body! };
 	}
 
 	private updateCoinLabels(dt: number): void {
