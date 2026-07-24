@@ -63,10 +63,10 @@ Each level represents a busier market day. In endless mode, the child keeps the 
 - **Stall:** A low wooden counter covered with woven palm baskets, clay jars, brass scales, a small charcoal brazier for roasting coffee, and a hand-woven striped awning.
 - **Shelves:** Finished goods are displayed on small woven floor mats or low palm-leaf baskets rather than tall modern shelves, keeping the stall close to the sand.
 - **Sources:** Each raw good comes from its own designated source — dates from a planted date palm, luban from a small frankincense tree, and qahwa beans from a burlap sack of green coffee beans.
-- **Player:** A young Gulf child merchant wearing a simple white thobe-style garment, moving busily between production stations, mats, and cashier mat.
+- **Player:** A cute stylized cat merchant wearing a simple white thobe-style garment, moving busily between production stations, mats, and cashier mat.
 - **Customers:** Beloved and iconic animals of the GCC region, each dressed or accessorized with a tiny cultural hint.
 - **Workers:** Young apprentice helpers (other children or friendly animals) who can be hired to tend stations, carry goods, or handle payments.
-- **Visual Style:** Characters are built from simple, readable low-poly shapes with a gentle walking bob, avoiding plain cylinders.
+- **Visual Style:** Cute, rounded low-poly characters inspired by cozy shop simulators. The cat merchant and animal customers have soft shapes, big expressive eyes, and small cultural accessories. Everything is built from procedural meshes; no external model files are required for the playable version.
 
 ### 3.2 Customers (Animal Visitors)
 

@@ -263,29 +263,47 @@ export class SouqManagerGame {
 	}
 
 	private setupEnvironment(): void {
+		// Sand ground with subtle warm tone.
 		const ground = MeshBuilder.CreateGround('ground', { width: 28, height: 24 }, this.scene);
 		const groundMat = new StandardMaterial('groundMat', this.scene);
-		groundMat.diffuseColor = new Color3(0.83, 0.73, 0.58);
+		groundMat.diffuseColor = new Color3(0.84, 0.74, 0.58);
 		ground.material = groundMat;
 		ground.position.y = -0.05;
 
-		const counter = MeshBuilder.CreateBox('counter', { width: 10, height: 1.2, depth: 1.5 }, this.scene);
-		counter.position = new Vector3(3, 0.6, -4.5);
-		const woodMat = new StandardMaterial('woodMat', this.scene);
-		woodMat.diffuseColor = new Color3(0.6, 0.4, 0.25);
-		counter.material = woodMat;
+		// Decorative ground tiles / mats to break up the flat sand.
+		const tileMat = new StandardMaterial('tileMat', this.scene);
+		tileMat.diffuseColor = new Color3(0.78, 0.68, 0.52);
+		for (let x = -10; x <= 10; x += 5) {
+			for (let z = -7; z <= 7; z += 5) {
+				const tile = MeshBuilder.CreateGround(`tile-${x}-${z}`, { width: 4.2, height: 4.2 }, this.scene);
+				tile.position.set(x, -0.04, z);
+				tile.material = tileMat;
+			}
+		}
 
-		const awning = MeshBuilder.CreateBox('awning', { width: 10.5, height: 0.2, depth: 2.5 }, this.scene);
-		awning.position = new Vector3(3, 3.2, -4.2);
+		// Stall awning over the front selling area.
+		const woodMat = new StandardMaterial('woodMat', this.scene);
+		woodMat.diffuseColor = new Color3(0.58, 0.38, 0.22);
 		const awningMat = new StandardMaterial('awningMat', this.scene);
-		awningMat.diffuseColor = new Color3(0.85, 0.25, 0.25);
+		awningMat.diffuseColor = new Color3(0.82, 0.28, 0.28);
+
+		// Two support posts.
+		for (const x of [-5, 5]) {
+			const post = MeshBuilder.CreateCylinder(`post-${x}`, { height: 4, diameter: 0.25 }, this.scene);
+			post.position.set(x, 2, -5.5);
+			post.material = woodMat;
+		}
+
+		// Awning roof with striped feel (one box for now).
+		const awning = MeshBuilder.CreateBox('awning', { width: 11, height: 0.15, depth: 3 }, this.scene);
+		awning.position = new Vector3(0, 4, -5.2);
 		awning.material = awningMat;
 
 		this.setupStations();
 		this.setupShelves();
 
 		this.cashierMesh = MeshBuilder.CreateGround('cashier', { width: 2, height: 2 }, this.scene);
-		this.cashierMesh.position = new Vector3(6, 0.01, -4);
+		this.cashierMesh.position = new Vector3(8, 0.01, -4);
 		const cashierMat = new StandardMaterial('cashierMat', this.scene);
 		cashierMat.diffuseColor = new Color3(0.2, 0.6, 0.4);
 		this.cashierMesh.material = cashierMat;
@@ -774,7 +792,8 @@ export class SouqManagerGame {
 			}
 			entity.root.position.x = customer.position.x;
 			entity.root.position.z = customer.position.y;
-			entity.root.position.y = this.walkBob(customer.target !== null);
+			const moving = customer.target !== null;
+			entity.root.position.y = this.walkBob(moving) + (moving ? 0 : Math.abs(Math.sin(this.time * 2)) * 0.03);
 			entity.body.scaling.y = customer.state === 'paying' ? 0.9 : 1;
 		}
 	}
@@ -794,30 +813,80 @@ export class SouqManagerGame {
 	}
 
 	private createChildMesh(scale: number, robeColor: Color3 = new Color3(0.95, 0.95, 0.95)): EntityMesh {
-		const root = new TransformNode('child', this.scene);
+		const root = new TransformNode('cat-merchant', this.scene);
 
-		const body = MeshBuilder.CreateSphere('body', { diameter: scale * 1.1 }, this.scene);
-		body.position.y = 0.45;
-		body.scaling.y = 1.3;
+		// Robe / thobe body.
+		const body = MeshBuilder.CreateSphere('body', { diameter: scale * 1.1, segments: 16 }, this.scene);
+		body.position.y = 0.42;
+		body.scaling.set(1, 1.15, 0.9);
 		const robeMat = new StandardMaterial('robeMat', this.scene);
 		robeMat.diffuseColor = robeColor;
 		body.material = robeMat;
 		body.parent = root;
 
-		const head = MeshBuilder.CreateSphere('head', { diameter: scale * 0.75 }, this.scene);
-		head.position.y = 0.98;
-		const skinMat = new StandardMaterial('skinMat', this.scene);
-		skinMat.diffuseColor = new Color3(0.82, 0.65, 0.5);
-		head.material = skinMat;
+		// Cream cat head.
+		const head = MeshBuilder.CreateSphere('head', { diameter: scale * 0.72, segments: 16 }, this.scene);
+		head.position.y = 0.95;
+		const furMat = new StandardMaterial('furMat', this.scene);
+		furMat.diffuseColor = new Color3(0.98, 0.88, 0.72);
+		head.material = furMat;
 		head.parent = root;
 
-		const cover = MeshBuilder.CreateSphere('cover', { diameter: scale * 0.85 }, this.scene);
-		cover.position.y = 1.06;
-		cover.scaling.y = 0.55;
+		// Cat ears.
+		const earMat = new StandardMaterial('earMat', this.scene);
+		earMat.diffuseColor = new Color3(0.92, 0.78, 0.62);
+		for (const side of [-1, 1]) {
+			const ear = MeshBuilder.CreateBox(`ear${side}`, { width: 0.1, height: 0.14, depth: 0.1 }, this.scene);
+			ear.position.set(side * 0.2, 1.22, 0);
+			ear.rotation.z = side * -0.25;
+			ear.material = earMat;
+			ear.parent = root;
+		}
+
+		// Small white head cover / ghutra hint.
+		const cover = MeshBuilder.CreateSphere('cover', { diameter: scale * 0.78, segments: 16 }, this.scene);
+		cover.position.y = 1.02;
+		cover.position.z = -0.04;
+		cover.scaling.set(1, 0.45, 0.95);
 		const coverMat = new StandardMaterial('coverMat', this.scene);
-		coverMat.diffuseColor = new Color3(0.92, 0.92, 0.92);
+		coverMat.diffuseColor = new Color3(0.96, 0.96, 0.94);
 		cover.material = coverMat;
 		cover.parent = root;
+
+		// Eyes.
+		const eyeWhiteMat = new StandardMaterial('eyeWhiteMat', this.scene);
+		eyeWhiteMat.diffuseColor = new Color3(1, 1, 1);
+		const pupilMat = new StandardMaterial('pupilMat', this.scene);
+		pupilMat.diffuseColor = new Color3(0.1, 0.1, 0.1);
+		for (const side of [-1, 1]) {
+			const eye = MeshBuilder.CreateSphere(`eye${side}`, { diameter: 0.12 }, this.scene);
+			eye.position.set(side * 0.14, 0.98, 0.3);
+			eye.material = eyeWhiteMat;
+			eye.parent = root;
+
+			const pupil = MeshBuilder.CreateSphere(`pupil${side}`, { diameter: 0.06 }, this.scene);
+			pupil.position.set(side * 0.14, 0.98, 0.35);
+			pupil.material = pupilMat;
+			pupil.parent = root;
+		}
+
+		// Tiny cat tail.
+		const tail = MeshBuilder.CreateCylinder('tail', { height: 0.36, diameterTop: 0.04, diameterBottom: 0.08, tessellation: 8 }, this.scene);
+		tail.position.set(0, 0.35, -0.38);
+		tail.rotation.x = -0.5;
+		tail.material = furMat;
+		tail.parent = root;
+
+		// Small paws peeking from robe.
+		const pawMat = new StandardMaterial('pawMat', this.scene);
+		pawMat.diffuseColor = new Color3(0.98, 0.88, 0.72);
+		for (const side of [-1, 1]) {
+			const paw = MeshBuilder.CreateSphere(`paw${side}`, { diameter: 0.12 }, this.scene);
+			paw.position.set(side * 0.22, 0.06, 0.18);
+			paw.scaling.y = 0.7;
+			paw.material = pawMat;
+			paw.parent = root;
+		}
 
 		return { root, body };
 	}
@@ -862,33 +931,96 @@ export class SouqManagerGame {
 
 		switch (type) {
 			case 'camel': {
-				mat.diffuseColor = new Color3(0.86, 0.66, 0.45);
-				body = MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.35 }, this.scene);
-				body.scaling.y = 0.8;
-				body.scaling.z = 1.25;
-				body.position.y = 0.55;
+				const camelColor = new Color3(0.9, 0.68, 0.42);
+				const darkCamelColor = new Color3(0.82, 0.58, 0.34);
+				mat.diffuseColor = camelColor;
+
+				// Body: rounded, slightly elongated.
+				body = MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.25, segments: 16 }, this.scene);
+				body.scaling.set(1, 0.75, 1.35);
+				body.position.set(0, 0.62, -0.05);
 				body.material = mat;
 				body.parent = root;
 
-				const hump = MeshBuilder.CreateSphere('camel-hump', { diameter: scale * 0.6 }, this.scene);
-				hump.position.set(0, 0.92, -0.12);
-				hump.scaling.y = 0.65;
+				// Hump.
+				const hump = MeshBuilder.CreateSphere('camel-hump', { diameter: scale * 0.55, segments: 16 }, this.scene);
+				hump.position.set(0, 1.02, -0.22);
+				hump.scaling.set(0.85, 1, 0.85);
 				hump.material = mat;
 				hump.parent = root;
 
-				const neck = MeshBuilder.CreateCylinder('camel-neck', { height: 0.48, diameterTop: 0.15, diameterBottom: 0.22 }, this.scene);
-				neck.position.set(0, 0.88, 0.42);
-				neck.rotation.x = -0.45;
+				// Neck: curved cylinder.
+				const neck = MeshBuilder.CreateCylinder('camel-neck', { height: 0.62, diameterTop: 0.14, diameterBottom: 0.22, tessellation: 12 }, this.scene);
+				neck.position.set(0, 1.0, 0.42);
+				neck.rotation.x = -0.55;
 				neck.material = mat;
 				neck.parent = root;
 
-				const head = MeshBuilder.CreateSphere('camel-head', { diameter: scale * 0.55 }, this.scene);
-				head.position.set(0, 1.14, 0.62);
-				head.material = mat;
-				head.parent = root;
+				// Head group for animation.
+				const headGroup = new TransformNode('camel-headGroup', this.scene);
+				headGroup.position.set(0, 1.28, 0.72);
+				headGroup.parent = root;
 
-				addEyes(0.13, 1.16, 0.72);
-				addFeet(0.18, -0.2, 0.22, new Color3(0.76, 0.56, 0.37));
+				const head = MeshBuilder.CreateSphere('camel-head', { diameter: scale * 0.52, segments: 16 }, this.scene);
+				head.scaling.set(0.9, 0.95, 1.15);
+				head.material = mat;
+				head.parent = headGroup;
+
+				// Snout.
+				const snout = MeshBuilder.CreateSphere('camel-snout', { diameter: 0.24, segments: 12 }, this.scene);
+				snout.position.set(0, -0.05, 0.24);
+				snout.scaling.set(1, 0.8, 1.1);
+				const snoutMat = new StandardMaterial('camelSnoutMat', this.scene);
+				snoutMat.diffuseColor = darkCamelColor;
+				snout.material = snoutMat;
+				snout.parent = headGroup;
+
+				// Ears.
+				const earMat = new StandardMaterial('camelEarMat', this.scene);
+				earMat.diffuseColor = darkCamelColor;
+				for (const side of [-1, 1]) {
+					const ear = MeshBuilder.CreateBox(`camel-ear${side}`, { width: 0.08, height: 0.14, depth: 0.08 }, this.scene);
+					ear.position.set(side * 0.18, 0.2, -0.05);
+					ear.rotation.z = side * -0.25;
+					ear.material = earMat;
+					ear.parent = headGroup;
+				}
+
+				addEyes(0.12, 1.34, 0.82);
+
+				// Tail.
+				const tail = MeshBuilder.CreateCylinder('camel-tail', { height: 0.36, diameterTop: 0.04, diameterBottom: 0.07, tessellation: 8 }, this.scene);
+				tail.position.set(0, 0.55, -0.55);
+				tail.rotation.x = 0.6;
+				tail.material = mat;
+				tail.parent = root;
+
+				// Four legs with knees.
+				const legMat = new StandardMaterial('camelLegMat', this.scene);
+				legMat.diffuseColor = darkCamelColor;
+				const legPositions = [
+					{ x: -0.28, z: 0.32 },
+					{ x: 0.28, z: 0.32 },
+					{ x: -0.28, z: -0.35 },
+					{ x: 0.28, z: -0.35 }
+				];
+				for (let i = 0; i < legPositions.length; i++) {
+					const pos = legPositions[i];
+					const upper = MeshBuilder.CreateCylinder(`camel-legUpper${i}`, { height: 0.35, diameter: 0.14, tessellation: 10 }, this.scene);
+					upper.position.set(pos.x, 0.38, pos.z);
+					upper.material = legMat;
+					upper.parent = root;
+
+					const lower = MeshBuilder.CreateCylinder(`camel-legLower${i}`, { height: 0.32, diameter: 0.11, tessellation: 10 }, this.scene);
+					lower.position.set(pos.x, 0.12, pos.z + 0.02);
+					lower.material = legMat;
+					lower.parent = root;
+
+					const foot = MeshBuilder.CreateBox(`camel-foot${i}`, { width: 0.13, height: 0.06, depth: 0.18 }, this.scene);
+					foot.position.set(pos.x, 0.03, pos.z + 0.04);
+					foot.material = legMat;
+					foot.parent = root;
+				}
 				break;
 			}
 			case 'falcon': {
