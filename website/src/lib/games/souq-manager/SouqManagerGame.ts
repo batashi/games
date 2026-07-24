@@ -314,17 +314,17 @@ export class SouqManagerGame {
 		// Hanging brass lantern under the awning.
 		const lanternRoot = new TransformNode('lanternRoot', this.scene);
 		lanternRoot.position.set(0, 3.6, -5.2);
-		const chain = MeshBuilder.CreateCylinder('lantern-chain', { height: 0.4, diameter: 0.03 }, this.scene);
+		const chain = this.flatShade(MeshBuilder.CreateCylinder('lantern-chain', { height: 0.4, diameter: 0.03, tessellation: 8 }, this.scene));
 		chain.position.y = 0.2;
 		chain.material = woodMat;
 		chain.parent = lanternRoot;
-		const lanternBody = MeshBuilder.CreateCylinder('lantern-body', { height: 0.6, diameter: 0.28, tessellation: 12 }, this.scene);
+		const lanternBody = this.flatShade(MeshBuilder.CreateCylinder('lantern-body', { height: 0.6, diameter: 0.28, tessellation: 8 }, this.scene));
 		const lanternMat = new StandardMaterial('lanternMat', this.scene);
 		lanternMat.diffuseColor = new Color3(0.75, 0.55, 0.15);
 		lanternMat.emissiveColor = new Color3(0.4, 0.25, 0.05);
 		lanternBody.material = lanternMat;
 		lanternBody.parent = lanternRoot;
-		const lanternGlass = MeshBuilder.CreateCylinder('lantern-glass', { height: 0.4, diameter: 0.2, tessellation: 12 }, this.scene);
+		const lanternGlass = this.flatShade(MeshBuilder.CreateCylinder('lantern-glass', { height: 0.4, diameter: 0.2, tessellation: 8 }, this.scene));
 		const glassMat = new StandardMaterial('lanternGlassMat', this.scene);
 		glassMat.diffuseColor = new Color3(1, 0.9, 0.5);
 		glassMat.emissiveColor = new Color3(1, 0.7, 0.2);
@@ -402,12 +402,12 @@ export class SouqManagerGame {
 	}
 
 	private createPalmTree(name: string): Mesh {
-		const root = MeshBuilder.CreateCylinder(`${name}-soil`, { height: 0.05, diameter: 2.2 }, this.scene);
+		const root = this.flatShade(MeshBuilder.CreateCylinder(`${name}-soil`, { height: 0.05, diameter: 2.2, tessellation: 8 }, this.scene));
 		const soilMat = new StandardMaterial(`${name}-soilMat`, this.scene);
 		soilMat.diffuseColor = new Color3(0.4, 0.3, 0.2);
 		root.material = soilMat;
 
-		const trunk = MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.6, diameterTop: 0.12, diameterBottom: 0.22 }, this.scene);
+		const trunk = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.6, diameterTop: 0.12, diameterBottom: 0.22, tessellation: 8 }, this.scene));
 		trunk.position.y = 0.8;
 		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
 		trunkMat.diffuseColor = new Color3(0.55, 0.4, 0.25);
@@ -427,7 +427,7 @@ export class SouqManagerGame {
 			frond.parent = root;
 		}
 
-		const dates = MeshBuilder.CreateSphere(`${name}-dates`, { diameter: 0.32 }, this.scene);
+		const dates = this.flatShade(MeshBuilder.CreateSphere(`${name}-dates`, { diameter: 0.32, segments: 8 }, this.scene));
 		dates.position.y = 1.35;
 		dates.position.z = 0.35;
 		const datesMat = new StandardMaterial(`${name}-datesMat`, this.scene);
@@ -439,7 +439,7 @@ export class SouqManagerGame {
 	}
 
 	private createFrankincenseTree(name: string): Mesh {
-		const root = MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.1, diameterTop: 0.1, diameterBottom: 0.18 }, this.scene);
+		const root = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.1, diameterTop: 0.1, diameterBottom: 0.18, tessellation: 8 }, this.scene));
 		root.position.y = 0.55;
 		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
 		trunkMat.diffuseColor = new Color3(0.45, 0.35, 0.25);
@@ -448,7 +448,7 @@ export class SouqManagerGame {
 		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
 		leafMat.diffuseColor = new Color3(0.35, 0.5, 0.25);
 		for (let i = 0; i < 5; i++) {
-			const branch = MeshBuilder.CreateSphere(`${name}-leaf${i}`, { diameter: 0.55 }, this.scene);
+			const branch = this.flatShade(MeshBuilder.CreateSphere(`${name}-leaf${i}`, { diameter: 0.55, segments: 8 }, this.scene));
 			branch.position.y = 1.05 + Math.random() * 0.25;
 			branch.position.x = (Math.random() - 0.5) * 0.5;
 			branch.position.z = (Math.random() - 0.5) * 0.5;
@@ -460,7 +460,7 @@ export class SouqManagerGame {
 		const resinMat = new StandardMaterial(`${name}-resinMat`, this.scene);
 		resinMat.diffuseColor = new Color3(0.95, 0.85, 0.45);
 		for (let i = 0; i < 4; i++) {
-			const lump = MeshBuilder.CreateSphere(`${name}-resin${i}`, { diameter: 0.14 }, this.scene);
+			const lump = this.flatShade(MeshBuilder.CreateSphere(`${name}-resin${i}`, { diameter: 0.14, segments: 8 }, this.scene));
 			lump.position.y = 0.08;
 			lump.position.x = 0.25 + (i % 2) * 0.2;
 			lump.position.z = (i < 2 ? -0.15 : 0.15);
@@ -472,14 +472,14 @@ export class SouqManagerGame {
 	}
 
 	private createCoffeeSack(name: string): Mesh {
-		const root = MeshBuilder.CreateSphere(`${name}-sack`, { diameter: 0.8 }, this.scene);
+		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-sack`, { diameter: 0.8, segments: 8 }, this.scene));
 		root.position.y = 0.35;
 		root.scaling.y = 0.85;
 		const sackMat = new StandardMaterial(`${name}-sackMat`, this.scene);
 		sackMat.diffuseColor = new Color3(0.65, 0.55, 0.35);
 		root.material = sackMat;
 
-		const top = MeshBuilder.CreateCylinder(`${name}-top`, { height: 0.08, diameterTop: 0.35, diameterBottom: 0.5 }, this.scene);
+		const top = this.flatShade(MeshBuilder.CreateCylinder(`${name}-top`, { height: 0.08, diameterTop: 0.35, diameterBottom: 0.5, tessellation: 8 }, this.scene));
 		top.position.y = 0.55;
 		const topMat = new StandardMaterial(`${name}-topMat`, this.scene);
 		topMat.diffuseColor = new Color3(0.55, 0.45, 0.3);
@@ -489,7 +489,7 @@ export class SouqManagerGame {
 		const beanMat = new StandardMaterial(`${name}-beanMat`, this.scene);
 		beanMat.diffuseColor = new Color3(0.4, 0.6, 0.3);
 		for (let i = 0; i < 5; i++) {
-			const bean = MeshBuilder.CreateSphere(`${name}-bean${i}`, { diameter: 0.1 }, this.scene);
+			const bean = this.flatShade(MeshBuilder.CreateSphere(`${name}-bean${i}`, { diameter: 0.1, segments: 8 }, this.scene));
 			bean.position.y = 0.5;
 			bean.position.x = (Math.random() - 0.5) * 0.25;
 			bean.position.z = (Math.random() - 0.5) * 0.25;
@@ -501,13 +501,13 @@ export class SouqManagerGame {
 	}
 
 	private createBrazier(name: string): Mesh {
-		const root = MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.35, diameter: 0.85, tessellation: 16 }, this.scene);
+		const root = this.flatShade(MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.35, diameter: 0.85, tessellation: 8 }, this.scene));
 		root.position.y = 0.2;
 		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
 		bowlMat.diffuseColor = new Color3(0.25, 0.2, 0.2);
 		root.material = bowlMat;
 
-		const coal = MeshBuilder.CreateSphere(`${name}-coal`, { diameter: 0.5 }, this.scene);
+		const coal = this.flatShade(MeshBuilder.CreateSphere(`${name}-coal`, { diameter: 0.5, segments: 8 }, this.scene));
 		coal.position.y = 0.18;
 		coal.scaling.y = 0.4;
 		const coalMat = new StandardMaterial(`${name}-coalMat`, this.scene);
@@ -519,14 +519,14 @@ export class SouqManagerGame {
 	}
 
 	private createMortar(name: string): Mesh {
-		const root = MeshBuilder.CreateSphere(`${name}-bowl`, { diameter: 0.6 }, this.scene);
+		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-bowl`, { diameter: 0.6, segments: 8 }, this.scene));
 		root.position.y = 0.3;
 		root.scaling.y = 0.65;
 		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
 		bowlMat.diffuseColor = new Color3(0.5, 0.5, 0.5);
 		root.material = bowlMat;
 
-		const pestle = MeshBuilder.CreateCylinder(`${name}-pestle`, { height: 0.5, diameter: 0.1 }, this.scene);
+		const pestle = this.flatShade(MeshBuilder.CreateCylinder(`${name}-pestle`, { height: 0.5, diameter: 0.1, tessellation: 8 }, this.scene));
 		pestle.position.y = 0.55;
 		pestle.rotation.z = 0.3;
 		const pestleMat = new StandardMaterial(`${name}-pestleMat`, this.scene);
@@ -538,19 +538,19 @@ export class SouqManagerGame {
 	}
 
 	private createDallah(name: string): Mesh {
-		const root = MeshBuilder.CreateSphere(`${name}-body`, { diameter: 0.65 }, this.scene);
+		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-body`, { diameter: 0.65, segments: 8 }, this.scene));
 		root.position.y = 0.45;
 		root.scaling.y = 1.1;
 		const bodyMat = new StandardMaterial(`${name}-bodyMat`, this.scene);
 		bodyMat.diffuseColor = new Color3(0.85, 0.7, 0.2);
 		root.material = bodyMat;
 
-		const neck = MeshBuilder.CreateCylinder(`${name}-neck`, { height: 0.45, diameter: 0.22 }, this.scene);
+		const neck = this.flatShade(MeshBuilder.CreateCylinder(`${name}-neck`, { height: 0.45, diameter: 0.22, tessellation: 8 }, this.scene));
 		neck.position.y = 0.95;
 		neck.material = bodyMat;
 		neck.parent = root;
 
-		const spout = MeshBuilder.CreateCylinder(`${name}-spout`, { height: 0.45, diameterTop: 0.08, diameterBottom: 0.16 }, this.scene);
+		const spout = this.flatShade(MeshBuilder.CreateCylinder(`${name}-spout`, { height: 0.45, diameterTop: 0.08, diameterBottom: 0.16, tessellation: 8 }, this.scene));
 		spout.position.y = 0.75;
 		spout.position.x = 0.35;
 		spout.rotation.z = -Math.PI / 3;
@@ -693,10 +693,15 @@ export class SouqManagerGame {
 
 	private createItemMesh(item: Item): Mesh {
 		const color = this.itemColor(item);
-		const mesh = MeshBuilder.CreateSphere(`item-${item.type}-${item.stage}`, { diameter: 0.35 }, this.scene);
+		const mesh = MeshBuilder.CreateSphere(`item-${item.type}-${item.stage}`, { diameter: 0.35, segments: 8 }, this.scene);
 		const mat = new StandardMaterial(`itemMat-${item.type}-${item.stage}`, this.scene);
 		mat.diffuseColor = color;
 		mesh.material = mat;
+		return this.flatShade(mesh);
+	}
+
+	private flatShade(mesh: Mesh): Mesh {
+		mesh.convertToFlatShadedMesh();
 		return mesh;
 	}
 
@@ -909,7 +914,7 @@ export class SouqManagerGame {
 		const root = new TransformNode('cat-merchant', this.scene);
 
 		// Robe / thobe body.
-		const body = MeshBuilder.CreateSphere('body', { diameter: scale * 1.1, segments: 16 }, this.scene);
+		const body = this.flatShade(MeshBuilder.CreateSphere('body', { diameter: scale * 1.1, segments: 8 }, this.scene));
 		body.position.y = 0.42;
 		body.scaling.set(1, 1.15, 0.9);
 		const robeMat = new StandardMaterial('robeMat', this.scene);
@@ -918,7 +923,7 @@ export class SouqManagerGame {
 		body.parent = root;
 
 		// Cream cat head.
-		const head = MeshBuilder.CreateSphere('head', { diameter: scale * 0.72, segments: 16 }, this.scene);
+		const head = this.flatShade(MeshBuilder.CreateSphere('head', { diameter: scale * 0.72, segments: 8 }, this.scene));
 		head.position.y = 0.95;
 		const furMat = new StandardMaterial('furMat', this.scene);
 		furMat.diffuseColor = new Color3(0.98, 0.88, 0.72);
@@ -937,7 +942,7 @@ export class SouqManagerGame {
 		}
 
 		// Small white head cover / ghutra hint.
-		const cover = MeshBuilder.CreateSphere('cover', { diameter: scale * 0.78, segments: 16 }, this.scene);
+		const cover = this.flatShade(MeshBuilder.CreateSphere('cover', { diameter: scale * 0.78, segments: 8 }, this.scene));
 		cover.position.y = 1.02;
 		cover.position.z = -0.04;
 		cover.scaling.set(1, 0.45, 0.95);
@@ -952,19 +957,19 @@ export class SouqManagerGame {
 		const pupilMat = new StandardMaterial('pupilMat', this.scene);
 		pupilMat.diffuseColor = new Color3(0.1, 0.1, 0.1);
 		for (const side of [-1, 1]) {
-			const eye = MeshBuilder.CreateSphere(`eye${side}`, { diameter: 0.12 }, this.scene);
+			const eye = this.flatShade(MeshBuilder.CreateSphere(`eye${side}`, { diameter: 0.12, segments: 6 }, this.scene));
 			eye.position.set(side * 0.14, 0.98, 0.3);
 			eye.material = eyeWhiteMat;
 			eye.parent = root;
 
-			const pupil = MeshBuilder.CreateSphere(`pupil${side}`, { diameter: 0.06 }, this.scene);
+			const pupil = this.flatShade(MeshBuilder.CreateSphere(`pupil${side}`, { diameter: 0.06, segments: 6 }, this.scene));
 			pupil.position.set(side * 0.14, 0.98, 0.35);
 			pupil.material = pupilMat;
 			pupil.parent = root;
 		}
 
 		// Tiny cat tail.
-		const tail = MeshBuilder.CreateCylinder('tail', { height: 0.36, diameterTop: 0.04, diameterBottom: 0.08, tessellation: 8 }, this.scene);
+		const tail = this.flatShade(MeshBuilder.CreateCylinder('tail', { height: 0.36, diameterTop: 0.04, diameterBottom: 0.08, tessellation: 6 }, this.scene));
 		tail.position.set(0, 0.35, -0.38);
 		tail.rotation.x = -0.5;
 		tail.material = furMat;
@@ -974,7 +979,7 @@ export class SouqManagerGame {
 		const pawMat = new StandardMaterial('pawMat', this.scene);
 		pawMat.diffuseColor = new Color3(0.98, 0.88, 0.72);
 		for (const side of [-1, 1]) {
-			const paw = MeshBuilder.CreateSphere(`paw${side}`, { diameter: 0.12 }, this.scene);
+			const paw = this.flatShade(MeshBuilder.CreateSphere(`paw${side}`, { diameter: 0.12, segments: 6 }, this.scene));
 			paw.position.set(side * 0.22, 0.06, 0.18);
 			paw.scaling.y = 0.7;
 			paw.material = pawMat;
@@ -996,12 +1001,12 @@ export class SouqManagerGame {
 
 		const addEyes = (x: number, y: number, z: number, size = 0.045) => {
 			for (const side of [-1, 1]) {
-				const eye = MeshBuilder.CreateSphere(`${type}-eye${side}`, { diameter: size * 2 }, this.scene);
+				const eye = this.flatShade(MeshBuilder.CreateSphere(`${type}-eye${side}`, { diameter: size * 2, segments: 6 }, this.scene));
 				eye.position.set(side * x, y, z);
 				eye.material = eyeWhiteMat;
 				eye.parent = root;
 
-				const pupil = MeshBuilder.CreateSphere(`${type}-pupil${side}`, { diameter: size }, this.scene);
+				const pupil = this.flatShade(MeshBuilder.CreateSphere(`${type}-pupil${side}`, { diameter: size, segments: 6 }, this.scene));
 				pupil.position.set(side * x, y, z + size * 0.9);
 				pupil.material = pupilMat;
 				pupil.parent = root;
@@ -1013,7 +1018,7 @@ export class SouqManagerGame {
 			footMat.diffuseColor = color;
 			for (const side of [-1, 1]) {
 				for (const z of [zFront, zBack]) {
-					const foot = MeshBuilder.CreateSphere(`${type}-foot${side}-${z}`, { diameter: size * 2 }, this.scene);
+					const foot = this.flatShade(MeshBuilder.CreateSphere(`${type}-foot${side}-${z}`, { diameter: size * 2, segments: 6 }, this.scene));
 					foot.position.set(side * x, size, z);
 					foot.scaling.y = 0.7;
 					foot.material = footMat;
@@ -1029,21 +1034,21 @@ export class SouqManagerGame {
 				mat.diffuseColor = camelColor;
 
 				// Body: rounded, slightly elongated.
-				body = MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.25, segments: 16 }, this.scene);
+				body = this.flatShade(MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.25, segments: 8 }, this.scene));
 				body.scaling.set(1, 0.75, 1.35);
 				body.position.set(0, 0.62, -0.05);
 				body.material = mat;
 				body.parent = root;
 
 				// Hump.
-				const hump = MeshBuilder.CreateSphere('camel-hump', { diameter: scale * 0.55, segments: 16 }, this.scene);
+				const hump = this.flatShade(MeshBuilder.CreateSphere('camel-hump', { diameter: scale * 0.55, segments: 8 }, this.scene));
 				hump.position.set(0, 1.02, -0.22);
 				hump.scaling.set(0.85, 1, 0.85);
 				hump.material = mat;
 				hump.parent = root;
 
 				// Neck: curved cylinder.
-				const neck = MeshBuilder.CreateCylinder('camel-neck', { height: 0.62, diameterTop: 0.14, diameterBottom: 0.22, tessellation: 12 }, this.scene);
+				const neck = this.flatShade(MeshBuilder.CreateCylinder('camel-neck', { height: 0.62, diameterTop: 0.14, diameterBottom: 0.22, tessellation: 7 }, this.scene));
 				neck.position.set(0, 1.0, 0.42);
 				neck.rotation.x = -0.55;
 				neck.material = mat;
@@ -1054,13 +1059,13 @@ export class SouqManagerGame {
 				headGroup.position.set(0, 1.28, 0.72);
 				headGroup.parent = root;
 
-				const head = MeshBuilder.CreateSphere('camel-head', { diameter: scale * 0.52, segments: 16 }, this.scene);
+				const head = this.flatShade(MeshBuilder.CreateSphere('camel-head', { diameter: scale * 0.52, segments: 8 }, this.scene));
 				head.scaling.set(0.9, 0.95, 1.15);
 				head.material = mat;
 				head.parent = headGroup;
 
 				// Snout.
-				const snout = MeshBuilder.CreateSphere('camel-snout', { diameter: 0.24, segments: 12 }, this.scene);
+				const snout = this.flatShade(MeshBuilder.CreateSphere('camel-snout', { diameter: 0.24, segments: 8 }, this.scene));
 				snout.position.set(0, -0.05, 0.24);
 				snout.scaling.set(1, 0.8, 1.1);
 				const snoutMat = new StandardMaterial('camelSnoutMat', this.scene);
@@ -1082,7 +1087,7 @@ export class SouqManagerGame {
 				addEyes(0.12, 1.34, 0.82);
 
 				// Tail.
-				const tail = MeshBuilder.CreateCylinder('camel-tail', { height: 0.36, diameterTop: 0.04, diameterBottom: 0.07, tessellation: 8 }, this.scene);
+				const tail = this.flatShade(MeshBuilder.CreateCylinder('camel-tail', { height: 0.36, diameterTop: 0.04, diameterBottom: 0.07, tessellation: 6 }, this.scene));
 				tail.position.set(0, 0.55, -0.55);
 				tail.rotation.x = 0.6;
 				tail.material = mat;
@@ -1099,12 +1104,12 @@ export class SouqManagerGame {
 				];
 				for (let i = 0; i < legPositions.length; i++) {
 					const pos = legPositions[i];
-					const upper = MeshBuilder.CreateCylinder(`camel-legUpper${i}`, { height: 0.35, diameter: 0.14, tessellation: 10 }, this.scene);
+					const upper = this.flatShade(MeshBuilder.CreateCylinder(`camel-legUpper${i}`, { height: 0.35, diameter: 0.14, tessellation: 6 }, this.scene));
 					upper.position.set(pos.x, 0.38, pos.z);
 					upper.material = legMat;
 					upper.parent = root;
 
-					const lower = MeshBuilder.CreateCylinder(`camel-legLower${i}`, { height: 0.32, diameter: 0.11, tessellation: 10 }, this.scene);
+					const lower = this.flatShade(MeshBuilder.CreateCylinder(`camel-legLower${i}`, { height: 0.32, diameter: 0.11, tessellation: 6 }, this.scene));
 					lower.position.set(pos.x, 0.12, pos.z + 0.02);
 					lower.material = legMat;
 					lower.parent = root;
@@ -1123,7 +1128,7 @@ export class SouqManagerGame {
 				const falconCream = new Color3(0.95, 0.86, 0.68);
 
 				// Sleek teardrop body.
-				body = MeshBuilder.CreateSphere('falcon-body', { diameter: scale * 1.1, segments: 16 }, this.scene);
+				body = this.flatShade(MeshBuilder.CreateSphere('falcon-body', { diameter: scale * 1.1, segments: 8 }, this.scene));
 				body.scaling.set(0.85, 0.9, 1.35);
 				body.position.set(0, 0.58, 0);
 				mat.diffuseColor = falconBrown;
@@ -1131,7 +1136,7 @@ export class SouqManagerGame {
 				body.parent = root;
 
 				// Cream belly patch.
-				const belly = MeshBuilder.CreateSphere('falcon-belly', { diameter: scale * 0.85, segments: 16 }, this.scene);
+				const belly = this.flatShade(MeshBuilder.CreateSphere('falcon-belly', { diameter: scale * 0.85, segments: 8 }, this.scene));
 				belly.scaling.set(0.7, 0.75, 1.2);
 				belly.position.set(0, 0.52, 0.04);
 				const bellyMat = new StandardMaterial('falconBellyMat', this.scene);
@@ -1145,13 +1150,13 @@ export class SouqManagerGame {
 				headGroup.parent = root;
 				parts.push(headGroup);
 
-				const head = MeshBuilder.CreateSphere('falcon-head', { diameter: scale * 0.55, segments: 16 }, this.scene);
+				const head = this.flatShade(MeshBuilder.CreateSphere('falcon-head', { diameter: scale * 0.55, segments: 8 }, this.scene));
 				head.scaling.set(0.85, 0.9, 1.1);
 				head.material = mat;
 				head.parent = headGroup;
 
 				// Small falconry-style leather cap as cultural accessory.
-				const cap = MeshBuilder.CreateSphere('falcon-cap', { diameter: scale * 0.48, segments: 16 }, this.scene);
+				const cap = this.flatShade(MeshBuilder.CreateSphere('falcon-cap', { diameter: scale * 0.48, segments: 8 }, this.scene));
 				cap.position.set(0, 0.08, -0.02);
 				cap.scaling.set(0.92, 0.35, 0.95);
 				const capMat = new StandardMaterial('falconCapMat', this.scene);
@@ -1162,7 +1167,7 @@ export class SouqManagerGame {
 				// Hooked beak.
 				const beakMat = new StandardMaterial('falconBeakMat', this.scene);
 				beakMat.diffuseColor = new Color3(0.95, 0.75, 0.15);
-				const beak = MeshBuilder.CreateCylinder('falcon-beak', { height: 0.22, diameterTop: 0, diameterBottom: 0.12, tessellation: 12 }, this.scene);
+				const beak = this.flatShade(MeshBuilder.CreateCylinder('falcon-beak', { height: 0.22, diameterTop: 0, diameterBottom: 0.12, tessellation: 7 }, this.scene));
 				beak.position.set(0, -0.02, 0.32);
 				beak.rotation.x = Math.PI / 2;
 				beak.material = beakMat;
@@ -1215,7 +1220,7 @@ export class SouqManagerGame {
 				const oryxDark = new Color3(0.3, 0.22, 0.18);
 
 				// Elegant slender body.
-				body = MeshBuilder.CreateSphere('oryx-body', { diameter: scale * 1.15, segments: 16 }, this.scene);
+				body = this.flatShade(MeshBuilder.CreateSphere('oryx-body', { diameter: scale * 1.15, segments: 8 }, this.scene));
 				body.scaling.set(0.85, 0.9, 1.45);
 				body.position.set(0, 0.62, 0);
 				mat.diffuseColor = oryxWhite;
@@ -1231,7 +1236,7 @@ export class SouqManagerGame {
 				chest.parent = root;
 
 				// Long neck and head group.
-				const neck = MeshBuilder.CreateCylinder('oryx-neck', { height: 0.55, diameterTop: 0.1, diameterBottom: 0.16, tessellation: 12 }, this.scene);
+				const neck = this.flatShade(MeshBuilder.CreateCylinder('oryx-neck', { height: 0.55, diameterTop: 0.1, diameterBottom: 0.16, tessellation: 8 }, this.scene));
 				neck.position.set(0, 0.92, 0.45);
 				neck.rotation.x = -0.35;
 				neck.material = mat;
@@ -1242,13 +1247,13 @@ export class SouqManagerGame {
 				headGroup.parent = root;
 				parts.push(headGroup);
 
-				const head = MeshBuilder.CreateSphere('oryx-head', { diameter: scale * 0.48, segments: 16 }, this.scene);
+				const head = this.flatShade(MeshBuilder.CreateSphere('oryx-head', { diameter: scale * 0.48, segments: 8 }, this.scene));
 				head.scaling.set(0.8, 0.9, 1.15);
 				head.material = mat;
 				head.parent = headGroup;
 
 				// Dark face mask.
-				const mask = MeshBuilder.CreateSphere('oryx-mask', { diameter: scale * 0.38, segments: 16 }, this.scene);
+				const mask = this.flatShade(MeshBuilder.CreateSphere('oryx-mask', { diameter: scale * 0.38, segments: 8 }, this.scene));
 				mask.position.set(0, -0.05, 0.18);
 				mask.scaling.set(0.75, 0.7, 0.55);
 				const maskMat = new StandardMaterial('oryxMaskMat', this.scene);
@@ -1262,7 +1267,7 @@ export class SouqManagerGame {
 				const hornMat = new StandardMaterial('oryxHornMat', this.scene);
 				hornMat.diffuseColor = new Color3(0.15, 0.12, 0.1);
 				for (const side of [-1, 1]) {
-					const horn = MeshBuilder.CreateCylinder(`oryx-horn${side}`, { height: 0.8, diameterTop: 0.03, diameterBottom: 0.06, tessellation: 10 }, this.scene);
+					const horn = this.flatShade(MeshBuilder.CreateCylinder(`oryx-horn${side}`, { height: 0.8, diameterTop: 0.03, diameterBottom: 0.06, tessellation: 8 }, this.scene));
 					horn.position.set(side * 0.14, 0.36, -0.05);
 					horn.rotation.x = -0.45;
 					horn.rotation.z = side * 0.25;
@@ -1283,19 +1288,19 @@ export class SouqManagerGame {
 				];
 				for (let i = 0; i < legPositions.length; i++) {
 					const pos = legPositions[i];
-					const upper = MeshBuilder.CreateCylinder(`oryx-legUpper${i}`, { height: 0.38, diameter: 0.1, tessellation: 10 }, this.scene);
+					const upper = this.flatShade(MeshBuilder.CreateCylinder(`oryx-legUpper${i}`, { height: 0.38, diameter: 0.1, tessellation: 8 }, this.scene));
 					upper.position.set(pos.x, 0.4, pos.z);
 					upper.material = legMat;
 					upper.parent = root;
 
-					const lower = MeshBuilder.CreateCylinder(`oryx-legLower${i}`, { height: 0.32, diameter: 0.08, tessellation: 10 }, this.scene);
+					const lower = this.flatShade(MeshBuilder.CreateCylinder(`oryx-legLower${i}`, { height: 0.32, diameter: 0.08, tessellation: 8 }, this.scene));
 					lower.position.set(pos.x, 0.16, pos.z);
 					lower.material = lowerLegMat;
 					lower.parent = root;
 				}
 
 				// Small tail.
-				const tail = MeshBuilder.CreateCylinder('oryx-tail', { height: 0.25, diameterTop: 0.04, diameterBottom: 0.08, tessellation: 8 }, this.scene);
+				const tail = this.flatShade(MeshBuilder.CreateCylinder('oryx-tail', { height: 0.25, diameterTop: 0.04, diameterBottom: 0.08, tessellation: 8 }, this.scene));
 				tail.position.set(0, 0.55, -0.58);
 				tail.rotation.x = 0.5;
 				tail.material = mat;
@@ -1312,7 +1317,7 @@ export class SouqManagerGame {
 				const foxBlack = new Color3(0.15, 0.12, 0.1);
 
 				// Compact body.
-				body = MeshBuilder.CreateSphere('fox-body', { diameter: scale, segments: 16 }, this.scene);
+				body = this.flatShade(MeshBuilder.CreateSphere('fox-body', { diameter: scale, segments: 8 }, this.scene));
 				body.scaling.set(0.95, 0.9, 1.35);
 				body.position.set(0, 0.48, 0);
 				mat.diffuseColor = foxOrange;
@@ -1320,7 +1325,7 @@ export class SouqManagerGame {
 				body.parent = root;
 
 				// White chest.
-				const chest = MeshBuilder.CreateSphere('fox-chest', { diameter: scale * 0.65, segments: 16 }, this.scene);
+				const chest = this.flatShade(MeshBuilder.CreateSphere('fox-chest', { diameter: scale * 0.65, segments: 8 }, this.scene));
 				chest.scaling.set(0.8, 0.8, 1.1);
 				chest.position.set(0, 0.42, 0.28);
 				const chestMat = new StandardMaterial('foxChestMat', this.scene);
@@ -1334,13 +1339,13 @@ export class SouqManagerGame {
 				headGroup.parent = root;
 				parts.push(headGroup);
 
-				const head = MeshBuilder.CreateSphere('fox-head', { diameter: scale * 0.55, segments: 16 }, this.scene);
+				const head = this.flatShade(MeshBuilder.CreateSphere('fox-head', { diameter: scale * 0.55, segments: 8 }, this.scene));
 				head.scaling.set(0.85, 0.85, 1.05);
 				head.material = mat;
 				head.parent = headGroup;
 
 				// Pointy snout.
-				const snout = MeshBuilder.CreateCylinder('fox-snout', { height: 0.22, diameterTop: 0.08, diameterBottom: 0.16, tessellation: 12 }, this.scene);
+				const snout = this.flatShade(MeshBuilder.CreateCylinder('fox-snout', { height: 0.22, diameterTop: 0.08, diameterBottom: 0.16, tessellation: 8 }, this.scene));
 				snout.position.set(0, -0.05, 0.32);
 				snout.rotation.x = Math.PI / 2;
 				const snoutMat = new StandardMaterial('foxSnoutMat', this.scene);
@@ -1348,7 +1353,7 @@ export class SouqManagerGame {
 				snout.material = snoutMat;
 				snout.parent = headGroup;
 
-				const nose = MeshBuilder.CreateSphere('fox-nose', { diameter: 0.08 }, this.scene);
+				const nose = this.flatShade(MeshBuilder.CreateSphere('fox-nose', { diameter: 0.08, segments: 8 }, this.scene));
 				nose.position.set(0, -0.05, 0.44);
 				nose.material = new StandardMaterial('foxNoseMat', this.scene);
 				(nose.material as StandardMaterial).diffuseColor = foxBlack;
@@ -1362,14 +1367,14 @@ export class SouqManagerGame {
 				const earTipMat = new StandardMaterial('foxEarTipMat', this.scene);
 				earTipMat.diffuseColor = foxBlack;
 				for (const side of [-1, 1]) {
-					const ear = MeshBuilder.CreateCylinder(`fox-ear${side}`, { height: 0.28, diameterTop: 0, diameterBottom: 0.16, tessellation: 10 }, this.scene);
+					const ear = this.flatShade(MeshBuilder.CreateCylinder(`fox-ear${side}`, { height: 0.28, diameterTop: 0, diameterBottom: 0.16, tessellation: 8 }, this.scene));
 					ear.position.set(side * 0.18, 0.28, 0.05);
 					ear.rotation.x = -0.15;
 					ear.rotation.z = side * 0.2;
 					ear.material = earMat;
 					ear.parent = headGroup;
 
-					const tip = MeshBuilder.CreateCylinder(`fox-earTip${side}`, { height: 0.1, diameterTop: 0, diameterBottom: 0.09, tessellation: 10 }, this.scene);
+					const tip = this.flatShade(MeshBuilder.CreateCylinder(`fox-earTip${side}`, { height: 0.1, diameterTop: 0, diameterBottom: 0.09, tessellation: 8 }, this.scene));
 					tip.position.set(side * 0.18, 0.42, 0.02);
 					tip.rotation.x = -0.15;
 					tip.rotation.z = side * 0.2;
@@ -1378,14 +1383,14 @@ export class SouqManagerGame {
 				}
 
 				// Bushy tail with white tip.
-				const tail = MeshBuilder.CreateCylinder('fox-tail', { height: 0.55, diameterTop: 0.08, diameterBottom: 0.24, tessellation: 12 }, this.scene);
+				const tail = this.flatShade(MeshBuilder.CreateCylinder('fox-tail', { height: 0.55, diameterTop: 0.08, diameterBottom: 0.24, tessellation: 8 }, this.scene));
 				tail.position.set(0, 0.5, -0.55);
 				tail.rotation.x = -0.7;
 				tail.material = mat;
 				tail.parent = root;
 				parts.push(tail);
 
-				const tailTip = MeshBuilder.CreateSphere('fox-tailTip', { diameter: 0.16 }, this.scene);
+				const tailTip = this.flatShade(MeshBuilder.CreateSphere('fox-tailTip', { diameter: 0.16, segments: 8 }, this.scene));
 				tailTip.position.set(0, 0.78, -0.78);
 				tailTip.material = new StandardMaterial('foxTailTipMat', this.scene);
 				(tailTip.material as StandardMaterial).diffuseColor = foxWhite;
@@ -1400,7 +1405,7 @@ export class SouqManagerGame {
 				const goatHorn = new Color3(0.45, 0.4, 0.36);
 
 				// Sturdy compact body.
-				body = MeshBuilder.CreateSphere('goat-body', { diameter: scale * 1.1, segments: 16 }, this.scene);
+				body = this.flatShade(MeshBuilder.CreateSphere('goat-body', { diameter: scale * 1.1, segments: 8 }, this.scene));
 				body.scaling.set(0.95, 0.95, 1.25);
 				body.position.set(0, 0.5, 0);
 				mat.diffuseColor = goatCream;
@@ -1413,13 +1418,13 @@ export class SouqManagerGame {
 				headGroup.parent = root;
 				parts.push(headGroup);
 
-				const head = MeshBuilder.CreateSphere('goat-head', { diameter: scale * 0.52, segments: 16 }, this.scene);
+				const head = this.flatShade(MeshBuilder.CreateSphere('goat-head', { diameter: scale * 0.52, segments: 8 }, this.scene));
 				head.scaling.set(0.85, 0.95, 1);
 				head.material = mat;
 				head.parent = headGroup;
 
 				// Snout.
-				const snout = MeshBuilder.CreateSphere('goat-snout', { diameter: 0.2 }, this.scene);
+				const snout = this.flatShade(MeshBuilder.CreateSphere('goat-snout', { diameter: 0.2, segments: 8 }, this.scene));
 				snout.position.set(0, -0.08, 0.24);
 				snout.scaling.set(0.9, 0.8, 1.3);
 				const snoutMat = new StandardMaterial('goatSnoutMat', this.scene);
@@ -1433,7 +1438,7 @@ export class SouqManagerGame {
 				const hornMat = new StandardMaterial('goatHornMat', this.scene);
 				hornMat.diffuseColor = goatHorn;
 				for (const side of [-1, 1]) {
-					const horn = MeshBuilder.CreateTorus(`goat-horn${side}`, { diameter: 0.35, thickness: 0.05, tessellation: 12 }, this.scene);
+					const horn = this.flatShade(MeshBuilder.CreateTorus(`goat-horn${side}`, { diameter: 0.35, thickness: 0.05, tessellation: 8 }, this.scene));
 					horn.position.set(side * 0.16, 0.26, 0.02);
 					horn.rotation.y = side * 0.4;
 					horn.rotation.x = 0.4;
@@ -1442,7 +1447,7 @@ export class SouqManagerGame {
 				}
 
 				// Bell around neck.
-				const bell = MeshBuilder.CreateSphere('goat-bell', { diameter: 0.14 }, this.scene);
+				const bell = this.flatShade(MeshBuilder.CreateSphere('goat-bell', { diameter: 0.14, segments: 8 }, this.scene));
 				bell.position.set(0, -0.32, 0.1);
 				const bellMat = new StandardMaterial('goatBellMat', this.scene);
 				bellMat.diffuseColor = new Color3(0.95, 0.8, 0.1);
@@ -1450,7 +1455,7 @@ export class SouqManagerGame {
 				bell.parent = headGroup;
 
 				// Small beard.
-				const beard = MeshBuilder.CreateSphere('goat-beard', { diameter: 0.12 }, this.scene);
+				const beard = this.flatShade(MeshBuilder.CreateSphere('goat-beard', { diameter: 0.12, segments: 8 }, this.scene));
 				beard.position.set(0, -0.28, 0.22);
 				const beardMat = new StandardMaterial('goatBeardMat', this.scene);
 				beardMat.diffuseColor = new Color3(0.98, 0.98, 0.96);
@@ -1458,7 +1463,7 @@ export class SouqManagerGame {
 				beard.parent = headGroup;
 
 				// Short tail.
-				const tail = MeshBuilder.CreateCylinder('goat-tail', { height: 0.18, diameter: 0.08, tessellation: 8 }, this.scene);
+				const tail = this.flatShade(MeshBuilder.CreateCylinder('goat-tail', { height: 0.18, diameter: 0.08, tessellation: 8 }, this.scene));
 				tail.position.set(0, 0.55, -0.48);
 				tail.rotation.x = 0.5;
 				tail.material = mat;
@@ -1474,7 +1479,7 @@ export class SouqManagerGame {
 				const sheepSkin = new Color3(0.25, 0.2, 0.18);
 
 				// Fluffy wool body built from overlapping spheres.
-				body = MeshBuilder.CreateSphere('sheep-body', { diameter: scale * 1.15, segments: 16 }, this.scene);
+				body = this.flatShade(MeshBuilder.CreateSphere('sheep-body', { diameter: scale * 1.15, segments: 8 }, this.scene));
 				body.position.set(0, 0.55, 0);
 				mat.diffuseColor = sheepWool;
 				body.material = mat;
@@ -1489,7 +1494,7 @@ export class SouqManagerGame {
 					{ x: 0, y: 0.55, z: 0.28 }
 				];
 				for (let i = 0; i < woolPositions.length; i++) {
-					const puff = MeshBuilder.CreateSphere(`sheep-puff${i}`, { diameter: scale * 0.55, segments: 14 }, this.scene);
+					const puff = this.flatShade(MeshBuilder.CreateSphere(`sheep-puff${i}`, { diameter: scale * 0.55, segments: 8 }, this.scene));
 					puff.position.set(woolPositions[i].x, woolPositions[i].y, woolPositions[i].z);
 					puff.material = mat;
 					puff.parent = root;
@@ -1501,13 +1506,13 @@ export class SouqManagerGame {
 				headGroup.parent = root;
 				parts.push(headGroup);
 
-				const head = MeshBuilder.CreateSphere('sheep-head', { diameter: scale * 0.42, segments: 14 }, this.scene);
+				const head = this.flatShade(MeshBuilder.CreateSphere('sheep-head', { diameter: scale * 0.42, segments: 8 }, this.scene));
 				head.material = new StandardMaterial('sheepHeadMat', this.scene);
 				(head.material as StandardMaterial).diffuseColor = sheepSkin;
 				head.parent = headGroup;
 
 				// Wool cap on head.
-				const headWool = MeshBuilder.CreateSphere('sheep-headWool', { diameter: scale * 0.38, segments: 12 }, this.scene);
+				const headWool = this.flatShade(MeshBuilder.CreateSphere('sheep-headWool', { diameter: scale * 0.38, segments: 8 }, this.scene));
 				headWool.position.set(0, 0.18, -0.05);
 				headWool.scaling.set(1, 0.6, 1);
 				headWool.material = mat;
@@ -1526,14 +1531,14 @@ export class SouqManagerGame {
 				];
 				for (let i = 0; i < legPositions.length; i++) {
 					const pos = legPositions[i];
-					const leg = MeshBuilder.CreateCylinder(`sheep-leg${i}`, { height: 0.45, diameter: 0.1, tessellation: 10 }, this.scene);
+					const leg = this.flatShade(MeshBuilder.CreateCylinder(`sheep-leg${i}`, { height: 0.45, diameter: 0.1, tessellation: 8 }, this.scene));
 					leg.position.set(pos.x, 0.25, pos.z);
 					leg.material = legMat;
 					leg.parent = root;
 				}
 
 				// Tiny tail.
-				const tail = MeshBuilder.CreateSphere('sheep-tail', { diameter: 0.14 }, this.scene);
+				const tail = this.flatShade(MeshBuilder.CreateSphere('sheep-tail', { diameter: 0.14, segments: 8 }, this.scene));
 				tail.position.set(0, 0.55, -0.48);
 				tail.material = mat;
 				tail.parent = root;
@@ -1568,7 +1573,7 @@ export class SouqManagerGame {
 	}
 
 	private spawnSmokePuff(position: Vector3, color: Color3, scale: number): void {
-		const mesh = MeshBuilder.CreateSphere(`smoke-${this.smokePuffs.length}`, { diameter: 0.18 * scale, segments: 8 }, this.scene);
+		const mesh = this.flatShade(MeshBuilder.CreateSphere(`smoke-${this.smokePuffs.length}`, { diameter: 0.18 * scale, segments: 8 }, this.scene));
 		mesh.position = position.clone();
 		mesh.position.x += (Math.random() - 0.5) * 0.15;
 		mesh.position.z += (Math.random() - 0.5) * 0.15;
