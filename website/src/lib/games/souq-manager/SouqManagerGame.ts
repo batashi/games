@@ -11,10 +11,8 @@ import {
 	Mesh,
 	TransformNode,
 	PointerEventTypes,
-	HighlightLayer,
-	SceneLoader
+	HighlightLayer
 } from '@babylonjs/core';
-import '@babylonjs/loaders/glTF';
 import {
 	SouqManagerLogic,
 	type SouqManagerState,
@@ -176,7 +174,6 @@ export class SouqManagerGame {
 	private time = 0;
 
 	private customerAnimals = new Map<number, AnimalType>();
-	private camelTemplate: TransformNode | null = null;
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -224,42 +221,6 @@ export class SouqManagerGame {
 
 		this.logic.startLevel(options.level ?? 1);
 		this.audio.playMusic();
-		this.loadCamelModel();
-	}
-
-	private async loadCamelModel(): Promise<void> {
-		try {
-			const result = await SceneLoader.ImportMeshAsync('', '/models/camel/', 'camel.gltf', this.scene);
-			const root = new TransformNode('camel-template', this.scene);
-			for (const mesh of result.meshes) {
-				if (!mesh.parent) {
-					mesh.parent = root;
-				}
-			}
-			root.setEnabled(false);
-
-			let minY = Infinity;
-			let maxY = -Infinity;
-			for (const mesh of result.meshes) {
-				if (!mesh.getBoundingInfo) continue;
-				const b = mesh.getBoundingInfo().boundingBox;
-				for (const point of b.vectorsWorld) {
-					minY = Math.min(minY, point.y);
-					maxY = Math.max(maxY, point.y);
-				}
-			}
-			const height = maxY - minY;
-			if (height > 0.001) {
-				const targetHeight = 1.1;
-				root.scaling.scaleInPlace(targetHeight / height);
-			}
-			root.position.y = 0;
-
-			this.camelTemplate = root;
-			console.log('Camel model loaded');
-		} catch (err) {
-			console.warn('Failed to load camel glTF:', err);
-		}
 	}
 
 	private setupLights(): void {
@@ -803,165 +764,247 @@ export class SouqManagerGame {
 		let body: Mesh;
 		const mat = new StandardMaterial(`${type}Mat`, this.scene);
 
+		const eyeWhiteMat = new StandardMaterial('eyeWhiteMat', this.scene);
+		eyeWhiteMat.diffuseColor = new Color3(1, 1, 1);
+		const pupilMat = new StandardMaterial('pupilMat', this.scene);
+		pupilMat.diffuseColor = new Color3(0.1, 0.1, 0.1);
+
+		const addEyes = (x: number, y: number, z: number, size = 0.045) => {
+			for (const side of [-1, 1]) {
+				const eye = MeshBuilder.CreateSphere(`${type}-eye${side}`, { diameter: size * 2 }, this.scene);
+				eye.position.set(side * x, y, z);
+				eye.material = eyeWhiteMat;
+				eye.parent = root;
+
+				const pupil = MeshBuilder.CreateSphere(`${type}-pupil${side}`, { diameter: size }, this.scene);
+				pupil.position.set(side * x, y, z + size * 0.9);
+				pupil.material = pupilMat;
+				pupil.parent = root;
+			}
+		};
+
+		const addFeet = (zFront: number, zBack: number, x: number, color: Color3, size = 0.07) => {
+			const footMat = new StandardMaterial(`${type}-footMat`, this.scene);
+			footMat.diffuseColor = color;
+			for (const side of [-1, 1]) {
+				for (const z of [zFront, zBack]) {
+					const foot = MeshBuilder.CreateSphere(`${type}-foot${side}-${z}`, { diameter: size * 2 }, this.scene);
+					foot.position.set(side * x, size, z);
+					foot.scaling.y = 0.7;
+					foot.material = footMat;
+					foot.parent = root;
+				}
+			}
+		};
+
 		switch (type) {
 			case 'camel': {
-				if (this.camelTemplate) {
-					const camelRoot = this.camelTemplate.clone(`camel-customer-${Math.random()}`, null);
-					camelRoot!.setEnabled(true);
-					camelRoot!.position.y = 0;
-					return { root: camelRoot!, body: camelRoot! };
-				}
-				mat.diffuseColor = new Color3(0.75, 0.55, 0.35);
-				body = MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.3 }, this.scene);
-				body.scaling.y = 0.7;
-				body.scaling.z = 1.3;
-				body.position.y = 0.5;
-				body.material = mat;
-				body.parent = root;
-
-				const hump = MeshBuilder.CreateSphere('camel-hump', { diameter: scale * 0.6 }, this.scene);
-				hump.position.y = 0.85;
-				hump.position.z = -0.15;
-				hump.scaling.y = 0.8;
-				hump.material = mat;
-				hump.parent = root;
-
-				const neck = MeshBuilder.CreateCylinder('camel-neck', { height: 0.5, diameterTop: 0.18, diameterBottom: 0.25 }, this.scene);
-				neck.position.y = 0.85;
-				neck.position.z = 0.45;
-				neck.rotation.x = -0.4;
-				neck.material = mat;
-				neck.parent = root;
-
-				const head = MeshBuilder.CreateSphere('camel-head', { diameter: scale * 0.55 }, this.scene);
-				head.position.y = 1.1;
-				head.position.z = 0.65;
-				head.material = mat;
-				head.parent = root;
-				break;
-			}
-			case 'falcon': {
-				mat.diffuseColor = new Color3(0.5, 0.3, 0.18);
-				body = MeshBuilder.CreateSphere('falcon-body', { diameter: scale }, this.scene);
-				body.scaling.z = 1.4;
+				mat.diffuseColor = new Color3(0.86, 0.66, 0.45);
+				body = MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.35 }, this.scene);
+				body.scaling.y = 0.8;
+				body.scaling.z = 1.25;
 				body.position.y = 0.55;
 				body.material = mat;
 				body.parent = root;
 
-				const wingL = MeshBuilder.CreateBox('falcon-wingL', { width: 0.08, height: 0.02, depth: 0.7 }, this.scene);
-				wingL.position.set(-0.35, 0.6, 0);
-				wingL.rotation.z = 0.25;
+				const hump = MeshBuilder.CreateSphere('camel-hump', { diameter: scale * 0.6 }, this.scene);
+				hump.position.set(0, 0.92, -0.12);
+				hump.scaling.y = 0.65;
+				hump.material = mat;
+				hump.parent = root;
+
+				const neck = MeshBuilder.CreateCylinder('camel-neck', { height: 0.48, diameterTop: 0.15, diameterBottom: 0.22 }, this.scene);
+				neck.position.set(0, 0.88, 0.42);
+				neck.rotation.x = -0.45;
+				neck.material = mat;
+				neck.parent = root;
+
+				const head = MeshBuilder.CreateSphere('camel-head', { diameter: scale * 0.55 }, this.scene);
+				head.position.set(0, 1.14, 0.62);
+				head.material = mat;
+				head.parent = root;
+
+				addEyes(0.13, 1.16, 0.72);
+				addFeet(0.18, -0.2, 0.22, new Color3(0.76, 0.56, 0.37));
+				break;
+			}
+			case 'falcon': {
+				mat.diffuseColor = new Color3(0.76, 0.53, 0.3);
+				body = MeshBuilder.CreateSphere('falcon-body', { diameter: scale * 1.05 }, this.scene);
+				body.scaling.z = 1.2;
+				body.position.y = 0.55;
+				body.material = mat;
+				body.parent = root;
+
+				const head = MeshBuilder.CreateSphere('falcon-head', { diameter: scale * 0.5 }, this.scene);
+				head.position.set(0, 0.82, 0.48);
+				head.material = mat;
+				head.parent = root;
+
+				const wingL = MeshBuilder.CreateBox('falcon-wingL', { width: 0.45, height: 0.04, depth: 0.28 }, this.scene);
+				wingL.position.set(-0.32, 0.62, -0.05);
+				wingL.rotation.z = 0.2;
 				wingL.material = mat;
 				wingL.parent = root;
 
-				const wingR = MeshBuilder.CreateBox('falcon-wingR', { width: 0.08, height: 0.02, depth: 0.7 }, this.scene);
-				wingR.position.set(0.35, 0.6, 0);
-				wingR.rotation.z = -0.25;
+				const wingR = MeshBuilder.CreateBox('falcon-wingR', { width: 0.45, height: 0.04, depth: 0.28 }, this.scene);
+				wingR.position.set(0.32, 0.62, -0.05);
+				wingR.rotation.z = -0.2;
 				wingR.material = mat;
 				wingR.parent = root;
 
-				const beak = MeshBuilder.CreateCylinder('falcon-beak', { height: 0.25, diameterTop: 0, diameterBottom: 0.12 }, this.scene);
-				beak.position.set(0, 0.65, 0.65);
+				const beak = MeshBuilder.CreateCylinder('falcon-beak', { height: 0.2, diameterTop: 0, diameterBottom: 0.1 }, this.scene);
+				beak.position.set(0, 0.82, 0.72);
 				beak.rotation.x = Math.PI / 2;
 				const beakMat = new StandardMaterial('beakMat', this.scene);
-				beakMat.diffuseColor = new Color3(0.9, 0.7, 0.2);
+				beakMat.diffuseColor = new Color3(0.95, 0.75, 0.2);
 				beak.material = beakMat;
 				beak.parent = root;
+
+				addEyes(0.1, 0.86, 0.6);
+				addFeet(0.15, 0.12, 0.12, new Color3(0.9, 0.7, 0.25));
 				break;
 			}
 			case 'oryx': {
-				mat.diffuseColor = new Color3(0.95, 0.9, 0.8);
-				body = MeshBuilder.CreateSphere('oryx-body', { diameter: scale * 1.1 }, this.scene);
+				mat.diffuseColor = new Color3(0.96, 0.91, 0.82);
+				body = MeshBuilder.CreateSphere('oryx-body', { diameter: scale * 1.2 }, this.scene);
 				body.scaling.z = 1.3;
-				body.position.y = 0.5;
+				body.position.y = 0.52;
 				body.material = mat;
 				body.parent = root;
 
-				const head = MeshBuilder.CreateSphere('oryx-head', { diameter: scale * 0.55 }, this.scene);
-				head.position.set(0, 0.85, 0.55);
+				const neck = MeshBuilder.CreateCylinder('oryx-neck', { height: 0.4, diameterTop: 0.12, diameterBottom: 0.16 }, this.scene);
+				neck.position.set(0, 0.85, 0.42);
+				neck.rotation.x = -0.4;
+				neck.material = mat;
+				neck.parent = root;
+
+				const head = MeshBuilder.CreateSphere('oryx-head', { diameter: scale * 0.5 }, this.scene);
+				head.position.set(0, 1.05, 0.58);
 				head.material = mat;
 				head.parent = root;
 
-				const hornMat = new StandardMaterial('hornMat', this.scene);
-				hornMat.diffuseColor = new Color3(0.9, 0.85, 0.7);
+				const hornMat = new StandardMaterial('oryxHornMat', this.scene);
+				hornMat.diffuseColor = new Color3(0.92, 0.86, 0.72);
 				for (const side of [-1, 1]) {
-					const horn = MeshBuilder.CreateCylinder(`oryx-horn${side}`, { height: 0.6, diameter: 0.06 }, this.scene);
-					horn.position.set(side * 0.18, 1.2, 0.55);
-					horn.rotation.z = side * 0.35;
+					const horn = MeshBuilder.CreateCylinder(`oryx-horn${side}`, { height: 0.7, diameter: 0.04 }, this.scene);
+					horn.position.set(side * 0.16, 1.42, 0.52);
+					horn.rotation.x = -0.55;
+					horn.rotation.z = side * 0.3;
 					horn.material = hornMat;
 					horn.parent = root;
 				}
+
+				addEyes(0.11, 1.08, 0.68);
+				addFeet(0.18, -0.18, 0.2, new Color3(0.9, 0.85, 0.75));
 				break;
 			}
 			case 'fox': {
-				mat.diffuseColor = new Color3(0.9, 0.45, 0.2);
+				mat.diffuseColor = new Color3(0.95, 0.55, 0.25);
 				body = MeshBuilder.CreateSphere('fox-body', { diameter: scale }, this.scene);
 				body.scaling.z = 1.3;
-				body.position.y = 0.45;
+				body.position.y = 0.48;
 				body.material = mat;
 				body.parent = root;
 
-				const head = MeshBuilder.CreateSphere('fox-head', { diameter: scale * 0.6 }, this.scene);
-				head.position.set(0, 0.75, 0.55);
+				const head = MeshBuilder.CreateSphere('fox-head', { diameter: scale * 0.55 }, this.scene);
+				head.position.set(0, 0.78, 0.55);
 				head.material = mat;
 				head.parent = root;
 
-				const tail = MeshBuilder.CreateCylinder('fox-tail', { height: 0.55, diameterTop: 0.08, diameterBottom: 0.25 }, this.scene);
+				const snout = MeshBuilder.CreateSphere('fox-snout', { diameter: 0.18 }, this.scene);
+				snout.position.set(0, 0.75, 0.78);
+				snout.scaling.z = 1.5;
+				snout.material = mat;
+				snout.parent = root;
+
+				const tail = MeshBuilder.CreateCylinder('fox-tail', { height: 0.5, diameterTop: 0.06, diameterBottom: 0.2 }, this.scene);
 				tail.position.set(0, 0.55, -0.55);
 				tail.rotation.x = -0.6;
 				tail.material = mat;
 				tail.parent = root;
 
-				const earMat = new StandardMaterial('earMat', this.scene);
-				earMat.diffuseColor = new Color3(0.85, 0.4, 0.18);
+				const earMat = new StandardMaterial('foxEarMat', this.scene);
+				earMat.diffuseColor = new Color3(0.9, 0.5, 0.22);
 				for (const side of [-1, 1]) {
-					const ear = MeshBuilder.CreateCylinder(`fox-ear${side}`, { height: 0.22, diameterTop: 0, diameterBottom: 0.12 }, this.scene);
-					ear.position.set(side * 0.18, 0.95, 0.55);
+					const ear = MeshBuilder.CreateCylinder(`fox-ear${side}`, { height: 0.2, diameterTop: 0, diameterBottom: 0.12 }, this.scene);
+					ear.position.set(side * 0.16, 0.98, 0.55);
+					ear.rotation.x = -0.2;
 					ear.material = earMat;
 					ear.parent = root;
 				}
+
+				addEyes(0.1, 0.82, 0.68);
+				addFeet(0.15, -0.15, 0.18, new Color3(0.85, 0.42, 0.18));
 				break;
 			}
 			case 'goat': {
-				mat.diffuseColor = new Color3(0.9, 0.9, 0.9);
-				body = MeshBuilder.CreateSphere('goat-body', { diameter: scale * 1.05 }, this.scene);
+				mat.diffuseColor = new Color3(0.9, 0.9, 0.88);
+				body = MeshBuilder.CreateSphere('goat-body', { diameter: scale * 1.1 }, this.scene);
 				body.scaling.z = 1.25;
-				body.position.y = 0.48;
+				body.position.y = 0.5;
 				body.material = mat;
 				body.parent = root;
 
-				const head = MeshBuilder.CreateSphere('goat-head', { diameter: scale * 0.55 }, this.scene);
-				head.position.set(0, 0.8, 0.5);
+				const head = MeshBuilder.CreateSphere('goat-head', { diameter: scale * 0.5 }, this.scene);
+				head.position.set(0, 0.88, 0.48);
 				head.material = mat;
 				head.parent = root;
 
-				const hornMat = new StandardMaterial('hornMat', this.scene);
-				hornMat.diffuseColor = new Color3(0.5, 0.45, 0.4);
+				const hornMat = new StandardMaterial('goatHornMat', this.scene);
+				hornMat.diffuseColor = new Color3(0.52, 0.46, 0.42);
 				for (const side of [-1, 1]) {
-					const horn = MeshBuilder.CreateCylinder(`goat-horn${side}`, { height: 0.35, diameterTop: 0.04, diameterBottom: 0.1 }, this.scene);
-					horn.position.set(side * 0.2, 1.05, 0.5);
-					horn.rotation.z = side * 0.5;
+					const horn = MeshBuilder.CreateCylinder(`goat-horn${side}`, { height: 0.32, diameterTop: 0.03, diameterBottom: 0.08 }, this.scene);
+					horn.position.set(side * 0.18, 1.12, 0.48);
+					horn.rotation.z = side * 0.6;
+					horn.rotation.x = -0.35;
 					horn.material = hornMat;
 					horn.parent = root;
 				}
+
+				const beardMat = new StandardMaterial('goatBeardMat', this.scene);
+				beardMat.diffuseColor = new Color3(0.7, 0.7, 0.68);
+				const beard = MeshBuilder.CreateSphere('goat-beard', { diameter: 0.12 }, this.scene);
+				beard.position.set(0, 0.72, 0.6);
+				beard.material = beardMat;
+				beard.parent = root;
+
+				addEyes(0.1, 0.9, 0.6);
+				addFeet(0.15, -0.15, 0.18, new Color3(0.55, 0.5, 0.45));
 				break;
 			}
 			case 'sheep': {
-				mat.diffuseColor = new Color3(0.95, 0.95, 0.95);
-				body = MeshBuilder.CreateSphere('sheep-body', { diameter: scale * 1.15 }, this.scene);
-				body.position.y = 0.48;
+				mat.diffuseColor = new Color3(0.96, 0.95, 0.92);
+				body = MeshBuilder.CreateSphere('sheep-body', { diameter: scale * 1.25 }, this.scene);
+				body.position.y = 0.5;
 				body.material = mat;
 				body.parent = root;
 
-				const head = MeshBuilder.CreateSphere('sheep-head', { diameter: scale * 0.55 }, this.scene);
-				head.position.set(0, 0.82, 0.45);
+				const head = MeshBuilder.CreateSphere('sheep-head', { diameter: scale * 0.5 }, this.scene);
+				head.position.set(0, 0.86, 0.45);
 				head.material = mat;
 				head.parent = root;
+
+				for (const side of [-1, 1]) {
+					const puff = MeshBuilder.CreateSphere(`sheep-puff${side}`, { diameter: scale * 0.45 }, this.scene);
+					puff.position.set(side * 0.35, 0.55, 0);
+					puff.material = mat;
+					puff.parent = root;
+				}
+
+				addEyes(0.1, 0.89, 0.58);
+				addFeet(0.15, -0.15, 0.18, new Color3(0.62, 0.57, 0.52));
 				break;
+			}
+			default: {
+				body = MeshBuilder.CreateSphere('fallback-body', { diameter: scale }, this.scene);
+				body.position.y = 0.5;
+				body.material = mat;
+				body.parent = root;
 			}
 		}
 
-		return { root, body: body! };
+		return { root, body };
 	}
 
 	private updateCoinLabels(dt: number): void {
