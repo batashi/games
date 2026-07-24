@@ -12,6 +12,7 @@
 	let phase = $state<'mode' | 'difficulty' | 'playing'>('mode');
 	let mode = $state<FortBattleMode>('hotseat');
 	let difficulty = $state<GameDifficulty>('medium');
+	let aimAssist = $state(false);
 
 	onMount(() => {
 		// Preload the game module while the player picks a mode.
@@ -37,7 +38,7 @@
 				state = s;
 				charging = s.gameState === 'aiming' && s.power > 10 && s.message.includes('شحن');
 			},
-			{ mode, difficulty }
+			{ mode, difficulty, aimAssist }
 		);
 		theme = game.getTheme();
 	}
@@ -88,6 +89,10 @@
 		if (d === 'easy') return 'سهل';
 		if (d === 'hard') return 'صعب';
 		return 'متوسط';
+	}
+
+	function aimAssistLabel(): string {
+		return aimAssist ? 'مساعدة التصويب: شغالة 🎯' : 'مساعدة التصويب: متوقفة';
 	}
 
 	let aiThinking = $derived(
@@ -143,6 +148,13 @@
 						{mode === 'ai' ? 'اختر صعوبة الكمبيوتر والهدايا' : 'اختر صعوبة الهدايا والرياح'}
 					</p>
 					<div class="flex flex-col gap-3">
+						<button
+							type="button"
+							class="{aimAssist ? 'bg-success/80 hover:bg-success' : 'bg-white/10 hover:bg-white/20'} text-cream font-bold py-2 px-4 rounded-xl transition-colors text-sm"
+							onclick={() => (aimAssist = !aimAssist)}
+						>
+							{aimAssistLabel()}
+						</button>
 						<button
 							type="button"
 							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-6 rounded-xl transition-colors"
@@ -212,6 +224,11 @@
 			<div class="bg-charcoal/70 text-cream px-3 py-1.5 rounded-lg text-sm">
 				الصعوبة: <span class="font-bold">{difficultyLabel(state.difficulty)}</span>
 			</div>
+			{#if aimAssist}
+				<div class="bg-success/80 text-cream px-3 py-1.5 rounded-lg text-sm font-bold">
+					🎯 مساعدة التصويب
+				</div>
+			{/if}
 			{#if state.powerShotActive}
 				<div class="bg-orange-500/90 text-cream px-3 py-1.5 rounded-lg text-sm font-bold animate-pulse">
 					سهم قوي! 🔥

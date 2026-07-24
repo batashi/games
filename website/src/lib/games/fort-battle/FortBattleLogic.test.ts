@@ -333,6 +333,56 @@ describe('FortBattleLogic', () => {
 		});
 	});
 
+	describe('aim assist', () => {
+		it('soft-corrects a weak shot so it still hits when enabled', () => {
+			const { logic } = createLogic({
+				WIND_SCALE: 0,
+				MAX_WIND: 0,
+				GIFT_SPAWN_CHANCE: 0,
+				aimAssist: true
+			});
+			logic.setAngle(45);
+			logic.startCharge();
+			logic.updateCharge(0.2); // intentionally weak power
+			logic.releaseCharge();
+
+			for (let i = 0; i < 1000 && logic.getState().gameState === 'flying'; i++) {
+				logic.updateFlight(0.01);
+			}
+
+			expect(logic.getState().healths[1]).toBe(75);
+		});
+
+		it('does not correct a weak shot when disabled', () => {
+			const { logic } = createLogic({
+				WIND_SCALE: 0,
+				GIFT_SPAWN_CHANCE: 0,
+				aimAssist: false
+			});
+			logic.setAngle(45);
+			logic.startCharge();
+			logic.updateCharge(0.2);
+			logic.releaseCharge();
+
+			for (let i = 0; i < 400 && logic.getState().gameState === 'flying'; i++) {
+				logic.updateFlight(0.05);
+			}
+
+			expect(logic.getState().healths[1]).toBe(100);
+		});
+
+		it('can be toggled at runtime', () => {
+			const { logic } = createLogic({ WIND_SCALE: 0, GIFT_SPAWN_CHANCE: 0 });
+			expect(logic.getConfig().aimAssist).toBe(false);
+
+			logic.setAimAssist(true);
+			expect(logic.getConfig().aimAssist).toBe(true);
+
+			logic.setAimAssist(false);
+			expect(logic.getConfig().aimAssist).toBe(false);
+		});
+	});
+
 	describe('reset', () => {
 		it('resets the entire game', () => {
 			const { logic } = createLogic();

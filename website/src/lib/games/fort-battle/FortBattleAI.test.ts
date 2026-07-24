@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_FORT_BATTLE_CONFIG, arrowStartPosition } from './FortBattleLogic';
-import { computeAIShot, simulateShot, solveShot } from './FortBattleAI';
+import { computeAIShot, simulateShot, solveShot, solvePowerForAngle } from './FortBattleAI';
 
 const config = DEFAULT_FORT_BATTLE_CONFIG;
 
@@ -22,6 +22,35 @@ describe('FortBattleAI', () => {
 				const start = arrowStartPosition(config, 0);
 				expect(simulateShot(config, start, shot!.angle, shot!.power, wind, 1), `wind=${wind}`).toBe('hit');
 			}
+		});
+	});
+
+	describe('solvePowerForAngle', () => {
+		it('finds a hitting power for player 0 at the default angle with no wind', () => {
+			const noWindConfig = { ...config, MAX_WIND: 0 };
+			const power = solvePowerForAngle(noWindConfig, 0, 1, 0, 45);
+			expect(power).not.toBeNull();
+			const start = arrowStartPosition(noWindConfig, 0);
+			expect(simulateShot(noWindConfig, start, 45, power!, 0, 1)).toBe('hit');
+		});
+
+		it('finds a hitting power for player 1 at the default angle', () => {
+			const power = solvePowerForAngle(config, 1, 0, 0, 135);
+			expect(power).not.toBeNull();
+			const start = arrowStartPosition(config, 1);
+			expect(simulateShot(config, start, 135, power!, 0, 0)).toBe('hit');
+		});
+
+		it('returns null for impossible angles', () => {
+			const power = solvePowerForAngle(config, 0, 1, 0, 10);
+			expect(power).toBeNull();
+		});
+
+		it('returns a power within config bounds when a solution exists', () => {
+			const power = solvePowerForAngle(config, 1, 0, 0, 130);
+			expect(power).not.toBeNull();
+			expect(power).toBeGreaterThanOrEqual(config.MIN_POWER);
+			expect(power).toBeLessThanOrEqual(config.MAX_POWER);
 		});
 	});
 

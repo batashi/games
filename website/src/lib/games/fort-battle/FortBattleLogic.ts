@@ -1,3 +1,5 @@
+import { solveShot } from './FortBattleAI';
+
 export type GameDifficulty = 'easy' | 'medium' | 'hard';
 export type GiftType = 'health' | 'power';
 
@@ -54,6 +56,8 @@ export interface FortBattleConfig {
 	POWER_DAMAGE?: number;
 	/** Wind magnitude cap. */
 	MAX_WIND?: number;
+	/** When true, the player’s shot power is soft-corrected toward a hitting power for the current angle. */
+	aimAssist?: boolean;
 }
 
 export const DEFAULT_FORT_BATTLE_CONFIG: FortBattleConfig = {
@@ -143,6 +147,7 @@ export class FortBattleLogic {
 			...difficultyDefaults(difficulty),
 			...config,
 			difficulty,
+			aimAssist: config.aimAssist ?? false,
 			GIFT_RADIUS: 1.2,
 			GIFT_DRIFT: 0.3,
 			POWER_DAMAGE: 50
@@ -195,6 +200,10 @@ export class FortBattleLogic {
 
 	getConfig(): Required<FortBattleConfig> {
 		return { ...this.config };
+	}
+
+	setAimAssist(enabled: boolean): void {
+		this.config.aimAssist = enabled;
 	}
 
 	getGift(): Gift | null {
@@ -280,6 +289,18 @@ export class FortBattleLogic {
 
 	fire(): void {
 		if (this.gameState !== 'aiming') return;
+
+		if (this.config.aimAssist) {
+			const targetIndex = this.currentPlayer === 0 ? 1 : 0;
+			const solved = solveShot(this.config, this.currentPlayer, targetIndex, this.wind);
+			if (solved !== null) {
+				// Snap to the solved hitting shot so younger players reliably hit.
+				this.angle = Math.round(solved.angle);
+				this.power = Math.round(solved.power);
+				this.notify();
+			}
+		}
+
 		this.gameState = 'flying';
 		this.arrowFlying = true;
 

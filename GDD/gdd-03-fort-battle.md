@@ -28,7 +28,7 @@ Two historic Gulf forts face each other across a wadi. Players take turns comman
 | **Online Feasible** | Yes — turn-based aiming, authoritative damage validation |
 | **Estimated Effort** | Medium |
 | **Session Length** | 2–4 minutes |
-| **Accessibility** | Aim assist option for younger players, color-blind safe team indicators, ≥ 72 px touch targets |
+| **Accessibility** | ✅ Aim assist option for younger players, color-blind safe team indicators, ≥ 72 px touch targets |
 
 ### 2.1 GameConfig Contract
 
@@ -94,6 +94,7 @@ The battlefield is a rocky wadi or coastal inlet at golden hour.
 | AI | Simulates aim and power with adjustable accuracy. Easy misses often; Hard accounts for wind. *(implemented: Easy/Medium/Hard)* |
 | Air Gifts | Falling collectibles that appear at the start of some turns. Shoot them to gain +25 health or a powered arrow for the next shot. |
 | Difficulty | Easy/Medium/Hard preset that controls wind cap, gift spawn rate, and AI level. |
+| Aim Assist | ✅ Optional toggle that snaps the player’s aim and power to a solved hitting shot, making the game easier for younger players. The AI does not use it. |
 
 ### 6.1 Air Gifts
 
@@ -179,14 +180,14 @@ Country-specific skins and landmark silhouettes are future enhancements.
 - Turn message and last-shot/gift result message.
 - Mute button in the game header.
 - Difficulty selector on the mode picker.
+- ✅ Aim-assist toggle in the mode/difficulty picker; active indicator in the HUD.
 - Online panel: room code, turn timer, emoji reactions. *(future)*
-- Aim-assist toggle in settings for younger players. *(future)*
 
 ---
 
 ## 10. Audio
 
-- **Music:** Tense but playful battle loop. *(future)*
+- **Music:** ✅ Tense but playful battle loop, synthesized via Web Audio API and looped for the duration of the match.
 - **SFX (synthesized via Web Audio API in v1.0):**
   - Arrow release whoosh
   - Fort impact thud
@@ -281,6 +282,8 @@ Country-specific skins and landmark silhouettes are future enhancements.
 - Current modes: single-player vs AI (Easy/Medium/Hard) and local 2-player hotseat, selected from an in-game mode picker.
 - A unified Easy/Medium/Hard difficulty preset controls wind cap, gift spawn chance, and AI level.
 - Air gifts spawn at the start of turns, fall under gravity/wind, and are collected by arrow collision. They grant +25 health (capped) or a powered 50-damage next shot.
+- Background music is a synthesized, looping battle motif controlled by the same `GameAudio` class as the SFX and respects the mute toggle.
+- Aim assist is an optional player setting. When enabled, `fire()` solves a hitting (angle, power) pair for the current wind and snaps the player’s shot to it before launch. The AI never receives aim assist.
 - The AI solves the same trajectory physics as the player (angle + power binary search with wind compensation) and applies difficulty-based aim error.
 
 ## 20. Technical Notes

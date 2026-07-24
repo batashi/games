@@ -27,16 +27,24 @@ export interface FortBattleGameOptions {
 	difficulty?: GameDifficulty;
 	/** If omitted, a random GCC country theme is picked per match. */
 	theme?: FortTheme;
+	/** When true, the human player's shots are power-corrected toward a hit. */
+	aimAssist?: boolean;
 }
 
-class GameAudio {
+export class GameAudio {
 	private ctx: AudioContext | null = null;
 	private muted = false;
+	private musicTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor() {}
 
 	setMuted(muted: boolean) {
 		this.muted = muted;
+		if (muted) {
+			this.stopMusic();
+		} else {
+			this.playMusic();
+		}
 	}
 
 	getMuted() {
@@ -52,6 +60,66 @@ class GameAudio {
 			this.ctx.resume();
 		}
 		return this.ctx;
+	}
+
+	private getCtx() {
+		if (!this.ctx) {
+			this.ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+		}
+		if (this.ctx.state === 'suspended') {
+			this.ctx.resume();
+		}
+		return this.ctx;
+	}
+
+	playMusic() {
+		if (this.musicTimer) return;
+		this.musicTimer = setInterval(() => {
+			if (this.muted) return;
+			this.playMusicBar(this.getCtx());
+		}, 2200);
+		// Play first bar immediately.
+		if (!this.muted) this.playMusicBar(this.getCtx());
+	}
+
+	stopMusic() {
+		if (this.musicTimer) {
+			clearInterval(this.musicTimer);
+			this.musicTimer = null;
+		}
+	}
+
+	private playMusicBar(ctx: AudioContext) {
+		const now = ctx.currentTime;
+		const barDuration = 2.0;
+
+		// Tense low drone.
+		const drone = ctx.createOscillator();
+		drone.type = 'sawtooth';
+		drone.frequency.setValueAtTime(65, now);
+		const droneGain = ctx.createGain();
+		droneGain.gain.setValueAtTime(0.025, now);
+		droneGain.gain.exponentialRampToValueAtTime(0.001, now + barDuration);
+		drone.connect(droneGain);
+		droneGain.connect(ctx.destination);
+		drone.start(now);
+		drone.stop(now + barDuration);
+
+		// Rhythmic percussion-like accents.
+		const accents = [110, 82, 98, 110];
+		const times = [0, 0.55, 1.1, 1.65];
+		accents.forEach((freq, i) => {
+			const osc = ctx.createOscillator();
+			osc.type = 'square';
+			osc.frequency.setValueAtTime(freq, now + times[i]);
+			const gain = ctx.createGain();
+			gain.gain.setValueAtTime(0.02, now + times[i]);
+			gain.gain.exponentialRampToValueAtTime(0.001, now + times[i] + 0.12);
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.start(now + times[i]);
+			osc.stop(now + times[i] + 0.12);
+		});
 	}
 
 	playShoot() {
@@ -186,6 +254,7 @@ export class FortBattleGame {
 	private mode: FortBattleMode;
 	private difficulty: GameDifficulty;
 	private theme: FortTheme;
+	private aimAssist: boolean;
 	private aiTurnTimer: ReturnType<typeof setTimeout> | null = null;
 	private aiTurnActive = false;
 	private aiTargetPower = 0;
@@ -204,6 +273,7 @@ export class FortBattleGame {
 		this.mode = options.mode ?? 'hotseat';
 		this.difficulty = options.difficulty ?? 'medium';
 		this.theme = options.theme ?? pickRandomTheme();
+		this.aimAssist = options.aimAssist ?? false;
 
 		// Create the logic first so setupEnvironment() can read its config.
 		// Visual callbacks are deferred until the scene is fully built.
@@ -216,6 +286,7 @@ export class FortBattleGame {
 			},
 			{
 				difficulty: this.difficulty,
+				aimAssist: this.aimAssist,
 				...(this.mode === 'ai' ? { playerNames: ['اللاعب', 'الكمبيوتر'] } : {})
 			},
 			{
@@ -233,6 +304,7 @@ export class FortBattleGame {
 		this.onStateChanged(this.logic.getState());
 
 		this.setupInput();
+		this.audio.playMusic();
 
 		this.engine.runRenderLoop(() => {
 			this.update(this.engine.getDeltaTime() / 1000);
@@ -933,6 +1005,10 @@ export class FortBattleGame {
 	}
 
 	private onStateChanged(state: FortBattleState): void {
+		if (this.aimAssist) {
+			this.logic.setAimAssist(!this.isAITurn());
+		}
+
 		this.updateWindVisual(state.wind);
 
 		if (state.gameState === 'aiming') {
@@ -1019,6 +1095,7 @@ export class FortBattleGame {
 	dispose(): void {
 		this.clearAITurn();
 		this.disposeGiftMesh();
+		this.audio.stopMusic();
 		window.removeEventListener('resize', this.handleResize);
 		this.engine.dispose();
 	}

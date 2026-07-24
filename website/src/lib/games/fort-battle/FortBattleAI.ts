@@ -82,6 +82,42 @@ export function solveShot(
 	return null;
 }
 
+/**
+ * For a fixed angle, finds a power value that hits the target fort.
+ * Used by aim assist: the player controls angle, the assist suggests power.
+ */
+export function solvePowerForAngle(
+	config: FortBattleConfig,
+	shooterIndex: number,
+	targetIndex: number,
+	wind: number,
+	angleDeg: number
+): number | null {
+	const start = arrowStartPosition(config, shooterIndex);
+	let lo = config.MIN_POWER;
+	let hi = config.MAX_POWER;
+	let best: number | null = null;
+
+	for (let i = 0; i < 30; i++) {
+		const mid = (lo + hi) / 2;
+		const result = simulateShot(config, start, angleDeg, mid, wind, targetIndex);
+		if (result === 'hit') {
+			best = mid;
+			hi = mid; // prefer a lower power solution
+			continue;
+		}
+
+		const shortOfTarget =
+			shooterIndex === 0 ? result < config.FORT_X[targetIndex] : result > config.FORT_X[targetIndex];
+		if (shortOfTarget) {
+			lo = mid;
+		} else {
+			hi = mid;
+		}
+	}
+	return best;
+}
+
 const DIFFICULTY_ERROR: Record<AIDifficulty, { angle: number; power: number }> = {
 	easy: { angle: 12, power: 22 },
 	medium: { angle: 5, power: 9 },
