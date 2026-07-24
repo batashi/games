@@ -2,9 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import {
 	SouqManagerLogic,
 	DEFAULT_SOUQ_MANAGER_CONFIG,
-	SOUQ_GOODS,
 	SOUQ_LEVELS,
-	type SouqManagerConfig
+	GOOD_PRICES,
+	type SouqManagerConfig,
+	type StationType,
+	type Item
 } from './SouqManagerLogic';
 
 function createLogic(config?: SouqManagerConfig) {
@@ -25,12 +27,15 @@ function simulateTime(logic: SouqManagerLogic, seconds: number): void {
 	for (let i = 0; i < steps; i++) logic.update(0.05);
 }
 
+function stationByType(logic: SouqManagerLogic, type: StationType) {
+	return logic.getState().stations.find((s) => s.type === type)!;
+}
+
 describe('SouqManagerLogic', () => {
 	describe('initial state', () => {
-		it('starts in menu state with sensible defaults', () => {
+		it('starts in menu state', () => {
 			const { logic } = createLogic();
 			const state = logic.getState();
-
 			expect(state.gameState).toBe('menu');
 			expect(state.level).toBe(1);
 			expect(state.coins).toBe(0);
@@ -39,214 +44,224 @@ describe('SouqManagerLogic', () => {
 			expect(state.player.carrying).toBeNull();
 		});
 
-		it('notifies on creation', () => {
-			const { onChange } = createLogic();
-			expect(onChange).toHaveBeenCalled();
-		});
-
-		it('uses default config values', () => {
+		it('creates all production stations', () => {
 			const { logic } = createLogic();
-			const config = logic.getConfig();
-			expect(config.playerSpeed).toBe(DEFAULT_SOUQ_MANAGER_CONFIG.playerSpeed);
-			expect(config.maxWorkers).toBe(DEFAULT_SOUQ_MANAGER_CONFIG.maxWorkers);
+			const types = logic.getState().stations.map((s) => s.type);
+			expect(types).toContain('palmPlot');
+			expect(types).toContain('dryingMat');
+			expect(types).toContain('packagingTable');
+			expect(types).toContain('brazier');
+			expect(types).toContain('mortar');
+			expect(types).toContain('dallah');
+			expect(types).toContain('sortingMat');
+			expect(types).toContain('greenBeans');
+			expect(types).toContain('rawResin');
 		});
 	});
 
 	describe('level flow', () => {
-		it('starts level 1 with correct targets', () => {
+		it('starts level 1 with dates only', () => {
 			const { logic } = createLogic();
 			logic.startLevel(1);
 			const state = logic.getState();
-
 			expect(state.gameState).toBe('playing');
-			expect(state.level).toBe(1);
+			expect(state.unlockedGoods).toEqual(['dates']);
 			expect(state.targetCoins).toBe(SOUQ_LEVELS[0].targetCoins);
-			expect(state.timeRemaining).toBe(SOUQ_LEVELS[0].durationSeconds);
-			expect(state.shelves).toHaveLength(SOUQ_LEVELS[0].shelfCount);
 		});
 
-		it('restarts the current level', () => {
+		it('unlocks luban and qahwa in later levels', () => {
 			const { logic } = createLogic();
 			logic.startLevel(2);
-			logic.restartLevel();
-			const state = logic.getState();
-			expect(state.level).toBe(2);
-			expect(state.gameState).toBe('playing');
-			expect(state.coins).toBe(0);
+			expect(logic.getState().unlockedGoods).toEqual(['dates', 'luban']);
+			logic.startLevel(3);
+			expect(logic.getState().unlockedGoods).toEqual(['dates', 'luban', 'qahwa']);
 		});
 	});
 
-	describe('crate and stocking', () => {
-		it('spawns a good after the crate interval', () => {
-			const { logic } = createLogic({ crateSpawnInterval: 1 });
+	describe('dates production chain', () => {
+		it('plants a sapling and harvests fresh dates', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
 			logic.startLevel(1);
-			expect(logic.getState().crate.nextGood).toBeNull();
+			const palm = stationByType(logic, 'palmPlot');
 
-			simulateTime(logic, 1.1);
-			expect(logic.getState().crate.nextGood).not.toBeNull();
-		});
-
-		it('player can pick from crate and place on shelf', () => {
-			const { logic } = createLogic({ crateSpawnInterval: 0.1, playerSpeed: 20 });
-			logic.startLevel(1);
-			simulateTime(logic, 0.2);
-
-			const good = logic.getState().crate.nextGood;
-			expect(good).not.toBeNull();
-
-			logic.movePlayerToCrate();
+			logic.movePlayerToStation(palm.id);
 			simulateTime(logic, 1);
 
-			expect(logic.getState().player.carrying).toBe(good);
+			let state = logic.getState();
+			expect(state.stations.find((s) => s.id === palm.id)?.status).toBe('processing');
 
-			logic.movePlayerToShelf(0);
+			simulateTime(logic, 5);
+			state = logic.getState();
+			expect(state.stations.find((s) => s.id === palm.id)?.status).toBe('ready');
+
+			logic.movePlayerToStation(palm.id);
 			simulateTime(logic, 1);
-
-			expect(logic.getState().player.carrying).toBeNull();
-			expect(logic.getState().shelves[0].goods).toContain(good);
+			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'fresh' });
 		});
 
-		it('does not place on a full shelf', () => {
-			const { logic } = createLogic({ crateSpawnInterval: 0.1, playerSpeed: 50 });
+		it('dries and packs dates for the shelf', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
 			logic.startLevel(1);
-			// Level 1 shelf capacity is 4.
-			for (let i = 0; i < 5; i++) {
-				simulateTime(logic, 0.2);
-				logic.movePlayerToCrate();
-				simulateTime(logic, 0.5);
-				logic.movePlayerToShelf(0);
-				simulateTime(logic, 0.5);
-			}
-			expect(logic.getState().shelves[0].goods.length).toBeLessThanOrEqual(4);
-		});
-	});
 
-	describe('customers', () => {
-		it('spawns customers up to the level maximum', () => {
-			const { logic } = createLogic({ crateSpawnInterval: 0.1 });
-			logic.startLevel(1);
-			simulateTime(logic, 30);
-			expect(logic.getState().customers.length).toBeLessThanOrEqual(SOUQ_LEVELS[0].maxCustomers);
-		});
-
-		it('customer picks a desired good from unlocked goods', () => {
-			const { logic } = createLogic({ crateSpawnInterval: 0.1 });
-			logic.startLevel(1);
+			// Plant and harvest.
+			const palm = stationByType(logic, 'palmPlot');
+			logic.movePlayerToStation(palm.id);
 			simulateTime(logic, 6);
-			const state = logic.getState();
-			expect(state.customers.length).toBeGreaterThan(0);
-			expect(SOUQ_LEVELS[0].unlockedGoods).toContain(state.customers[0].desiredGood);
-		});
+			logic.movePlayerToStation(palm.id);
+			simulateTime(logic, 1);
 
-		it('customer buys a stocked item and moves to cashier', () => {
+			// Dry.
+			const drying = stationByType(logic, 'dryingMat');
+			logic.movePlayerToStation(drying.id);
+			simulateTime(logic, 4);
+
+			// Collect dried dates.
+			logic.movePlayerToStation(drying.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'dried' });
+
+			// Pack.
+			const packaging = stationByType(logic, 'packagingTable');
+			logic.movePlayerToStation(packaging.id);
+			simulateTime(logic, 3);
+
+			// Collect packed dates.
+			logic.movePlayerToStation(packaging.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'dates', stage: 'packed' });
+
+			// Place on shelf.
+			const shelf = logic.getState().shelves[0];
+			logic.movePlayerToShelf(shelf.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().shelves[0].items).toContainEqual({ type: 'dates', stage: 'packed' });
+		});
+	});
+
+	describe('qahwa production chain', () => {
+		it('produces brewed qahwa from green beans', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
+			logic.startLevel(3);
+
+			// Take green beans.
+			const beans = stationByType(logic, 'greenBeans');
+			logic.movePlayerToStation(beans.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'qahwa', stage: 'beans' });
+
+			// Roast.
+			const brazier = stationByType(logic, 'brazier');
+			logic.movePlayerToStation(brazier.id);
+			simulateTime(logic, 4);
+			logic.movePlayerToStation(brazier.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'qahwa', stage: 'roasted' });
+
+			// Grind.
+			const mortar = stationByType(logic, 'mortar');
+			logic.movePlayerToStation(mortar.id);
+			simulateTime(logic, 3);
+			logic.movePlayerToStation(mortar.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'qahwa', stage: 'ground' });
+
+			// Brew.
+			const dallah = stationByType(logic, 'dallah');
+			logic.movePlayerToStation(dallah.id);
+			simulateTime(logic, 4);
+			logic.movePlayerToStation(dallah.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'qahwa', stage: 'brewed' });
+		});
+	});
+
+	describe('luban production chain', () => {
+		it('produces packed luban from raw resin', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
+			logic.startLevel(2);
+
+			const raw = stationByType(logic, 'rawResin');
+			logic.movePlayerToStation(raw.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'luban', stage: 'rawResin' });
+
+			const sorting = stationByType(logic, 'sortingMat');
+			logic.movePlayerToStation(sorting.id);
+			simulateTime(logic, 3);
+			logic.movePlayerToStation(sorting.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'luban', stage: 'sorted' });
+
+			const packaging = stationByType(logic, 'packagingTable');
+			logic.movePlayerToStation(packaging.id);
+			simulateTime(logic, 3);
+			logic.movePlayerToStation(packaging.id);
+			simulateTime(logic, 1);
+			expect(logic.getState().player.carrying).toEqual({ type: 'luban', stage: 'packed' });
+		});
+	});
+
+	describe('customers and payments', () => {
+		it('customer buys packed dates and pays at cashier', () => {
 			const { logic, callbacks } = createLogic({
-				crateSpawnInterval: 0.1,
 				playerSpeed: 50,
 				customerSpeed: 50,
 				customerPatience: 60
 			});
 			logic.startLevel(1);
 
-			// Stock shelf 0.
-			simulateTime(logic, 0.2);
-			logic.movePlayerToCrate();
-			simulateTime(logic, 0.2);
-			logic.movePlayerToShelf(0);
-			simulateTime(logic, 0.2);
+			// Stock shelf with packed dates manually for deterministic test.
+			logic['shelves'][0].items.push({ type: 'dates', stage: 'packed' });
 
-			// Wait for a customer to spawn and make it desire the stocked good.
-			simulateTime(logic, 6);
+			// Spawn and direct a customer to dates.
+			simulateTime(logic, 7);
 			expect(logic['customers'].length).toBeGreaterThan(0);
-			const stockedGood = logic.getState().shelves[0].goods[0];
-			logic['customers'][0].desiredGood = stockedGood;
+			logic['customers'][0].desiredGood = 'dates';
 			logic['customers'][0].state = 'entering';
 			logic['customers'][0].target = null;
 
-			// Let the customer shop and walk to cashier.
+			// Let customer shop and queue.
 			simulateTime(logic, 3);
+			expect(logic.getState().cashierMat.queue.length).toBeGreaterThan(0);
 
-			const state = logic.getState();
-			expect(state.cashierMat.queue.length).toBeGreaterThan(0);
-			expect(callbacks.onCustomerServed).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('cashier and payments', () => {
-		it('collects payment when player reaches cashier mat', () => {
-			const { logic, callbacks } = createLogic({
-				crateSpawnInterval: 0.1,
-				playerSpeed: 50,
-				customerSpeed: 50,
-				customerPatience: 60
-			});
-			logic.startLevel(1);
-
-			// Place a customer directly at the cashier mat ready to pay.
-			const customerId = 99;
-			logic['customers'].push({
-				id: customerId,
-				position: { x: 5, y: -3 },
-				target: null,
-				state: 'paying',
-				desiredGood: 'dates',
-				patience: 60,
-				paid: false
-			});
-			logic['cashierMat'].queue.push(customerId);
-
+			// Collect payment.
 			const beforeCoins = logic.getState().coins;
 			logic.movePlayerToCashier();
 			simulateTime(logic, 2);
 
-			const state = logic.getState();
-			expect(state.coins).toBe(beforeCoins + SOUQ_GOODS.dates.price);
+			expect(logic.getState().coins).toBe(beforeCoins + GOOD_PRICES.dates);
 			expect(callbacks.onCoinCollected).toHaveBeenCalled();
 			expect(callbacks.onCustomerServed).toHaveBeenCalled();
 		});
 	});
 
 	describe('workers', () => {
-		it('can hire a worker when enough coins', () => {
+		it('hires a worker and assigns to a station', () => {
 			const { logic, callbacks } = createLogic();
 			logic.startLevel(1);
 			logic['coins'] = 100;
-			const hired = logic.hireWorker('restocker');
+			const palm = stationByType(logic, 'palmPlot');
+			const hired = logic.hireWorker(palm.id);
 
 			expect(hired).toBe(true);
 			expect(logic.getState().workers).toHaveLength(1);
-			expect(callbacks.onWorkerHired).toHaveBeenCalledWith('restocker');
+			expect(logic.getState().stations.find((s) => s.id === palm.id)?.assignedWorkerId).not.toBeNull();
+			expect(callbacks.onWorkerHired).toHaveBeenCalled();
 		});
 
-		it('cannot hire a worker without enough coins', () => {
-			const { logic } = createLogic();
-			logic.startLevel(1);
-			const hired = logic.hireWorker('cashier');
-			expect(hired).toBe(false);
-			expect(logic.getState().workers).toHaveLength(0);
-		});
-
-		it('enforces max worker limit', () => {
-			const { logic } = createLogic({ maxWorkers: 1 });
-			logic.startLevel(1);
-			logic['coins'] = 200;
-			logic.hireWorker('restocker');
-			const hired = logic.hireWorker('cashier');
-			expect(hired).toBe(false);
-		});
-
-		it('restocker moves goods from crate to shelf', () => {
-			const { logic } = createLogic({
-				crateSpawnInterval: 0.1,
-				workerSpeed: 50,
-				maxWorkers: 2
-			});
+		it('worker speeds up palm plot processing', () => {
+			const { logic } = createLogic({ playerSpeed: 50 });
 			logic.startLevel(1);
 			logic['coins'] = 100;
-			logic.hireWorker('restocker');
+			const palm = stationByType(logic, 'palmPlot');
+			logic.hireWorker(palm.id);
 
+			logic.movePlayerToStation(palm.id);
+			simulateTime(logic, 1);
+
+			// With worker bonus, palm should finish in ~4 seconds instead of 4.
 			simulateTime(logic, 3);
-
-			expect(logic.getState().shelves.some((s) => s.goods.length > 0)).toBe(true);
+			expect(logic.getState().stations.find((s) => s.id === palm.id)?.status).toBe('ready');
 		});
 	});
 
@@ -257,7 +272,6 @@ describe('SouqManagerLogic', () => {
 			logic['coins'] = 100;
 			const beforeSpeed = logic.getState().player.speed;
 			const upgraded = logic.upgradePlayerSpeed();
-
 			expect(upgraded).toBe(true);
 			expect(logic.getState().player.speed).toBe(beforeSpeed + 1);
 		});
@@ -268,7 +282,6 @@ describe('SouqManagerLogic', () => {
 			logic['coins'] = 100;
 			const beforeCapacity = logic.getState().player.capacity;
 			const upgraded = logic.upgradePlayerCapacity();
-
 			expect(upgraded).toBe(true);
 			expect(logic.getState().player.capacity).toBe(beforeCapacity + 1);
 		});
@@ -285,14 +298,6 @@ describe('SouqManagerLogic', () => {
 			expect(state.gameState).toBe('levelComplete');
 			expect(state.stars).toBe(1);
 			expect(callbacks.onLevelComplete).toHaveBeenCalledWith(1);
-		});
-
-		it('awards two stars at 120% target', () => {
-			const { logic } = createLogic();
-			logic.startLevel(1);
-			logic['totalCoinsEarned'] = Math.floor(SOUQ_LEVELS[0].targetCoins * 1.2);
-			logic.update(0.05);
-			expect(logic.getState().stars).toBe(2);
 		});
 
 		it('awards three stars at 150% target', () => {

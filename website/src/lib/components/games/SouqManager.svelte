@@ -74,9 +74,11 @@
 	{#if phase === 'menu'}
 		<div class="absolute inset-0 flex items-center justify-center bg-charcoal/60 px-4">
 			<div class="bg-sea-dark text-cream rounded-2xl p-6 sm:p-8 max-w-md w-full text-center shadow-xl">
-				<div class="text-5xl mb-3">🏪</div>
+				<div class="text-5xl mb-3">🧺</div>
 				<h2 class="font-display font-bold text-2xl mb-2">سوق الخليج</h2>
-				<p class="text-sm opacity-80 mb-6">أدر محلك التجاري وحقق هدف اليوم!</p>
+				<p class="text-sm opacity-80 mb-6">
+					أدر دكاناً تقليدياً: ازرع التمر، احمص القهوة، وفرّز اللبان. اخدم زبائنك وحقق هدف اليوم!
+				</p>
 
 				<div class="grid grid-cols-3 gap-3">
 					{#each SOUQ_LEVELS as level}
@@ -120,8 +122,10 @@
 		</div>
 
 		<!-- Hint -->
-		<div class="absolute bottom-20 left-4 text-cream/80 text-xs bg-charcoal/50 px-3 py-1 rounded-lg pointer-events-none">
-			اضغط على الأرض للتحرك | اضغط على الصندوق أو الرف أو الصندوق للتفاعل
+		<div class="absolute bottom-20 left-4 right-4 text-cream/90 text-xs bg-charcoal/60 px-3 py-2 rounded-lg pointer-events-none text-center leading-relaxed">
+			سلاسل الإنتاج: النخلة ← التجفيف ← التعبئة &nbsp;|&nbsp; البن الأخضر ← المحمص ← الهاون ← الدلة &nbsp;|&nbsp; اللبان الخام ← الفرز ← التعبئة
+			<br />
+			ضع السلعة الجاهزة على الرف، ثم اذهب إلى بساط الصندوق لتحصيل العملات.
 		</div>
 	{/if}
 

@@ -1,52 +1,52 @@
-export type SouqGood =
-	| 'dates'
-	| 'qahwa'
-	| 'luban'
-	| 'oud'
-	| 'saffron'
-	| 'halwa'
-	| 'pearls';
+export type GoodType = 'dates' | 'qahwa' | 'luban';
 
-export const SOUQ_GOODS: Record<
-	SouqGood,
-	{ name: string; price: number; unlockedByLevel: number }
-> = {
-	dates: { name: 'تمر', price: 5, unlockedByLevel: 1 },
-	halwa: { name: 'حلوى', price: 7, unlockedByLevel: 1 },
-	qahwa: { name: 'قهوة', price: 8, unlockedByLevel: 2 },
-	luban: { name: 'لبان', price: 10, unlockedByLevel: 2 },
-	oud: { name: 'عود', price: 12, unlockedByLevel: 3 },
-	saffron: { name: 'زعفران', price: 15, unlockedByLevel: 4 },
-	pearls: { name: 'لؤلؤ', price: 18, unlockedByLevel: 5 }
-};
+export type ItemStage =
+	| 'sapling'
+	| 'fresh'
+	| 'drying'
+	| 'dried'
+	| 'packed'
+	| 'beans'
+	| 'roasting'
+	| 'roasted'
+	| 'ground'
+	| 'brewed'
+	| 'rawResin'
+	| 'sorted';
 
-export type WorkerRole = 'restocker' | 'cashier';
-
-export interface SouqWorker {
-	id: number;
-	role: WorkerRole;
-	position: Point2D;
-	target: Point2D | null;
-	carrying: SouqGood | null;
-	speed: number;
-	capacity: number;
+export interface Item {
+	type: GoodType;
+	stage: ItemStage;
 }
 
-export interface SouqCustomer {
+export type StationType =
+	| 'palmPlot'
+	| 'dryingMat'
+	| 'packagingTable'
+	| 'brazier'
+	| 'mortar'
+	| 'dallah'
+	| 'sortingMat'
+	| 'greenBeans'
+	| 'rawResin';
+
+export interface Station {
 	id: number;
+	type: StationType;
 	position: Point2D;
-	target: Point2D | null;
-	state: 'entering' | 'shopping' | 'walkingToCashier' | 'paying' | 'leaving';
-	desiredGood: SouqGood;
-	patience: number;
-	paid: boolean;
+	input: Item | null;
+	output: Item | null;
+	progress: number;
+	processingTime: number;
+	status: 'idle' | 'processing' | 'ready';
+	assignedWorkerId: number | null;
 }
 
-export interface SouqShelf {
+export interface Shelf {
 	id: number;
 	position: Point2D;
 	capacity: number;
-	goods: SouqGood[];
+	items: Item[];
 }
 
 export interface Point2D {
@@ -57,21 +57,32 @@ export interface Point2D {
 export interface SouqPlayer {
 	position: Point2D;
 	target: Point2D | null;
-	carrying: SouqGood | null;
+	carrying: Item | null;
 	speed: number;
 	capacity: number;
 }
 
-export interface SouqCrate {
+export interface SouqCustomer {
+	id: number;
 	position: Point2D;
-	spawnTimer: number;
-	spawnInterval: number;
-	nextGood: SouqGood | null;
+	target: Point2D | null;
+	state: 'entering' | 'shopping' | 'walkingToCashier' | 'paying' | 'leaving';
+	desiredGood: GoodType;
+	patience: number;
+	paid: boolean;
+}
+
+export interface SouqWorker {
+	id: number;
+	stationId: number | null;
+	position: Point2D;
+	target: Point2D | null;
+	speed: number;
 }
 
 export interface SouqCashierMat {
 	position: Point2D;
-	queue: number[]; // customer ids waiting to pay
+	queue: number[];
 }
 
 export type SouqGameState = 'menu' | 'playing' | 'levelComplete' | 'levelFailed';
@@ -84,14 +95,15 @@ export interface SouqManagerState {
 	timeRemaining: number;
 	stars: number;
 	player: SouqPlayer;
-	crate: SouqCrate;
-	shelves: SouqShelf[];
+	stations: Station[];
+	shelves: Shelf[];
 	cashierMat: SouqCashierMat;
 	customers: SouqCustomer[];
 	workers: SouqWorker[];
-	unlockedGoods: SouqGood[];
+	unlockedGoods: GoodType[];
 	message: string;
 	totalCoinsEarned: number;
+	reputation: number;
 }
 
 export interface SouqLevelConfig {
@@ -100,9 +112,8 @@ export interface SouqLevelConfig {
 	durationSeconds: number;
 	spawnInterval: number;
 	maxCustomers: number;
-	shelfCount: number;
 	shelfCapacity: number;
-	unlockedGoods: SouqGood[];
+	unlockedGoods: GoodType[];
 	startingCoins?: number;
 }
 
@@ -110,63 +121,101 @@ export const SOUQ_LEVELS: SouqLevelConfig[] = [
 	{
 		level: 1,
 		targetCoins: 60,
-		durationSeconds: 90,
-		spawnInterval: 5,
+		durationSeconds: 120,
+		spawnInterval: 6,
 		maxCustomers: 3,
-		shelfCount: 2,
 		shelfCapacity: 4,
-		unlockedGoods: ['dates', 'halwa'],
+		unlockedGoods: ['dates'],
 		startingCoins: 0
 	},
 	{
 		level: 2,
-		targetCoins: 120,
-		durationSeconds: 100,
-		spawnInterval: 4.5,
+		targetCoins: 140,
+		durationSeconds: 140,
+		spawnInterval: 5.5,
 		maxCustomers: 4,
-		shelfCount: 3,
 		shelfCapacity: 4,
-		unlockedGoods: ['dates', 'halwa', 'qahwa', 'luban']
+		unlockedGoods: ['dates', 'luban'],
+		startingCoins: 20
 	},
 	{
 		level: 3,
-		targetCoins: 200,
-		durationSeconds: 110,
-		spawnInterval: 4,
+		targetCoins: 260,
+		durationSeconds: 160,
+		spawnInterval: 5,
 		maxCustomers: 5,
-		shelfCount: 3,
 		shelfCapacity: 5,
-		unlockedGoods: ['dates', 'halwa', 'qahwa', 'luban', 'oud']
-	},
-	{
-		level: 4,
-		targetCoins: 320,
-		durationSeconds: 120,
-		spawnInterval: 3.5,
-		maxCustomers: 6,
-		shelfCount: 4,
-		shelfCapacity: 5,
-		unlockedGoods: ['dates', 'halwa', 'qahwa', 'luban', 'oud', 'saffron']
-	},
-	{
-		level: 5,
-		targetCoins: 480,
-		durationSeconds: 130,
-		spawnInterval: 3,
-		maxCustomers: 7,
-		shelfCount: 4,
-		shelfCapacity: 6,
-		unlockedGoods: ['dates', 'halwa', 'qahwa', 'luban', 'oud', 'saffron', 'pearls']
+		unlockedGoods: ['dates', 'luban', 'qahwa'],
+		startingCoins: 40
 	}
 ];
+
+export const GOOD_PRICES: Record<GoodType, number> = {
+	dates: 5,
+	qahwa: 8,
+	luban: 10
+};
+
+export const STATION_CONFIG: Record<
+	StationType,
+	{ input?: { type: GoodType; stage: ItemStage }; output?: { type: GoodType; stage: ItemStage }; time: number; label: string }
+> = {
+	palmPlot: {
+		output: { type: 'dates', stage: 'fresh' },
+		time: 4,
+		label: 'نخلة التمر'
+	},
+	dryingMat: {
+		input: { type: 'dates', stage: 'fresh' },
+		output: { type: 'dates', stage: 'dried' },
+		time: 3,
+		label: 'سجادة التجفيف'
+	},
+	packagingTable: {
+		time: 2,
+		label: 'طاولة التعبئة'
+	},
+	brazier: {
+		input: { type: 'qahwa', stage: 'beans' },
+		output: { type: 'qahwa', stage: 'roasted' },
+		time: 3,
+		label: 'محمص القهوة'
+	},
+	mortar: {
+		input: { type: 'qahwa', stage: 'roasted' },
+		output: { type: 'qahwa', stage: 'ground' },
+		time: 2,
+		label: 'الهاون'
+	},
+	dallah: {
+		input: { type: 'qahwa', stage: 'ground' },
+		output: { type: 'qahwa', stage: 'brewed' },
+		time: 3,
+		label: 'الدلة'
+	},
+	sortingMat: {
+		input: { type: 'luban', stage: 'rawResin' },
+		output: { type: 'luban', stage: 'sorted' },
+		time: 2.5,
+		label: 'سجادة فرز اللبان'
+	},
+	greenBeans: {
+		output: { type: 'qahwa', stage: 'beans' },
+		time: 0,
+		label: ' كيس البن الأخضر'
+	},
+	rawResin: {
+		output: { type: 'luban', stage: 'rawResin' },
+		time: 0,
+		label: 'كومة اللبان الخام'
+	}
+};
 
 export interface SouqManagerConfig {
 	playerSpeed?: number;
 	workerSpeed?: number;
-	crateSpawnInterval?: number;
 	customerSpeed?: number;
 	customerPatience?: number;
-	workerCapacity?: number;
 	maxWorkers?: number;
 	workerCost?: number;
 	upgradeSpeedCost?: number;
@@ -176,12 +225,10 @@ export interface SouqManagerConfig {
 export const DEFAULT_SOUQ_MANAGER_CONFIG: Required<SouqManagerConfig> = {
 	playerSpeed: 8,
 	workerSpeed: 5,
-	crateSpawnInterval: 3,
 	customerSpeed: 2.5,
-	customerPatience: 20,
-	workerCapacity: 1,
+	customerPatience: 25,
 	maxWorkers: 2,
-	workerCost: 50,
+	workerCost: 60,
 	upgradeSpeedCost: 40,
 	upgradeCapacityCost: 60
 };
@@ -191,7 +238,7 @@ export interface SouqManagerCallbacks {
 	onCustomerServed?: () => void;
 	onLevelComplete?: (stars: number) => void;
 	onLevelFailed?: () => void;
-	onWorkerHired?: (role: WorkerRole) => void;
+	onWorkerHired?: () => void;
 }
 
 function distance(a: Point2D, b: Point2D): number {
@@ -210,6 +257,25 @@ function moveTowards(current: Point2D, target: Point2D, speed: number, dt: numbe
 	};
 }
 
+function itemsMatch(a: Item, b: Item): boolean {
+	return a.type === b.type && a.stage === b.stage;
+}
+
+function isFinishedGood(item: Item): boolean {
+	return (
+		(item.type === 'dates' && item.stage === 'packed') ||
+		(item.type === 'qahwa' && item.stage === 'brewed') ||
+		(item.type === 'luban' && item.stage === 'packed')
+	);
+}
+
+function canPackage(item: Item): boolean {
+	return (
+		(item.type === 'dates' && item.stage === 'dried') ||
+		(item.type === 'luban' && item.stage === 'sorted')
+	);
+}
+
 export class SouqManagerLogic {
 	private config: Required<SouqManagerConfig>;
 	private onChange: (state: SouqManagerState) => void;
@@ -221,10 +287,11 @@ export class SouqManagerLogic {
 	private totalCoinsEarned = 0;
 	private timeRemaining = 0;
 	private stars = 0;
+	private reputation = 0;
 
 	private player: SouqPlayer;
-	private crate: SouqCrate;
-	private shelves: SouqShelf[];
+	private stations: Station[];
+	private shelves: Shelf[];
 	private cashierMat: SouqCashierMat;
 	private customers: SouqCustomer[] = [];
 	private workers: SouqWorker[] = [];
@@ -236,8 +303,7 @@ export class SouqManagerLogic {
 	private persistentUpgrades = {
 		playerSpeedBonus: 0,
 		playerCapacityBonus: 0,
-		workerSpeedBonus: 0,
-		workerCapacityBonus: 0
+		workerSpeedBonus: 0
 	};
 
 	constructor(
@@ -250,55 +316,11 @@ export class SouqManagerLogic {
 		this.callbacks = callbacks;
 		this.levelConfig = SOUQ_LEVELS[0];
 		this.player = this.createPlayer();
-		this.crate = this.createCrate();
+		this.stations = this.createStations();
 		this.shelves = this.createShelves();
 		this.cashierMat = this.createCashierMat();
 		this.notify();
 	}
-
-	// --- Public getters ----------------------------------------------------
-
-	getState(): SouqManagerState {
-		return {
-			gameState: this.gameState,
-			level: this.levelConfig.level,
-			coins: this.coins,
-			targetCoins: this.levelConfig.targetCoins,
-			timeRemaining: Math.max(0, this.timeRemaining),
-			stars: this.stars,
-			player: { ...this.player, position: { ...this.player.position } },
-			crate: {
-				...this.crate,
-				position: { ...this.crate.position },
-				nextGood: this.crate.nextGood
-			},
-			shelves: this.shelves.map((s) => ({ ...s, position: { ...s.position }, goods: [...s.goods] })),
-			cashierMat: {
-				...this.cashierMat,
-				position: { ...this.cashierMat.position },
-				queue: [...this.cashierMat.queue]
-			},
-			customers: this.customers.map((c) => ({
-				...c,
-				position: { ...c.position },
-				target: c.target ? { ...c.target } : null
-			})),
-			workers: this.workers.map((w) => ({
-				...w,
-				position: { ...w.position },
-				target: w.target ? { ...w.target } : null
-			})),
-			unlockedGoods: [...this.levelConfig.unlockedGoods],
-			message: this.getMessage(),
-			totalCoinsEarned: this.totalCoinsEarned
-		};
-	}
-
-	getConfig(): Required<SouqManagerConfig> {
-		return { ...this.config };
-	}
-
-	// --- Setup / persistence helpers ---------------------------------------
 
 	private createPlayer(): SouqPlayer {
 		return {
@@ -310,32 +332,56 @@ export class SouqManagerLogic {
 		};
 	}
 
-	private createCrate(): SouqCrate {
-		return {
-			position: { x: -6, y: -4 },
-			spawnTimer: 0,
-			spawnInterval: this.config.crateSpawnInterval,
-			nextGood: null
-		};
+	private createStations(): Station[] {
+		return [
+			{ id: 0, type: 'palmPlot', position: { x: -7, y: -2 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.palmPlot.time, status: 'idle', assignedWorkerId: null },
+			{ id: 1, type: 'dryingMat', position: { x: -4, y: -2 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.dryingMat.time, status: 'idle', assignedWorkerId: null },
+			{ id: 2, type: 'packagingTable', position: { x: -1, y: -2 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.packagingTable.time, status: 'idle', assignedWorkerId: null },
+			{ id: 3, type: 'greenBeans', position: { x: -7, y: 1 }, input: null, output: null, progress: 0, processingTime: 0, status: 'idle', assignedWorkerId: null },
+			{ id: 4, type: 'brazier', position: { x: -4, y: 1 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.brazier.time, status: 'idle', assignedWorkerId: null },
+			{ id: 5, type: 'mortar', position: { x: -1, y: 1 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.mortar.time, status: 'idle', assignedWorkerId: null },
+			{ id: 6, type: 'dallah', position: { x: 2, y: 1 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.dallah.time, status: 'idle', assignedWorkerId: null },
+			{ id: 7, type: 'rawResin', position: { x: -7, y: 4 }, input: null, output: null, progress: 0, processingTime: 0, status: 'idle', assignedWorkerId: null },
+			{ id: 8, type: 'sortingMat', position: { x: -4, y: 4 }, input: null, output: null, progress: 0, processingTime: STATION_CONFIG.sortingMat.time, status: 'idle', assignedWorkerId: null }
+		];
 	}
 
-	private createShelves(): SouqShelf[] {
-		return Array.from({ length: this.levelConfig.shelfCount }, (_, i) => ({
-			id: i,
-			position: { x: -2 + i * 3, y: 2 },
-			capacity: this.levelConfig.shelfCapacity,
-			goods: []
-		}));
+	private createShelves(): Shelf[] {
+		return [
+			{ id: 0, position: { x: 3, y: -1 }, capacity: this.levelConfig.shelfCapacity, items: [] },
+			{ id: 1, position: { x: 5, y: -1 }, capacity: this.levelConfig.shelfCapacity, items: [] },
+			{ id: 2, position: { x: 3, y: 2 }, capacity: this.levelConfig.shelfCapacity, items: [] }
+		];
 	}
 
 	private createCashierMat(): SouqCashierMat {
+		return { position: { x: 6, y: -4 }, queue: [] };
+	}
+
+	getState(): SouqManagerState {
 		return {
-			position: { x: 5, y: -3 },
-			queue: []
+			gameState: this.gameState,
+			level: this.levelConfig.level,
+			coins: this.coins,
+			targetCoins: this.levelConfig.targetCoins,
+			timeRemaining: Math.max(0, this.timeRemaining),
+			stars: this.stars,
+			player: { ...this.player, position: { ...this.player.position } },
+			stations: this.stations.map((s) => ({ ...s, position: { ...s.position }, input: s.input ? { ...s.input } : null, output: s.output ? { ...s.output } : null })),
+			shelves: this.shelves.map((s) => ({ ...s, position: { ...s.position }, items: s.items.map((i) => ({ ...i })) })),
+			cashierMat: { ...this.cashierMat, position: { ...this.cashierMat.position }, queue: [...this.cashierMat.queue] },
+			customers: this.customers.map((c) => ({ ...c, position: { ...c.position }, target: c.target ? { ...c.target } : null })),
+			workers: this.workers.map((w) => ({ ...w, position: { ...w.position }, target: w.target ? { ...w.target } : null })),
+			unlockedGoods: [...this.levelConfig.unlockedGoods],
+			message: this.getMessage(),
+			totalCoinsEarned: this.totalCoinsEarned,
+			reputation: this.reputation
 		};
 	}
 
-	// --- Level flow --------------------------------------------------------
+	getConfig(): Required<SouqManagerConfig> {
+		return { ...this.config };
+	}
 
 	startLevel(levelNumber: number): void {
 		const config = SOUQ_LEVELS.find((l) => l.level === levelNumber) ?? SOUQ_LEVELS[SOUQ_LEVELS.length - 1];
@@ -345,11 +391,13 @@ export class SouqManagerLogic {
 		this.totalCoinsEarned = 0;
 		this.timeRemaining = config.durationSeconds;
 		this.stars = 0;
+		this.reputation = 0;
 		this.customerSpawnTimer = config.spawnInterval;
 		this.nextCustomerId = 1;
 		this.customers = [];
+		this.workers = [];
 		this.player = this.createPlayer();
-		this.crate = this.createCrate();
+		this.stations = this.createStations();
 		this.shelves = this.createShelves();
 		this.cashierMat = this.createCashierMat();
 		this.notify();
@@ -359,20 +407,15 @@ export class SouqManagerLogic {
 		this.startLevel(this.levelConfig.level);
 	}
 
-	// --- Input actions -----------------------------------------------------
-
 	setPlayerTarget(target: Point2D): void {
 		if (this.gameState !== 'playing') return;
 		this.player.target = { ...target };
 		this.notify();
 	}
 
-	movePlayerToPoint(point: Point2D): void {
-		this.setPlayerTarget(point);
-	}
-
-	movePlayerToCrate(): void {
-		this.setPlayerTarget({ ...this.crate.position });
+	movePlayerToStation(stationId: number): void {
+		const station = this.stations.find((s) => s.id === stationId);
+		if (station) this.setPlayerTarget({ ...station.position });
 	}
 
 	movePlayerToShelf(shelfId: number): void {
@@ -384,39 +427,123 @@ export class SouqManagerLogic {
 		this.setPlayerTarget({ ...this.cashierMat.position });
 	}
 
-	private pickGoodFromCrate(character: SouqPlayer | SouqWorker): boolean {
-		if (!this.crate.nextGood) return false;
-		if (character.carrying) return false;
-		character.carrying = this.crate.nextGood;
-		this.crate.nextGood = null;
-		this.crate.spawnTimer = 0;
-		return true;
+	private handlePlayerArrival(): void {
+		for (const station of this.stations) {
+			if (distance(this.player.position, station.position) < 1) {
+				this.interactWithStation(station);
+				return;
+			}
+		}
+		for (const shelf of this.shelves) {
+			if (distance(this.player.position, shelf.position) < 1) {
+				this.interactWithShelf(shelf);
+				return;
+			}
+		}
+		if (distance(this.player.position, this.cashierMat.position) < 1) {
+			this.collectPayments();
+		}
 	}
 
-	private placeGoodOnShelf(character: SouqPlayer | SouqWorker, shelf: SouqShelf): boolean {
-		if (!character.carrying) return false;
-		if (shelf.goods.length >= shelf.capacity) return false;
-		shelf.goods.push(character.carrying);
-		character.carrying = null;
-		return true;
+	private interactWithStation(station: Station): void {
+		// Source stations (raw goods) provide output instantly.
+		if (station.type === 'greenBeans' || station.type === 'rawResin') {
+			if (this.player.carrying) return;
+			const config = STATION_CONFIG[station.type];
+			if (config.output) {
+				this.player.carrying = { ...config.output };
+			}
+			return;
+		}
+
+		// Palm plot: if idle, plant sapling; if ready, harvest fresh dates.
+		if (station.type === 'palmPlot') {
+			if (station.status === 'idle' && !this.player.carrying) {
+				station.input = { type: 'dates', stage: 'sapling' };
+				station.status = 'processing';
+				station.progress = 0;
+			} else if (station.status === 'ready' && !this.player.carrying) {
+				this.player.carrying = station.output;
+				station.output = null;
+				station.status = 'idle';
+				station.progress = 0;
+			}
+			return;
+		}
+
+		// Processing stations.
+		if (station.status === 'idle') {
+			if (!this.player.carrying) return;
+			if (this.canStationAccept(station, this.player.carrying)) {
+				station.input = this.player.carrying;
+				this.player.carrying = null;
+				station.status = 'processing';
+				station.progress = 0;
+			}
+		} else if (station.status === 'ready' && !this.player.carrying) {
+			this.player.carrying = station.output;
+			station.output = null;
+			station.input = null;
+			station.status = 'idle';
+			station.progress = 0;
+		}
 	}
 
-	// --- Shop / meta actions -----------------------------------------------
+	private canStationAccept(station: Station, item: Item): boolean {
+		if (station.type === 'packagingTable') {
+			return canPackage(item);
+		}
+		const config = STATION_CONFIG[station.type];
+		if (!config.input) return false;
+		return itemsMatch(item, config.input);
+	}
 
-	hireWorker(role: WorkerRole): boolean {
+	private interactWithShelf(shelf: Shelf): void {
+		if (this.player.carrying && isFinishedGood(this.player.carrying) && shelf.items.length < shelf.capacity) {
+			shelf.items.push(this.player.carrying);
+			this.player.carrying = null;
+		}
+	}
+
+	private collectPayments(): void {
+		let collected = 0;
+		for (const customerId of this.cashierMat.queue) {
+			const customer = this.customers.find((c) => c.id === customerId);
+			if (!customer || customer.paid) continue;
+			customer.paid = true;
+			const price = GOOD_PRICES[customer.desiredGood] ?? 0;
+			this.coins += price;
+			this.totalCoinsEarned += price;
+			collected += price;
+			customer.state = 'leaving';
+			this.callbacks.onCustomerServed?.();
+		}
+		this.cashierMat.queue = [];
+		if (collected > 0) {
+			this.callbacks.onCoinCollected?.(collected);
+		}
+	}
+
+	hireWorker(stationId: number): boolean {
 		if (this.workers.length >= this.config.maxWorkers) return false;
 		if (this.coins < this.config.workerCost) return false;
+		const station = this.stations.find((s) => s.id === stationId);
+		if (!station) return false;
 		this.coins -= this.config.workerCost;
-		this.workers.push({
+		const worker: SouqWorker = {
 			id: this.nextWorkerId++,
-			role,
+			stationId,
 			position: { x: 0, y: -5 },
-			target: null,
-			carrying: null,
-			speed: this.config.workerSpeed + this.persistentUpgrades.workerSpeedBonus,
-			capacity: this.config.workerCapacity + this.persistentUpgrades.workerCapacityBonus
-		});
-		this.callbacks.onWorkerHired?.(role);
+			target: { ...station.position },
+			speed: this.config.workerSpeed + this.persistentUpgrades.workerSpeedBonus
+		};
+		if (station.assignedWorkerId !== null) {
+			const oldWorker = this.workers.find((w) => w.id === station.assignedWorkerId);
+			if (oldWorker) oldWorker.stationId = null;
+		}
+		station.assignedWorkerId = worker.id;
+		this.workers.push(worker);
+		this.callbacks.onWorkerHired?.();
 		this.notify();
 		return true;
 	}
@@ -439,18 +566,14 @@ export class SouqManagerLogic {
 		return true;
 	}
 
-	// --- Game loop ---------------------------------------------------------
-
 	update(dt: number): void {
 		if (this.gameState !== 'playing') return;
-
 		const clampedDt = Math.min(dt, 0.05);
-
 		this.updateTimer(clampedDt);
-		this.updateCrate(clampedDt);
 		this.updatePlayer(clampedDt);
-		this.updateCustomers(clampedDt);
+		this.updateStations(clampedDt);
 		this.updateWorkers(clampedDt);
+		this.updateCustomers(clampedDt);
 		this.spawnCustomers(clampedDt);
 		this.checkLevelEnd();
 		this.notify();
@@ -460,32 +583,12 @@ export class SouqManagerLogic {
 		this.timeRemaining -= dt;
 		if (this.timeRemaining <= 0) {
 			this.timeRemaining = 0;
-			this.checkLevelEnd();
 		}
-	}
-
-	private updateCrate(dt: number): void {
-		if (this.crate.nextGood) return;
-		this.crate.spawnTimer += dt;
-		if (this.crate.spawnTimer >= this.crate.spawnInterval) {
-			this.crate.nextGood = this.pickRandomGood();
-			this.crate.spawnTimer = 0;
-		}
-	}
-
-	private pickRandomGood(): SouqGood {
-		const goods = this.levelConfig.unlockedGoods;
-		return goods[Math.floor(Math.random() * goods.length)];
 	}
 
 	private updatePlayer(dt: number): void {
 		if (this.player.target) {
-			this.player.position = moveTowards(
-				this.player.position,
-				this.player.target,
-				this.player.speed,
-				dt
-			);
+			this.player.position = moveTowards(this.player.position, this.player.target, this.player.speed, dt);
 			if (distance(this.player.position, this.player.target) < 0.2) {
 				this.handlePlayerArrival();
 				this.player.target = null;
@@ -493,42 +596,47 @@ export class SouqManagerLogic {
 		}
 	}
 
-	private handlePlayerArrival(): void {
-		if (distance(this.player.position, this.crate.position) < 1) {
-			this.pickGoodFromCrate(this.player);
-		}
-
-		for (const shelf of this.shelves) {
-			if (distance(this.player.position, shelf.position) < 1) {
-				this.placeGoodOnShelf(this.player, shelf);
+	private updateStations(dt: number): void {
+		for (const station of this.stations) {
+			if (station.status === 'processing') {
+				const workerBonus = station.assignedWorkerId !== null ? 1.5 : 1;
+				station.progress += (dt / station.processingTime) * workerBonus;
+				if (station.progress >= 1) {
+					station.progress = 1;
+					station.status = 'ready';
+					const config = STATION_CONFIG[station.type];
+					if (config.output) {
+						station.output = { ...config.output };
+					} else if (station.type === 'palmPlot' && station.input) {
+						station.output = { type: 'dates', stage: 'fresh' };
+						station.input = null;
+					} else if (station.type === 'packagingTable' && station.input) {
+						if (station.input.type === 'dates') {
+							station.output = { type: 'dates', stage: 'packed' };
+						} else if (station.input.type === 'luban') {
+							station.output = { type: 'luban', stage: 'packed' };
+						}
+						station.input = null;
+					}
+				}
 			}
 		}
-
-		if (distance(this.player.position, this.cashierMat.position) < 1) {
-			this.collectPayments();
-		}
 	}
 
-	private collectPayments(): void {
-		let collected = 0;
-		for (const customerId of this.cashierMat.queue) {
-			const customer = this.customers.find((c) => c.id === customerId);
-			if (!customer || customer.paid) continue;
-			customer.paid = true;
-			const price = SOUQ_GOODS[customer.desiredGood]?.price ?? 0;
-			this.coins += price;
-			this.totalCoinsEarned += price;
-			collected += price;
-			customer.state = 'leaving';
-			this.callbacks.onCustomerServed?.();
-		}
-		this.cashierMat.queue = [];
-		if (collected > 0) {
-			this.callbacks.onCoinCollected?.(collected);
+	private updateWorkers(dt: number): void {
+		for (const worker of this.workers) {
+			const station = worker.stationId !== null ? this.stations.find((s) => s.id === worker.stationId) : null;
+			if (!station) continue;
+			if (worker.target) {
+				worker.position = moveTowards(worker.position, worker.target, worker.speed, dt);
+				if (distance(worker.position, worker.target) < 0.3) {
+					worker.target = null;
+				}
+			} else {
+				worker.target = { ...station.position };
+			}
 		}
 	}
-
-	// --- Customer logic ----------------------------------------------------
 
 	private spawnCustomers(dt: number): void {
 		if (this.customers.length >= this.levelConfig.maxCustomers) return;
@@ -553,18 +661,18 @@ export class SouqManagerLogic {
 		});
 	}
 
-	private pickDesiredGood(): SouqGood | null {
-		const stocked = this.levelConfig.unlockedGoods.filter((g) =>
-			this.shelves.some((s) => s.goods.includes(g))
+	private pickDesiredGood(): GoodType | null {
+		const finished = this.levelConfig.unlockedGoods.filter((g) =>
+			this.shelves.some((s) => s.items.some((i) => i.type === g && isFinishedGood(i)))
 		);
-		const pool = stocked.length > 0 ? stocked : this.levelConfig.unlockedGoods;
+		const pool = finished.length > 0 ? finished : this.levelConfig.unlockedGoods;
 		return pool[Math.floor(Math.random() * pool.length)] ?? null;
 	}
 
 	private updateCustomers(dt: number): void {
 		for (const customer of this.customers) {
 			if (customer.state === 'entering') {
-				const shelf = this.findShelfWithGood(customer.desiredGood);
+				const shelf = this.findShelfWithFinishedGood(customer.desiredGood);
 				if (shelf) {
 					customer.target = { ...shelf.position };
 					customer.state = 'shopping';
@@ -579,18 +687,13 @@ export class SouqManagerLogic {
 			}
 
 			if (customer.target) {
-				customer.position = moveTowards(
-					customer.position,
-					customer.target,
-					this.config.customerSpeed,
-					dt
-				);
+				customer.position = moveTowards(customer.position, customer.target, this.config.customerSpeed, dt);
 			}
 
 			if (customer.state === 'shopping' && customer.target && distance(customer.position, customer.target) < 0.3) {
-				const shelf = this.findShelfWithGood(customer.desiredGood);
+				const shelf = this.findShelfWithFinishedGood(customer.desiredGood);
 				if (shelf) {
-					this.removeGoodFromShelf(shelf, customer.desiredGood);
+					this.removeFinishedGoodFromShelf(shelf, customer.desiredGood);
 					customer.target = { ...this.cashierMat.position };
 					customer.state = 'walkingToCashier';
 				} else {
@@ -599,11 +702,7 @@ export class SouqManagerLogic {
 				}
 			}
 
-			if (
-				customer.state === 'walkingToCashier' &&
-				customer.target &&
-				distance(customer.position, customer.target) < 0.3
-			) {
+			if (customer.state === 'walkingToCashier' && customer.target && distance(customer.position, customer.target) < 0.3) {
 				customer.state = 'paying';
 				customer.target = null;
 				if (!this.cashierMat.queue.includes(customer.id)) {
@@ -632,73 +731,17 @@ export class SouqManagerLogic {
 		});
 	}
 
-	private findShelfWithGood(good: SouqGood): SouqShelf | null {
-		return this.shelves.find((s) => s.goods.includes(good)) ?? null;
+	private findShelfWithFinishedGood(good: GoodType): Shelf | null {
+		return this.shelves.find((s) => s.items.some((i) => i.type === good && isFinishedGood(i))) ?? null;
 	}
 
-	private removeGoodFromShelf(shelf: SouqShelf, good: SouqGood): void {
-		const index = shelf.goods.indexOf(good);
-		if (index !== -1) shelf.goods.splice(index, 1);
+	private removeFinishedGoodFromShelf(shelf: Shelf, good: GoodType): void {
+		const index = shelf.items.findIndex((i) => i.type === good && isFinishedGood(i));
+		if (index !== -1) shelf.items.splice(index, 1);
 	}
-
-	// --- Worker logic ------------------------------------------------------
-
-	private updateWorkers(dt: number): void {
-		for (const worker of this.workers) {
-			if (worker.target) {
-				worker.position = moveTowards(worker.position, worker.target, worker.speed, dt);
-				if (distance(worker.position, worker.target) < 0.3) {
-					this.handleWorkerArrival(worker);
-				}
-			} else {
-				this.assignWorkerTask(worker);
-			}
-		}
-	}
-
-	private assignWorkerTask(worker: SouqWorker): void {
-		if (worker.role === 'restocker') {
-			if (worker.carrying) {
-				const shelf = this.findEmptyShelf();
-				if (shelf) worker.target = { ...shelf.position };
-			} else if (this.crate.nextGood) {
-				worker.target = { ...this.crate.position };
-			}
-		} else if (worker.role === 'cashier') {
-			if (this.cashierMat.queue.length > 0) {
-				worker.target = { ...this.cashierMat.position };
-			}
-		}
-	}
-
-	private handleWorkerArrival(worker: SouqWorker): void {
-		worker.target = null;
-
-		if (worker.role === 'restocker') {
-			if (!worker.carrying && this.crate.nextGood && distance(worker.position, this.crate.position) < 1) {
-				this.pickGoodFromCrate(worker);
-			} else if (worker.carrying) {
-				const shelf = this.findEmptyShelf();
-				if (shelf && distance(worker.position, shelf.position) < 1) {
-					this.placeGoodOnShelf(worker, shelf);
-				}
-			}
-		} else if (worker.role === 'cashier') {
-			if (distance(worker.position, this.cashierMat.position) < 1) {
-				this.collectPayments();
-			}
-		}
-	}
-
-	private findEmptyShelf(): SouqShelf | null {
-		return this.shelves.find((s) => s.goods.length < s.capacity) ?? null;
-	}
-
-	// --- Level end ---------------------------------------------------------
 
 	private checkLevelEnd(): void {
 		if (this.gameState !== 'playing') return;
-
 		if (this.totalCoinsEarned >= this.levelConfig.targetCoins) {
 			this.completeLevel();
 		} else if (this.timeRemaining <= 0) {
@@ -723,16 +766,37 @@ export class SouqManagerLogic {
 		this.notify();
 	}
 
-	// --- Messaging ---------------------------------------------------------
-
 	private getMessage(): string {
 		if (this.gameState === 'levelComplete') return `ممتاز! حصلت على ${this.stars} نجوم 🌟`;
 		if (this.gameState === 'levelFailed') return 'انتهى الوقت! حاول مرة أخرى 💪';
 		if (this.gameState === 'menu') return 'اختر مستوى لبدء اللعب';
-		if (this.player.carrying) return `تحمل ${SOUQ_GOODS[this.player.carrying].name} — ضعه على الرف`;
-		if (this.cashierMat.queue.length > 0) return 'زبون ينتظر الدفع! اذهب إلى الصندوق';
-		if (this.shelves.some((s) => s.goods.length < s.capacity)) return 'اجلب بضاعة من الصندوق واملأ الرفوف';
-		return 'املأ الرفوف لاستقبال المزيد من الزبائن';
+		if (this.player.carrying) {
+			const item = this.player.carrying;
+			return `تحمل ${this.itemName(item)} — ضعه في المحطة أو الرف المناسب`;
+		}
+		if (this.cashierMat.queue.length > 0) return 'زبون ينتظر الدفع! اذهب إلى بساط الصندوق';
+		if (this.stations.some((s) => s.status === 'ready')) return 'محطة جاهزة! اجمع الإنتاج';
+		if (this.shelves.some((s) => s.items.length < s.capacity)) return 'أنتج بضاعة وضعها على الرفوف';
+		return 'زرع النخيل، جفف التمر، احمص القهوة، وفرز اللبان';
+	}
+
+	private itemName(item: Item): string {
+		const names: Record<string, string> = {
+			'dates-sapling': 'شتلة نخيل',
+			'dates-fresh': 'تمر طازج',
+			'dates-drying': 'تمر يجفف',
+			'dates-dried': 'تمر مجفف',
+			'dates-packed': 'علبة تمر',
+			'qahwa-beans': 'بن أخضر',
+			'qahwa-roasting': 'بن يحمص',
+			'qahwa-roasted': 'بن محمص',
+			'qahwa-ground': 'بن مطحون',
+			'qahwa-brewed': 'قهوة عربية',
+			'luban-rawResin': 'لبان خام',
+			'luban-sorted': 'لبان مفرز',
+			'luban-packed': 'كيس لبان'
+		};
+		return names[`${item.type}-${item.stage}`] ?? 'سلعة';
 	}
 
 	private notify(): void {

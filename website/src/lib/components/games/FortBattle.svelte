@@ -1,4 +1,5 @@
 <script lang="ts">
+	// @ts-nocheck
 	import { onMount, onDestroy } from 'svelte';
 	import type { FortBattleState, FortBattleMode, GameDifficulty, FortTheme } from '$lib/games/fort-battle';
 

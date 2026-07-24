@@ -9,6 +9,7 @@ import {
 	MeshBuilder,
 	StandardMaterial,
 	Mesh,
+	LinesMesh,
 	TransformNode,
 	KeyboardEventTypes,
 	PointerEventTypes
@@ -242,7 +243,7 @@ export class FortBattleGame {
 	private windIndicator!: Mesh;
 	private aimGuideRoot!: TransformNode;
 	private aimGuideDots: Mesh[] = [];
-	private aimGuideLine!: Mesh;
+	private aimGuideLine!: LinesMesh;
 	private aimPlane!: Mesh;
 	private giftMesh: Mesh | null = null;
 	private giftGlow: Mesh | null = null;
@@ -462,7 +463,7 @@ export class FortBattleGame {
 		this.aimGuideLine = MeshBuilder.CreateLines('aimGuideLine', {
 			points: [Vector3.Zero(), Vector3.Zero()],
 			updatable: true
-		}, this.scene);
+		}, this.scene) as LinesMesh;
 		this.aimGuideLine.color = new Color3(1, 0.95, 0.7);
 		this.aimGuideLine.parent = this.aimGuideRoot;
 
@@ -911,7 +912,7 @@ export class FortBattleGame {
 			linePoints.push(pos);
 		}
 
-		this.aimGuideLine = MeshBuilder.CreateLines(null, {
+		this.aimGuideLine = MeshBuilder.CreateLines(this.aimGuideLine.name, {
 			points: linePoints,
 			instance: this.aimGuideLine as any
 		});
