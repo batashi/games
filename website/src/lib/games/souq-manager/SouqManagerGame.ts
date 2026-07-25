@@ -63,7 +63,7 @@ export class SouqManagerAudio {
 		if (this.musicTimer || this.muted) return;
 		this.musicTimer = setInterval(() => {
 			if (!this.muted) this.playMusicBar(this.getCtx());
-		}, 2000);
+		}, 5600);
 		if (!this.muted) this.playMusicBar(this.getCtx());
 	}
 
@@ -76,20 +76,42 @@ export class SouqManagerAudio {
 
 	private playMusicBar(ctx: AudioContext): void {
 		const now = ctx.currentTime;
-		const notes = [220, 247, 262, 294, 330, 349, 392];
-		notes.forEach((freq, i) => {
-			const osc = ctx.createOscillator();
-			osc.type = i % 2 === 0 ? 'sine' : 'triangle';
-			osc.frequency.setValueAtTime(freq, now + i * 0.15);
-			const gain = ctx.createGain();
-			gain.gain.setValueAtTime(0, now + i * 0.15);
-			gain.gain.linearRampToValueAtTime(0.02, now + i * 0.15 + 0.05);
-			gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.35);
-			osc.connect(gain);
-			gain.connect(ctx.destination);
-			osc.start(now + i * 0.15);
-			osc.stop(now + i * 0.15 + 0.4);
+		// Maqam Hijaz on D (old Arabic oud scale).
+		const hijaz = [293.66, 311.13, 369.99, 392.0, 440.0, 466.16, 554.37, 587.33];
+		// A short, repetitive taqsim-like phrase.
+		const phrase = [0, 2, 1, 3, 2, 4, 3, 2, 1, 5, 4, 3, 1, 0];
+		const durations = [0.32, 0.24, 0.24, 0.32, 0.24, 0.32, 0.24, 0.24, 0.32, 0.32, 0.24, 0.32, 0.48, 0.72];
+		let t = 0;
+		phrase.forEach((noteIdx, i) => {
+			this.playOudNote(ctx, now + t, hijaz[noteIdx], durations[i]);
+			t += durations[i] + 0.05;
 		});
+	}
+
+	private playOudNote(ctx: AudioContext, when: number, freq: number, duration: number): void {
+		const osc = ctx.createOscillator();
+		osc.type = 'sawtooth';
+		// Slight initial pitch dip typical of a plucked oud string.
+		osc.frequency.setValueAtTime(freq * 1.012, when);
+		osc.frequency.exponentialRampToValueAtTime(freq, when + 0.06);
+
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'lowpass';
+		filter.frequency.setValueAtTime(1400, when);
+		filter.frequency.exponentialRampToValueAtTime(650, when + 0.25);
+		filter.Q.value = 0.5;
+
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0, when);
+		gain.gain.linearRampToValueAtTime(0.045, when + 0.008);
+		gain.gain.exponentialRampToValueAtTime(0.012, when + 0.18);
+		gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
+
+		osc.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		osc.start(when);
+		osc.stop(when + duration + 0.08);
 	}
 
 	playCoin(): void {
