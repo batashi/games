@@ -309,12 +309,13 @@ export class SouqManagerGame {
 			for (let i = 0; i < positions.length; i += 3) {
 				const x = positions[i];
 				const z = positions[i + 2];
+				// Keep amplitude small so stations and tables are never buried.
 				const dune =
-					Math.sin(x * 0.35) * 0.14 +
-					Math.cos(z * 0.28) * 0.11 +
-					Math.sin((x + z) * 0.15) * 0.09 +
-					Math.cos((x - z) * 0.22) * 0.06;
-				const ripple = Math.sin(x * 1.4 + z * 0.9) * Math.cos(z * 1.6) * 0.025;
+					Math.sin(x * 0.35) * 0.05 +
+					Math.cos(z * 0.28) * 0.04 +
+					Math.sin((x + z) * 0.15) * 0.03 +
+					Math.cos((x - z) * 0.22) * 0.02;
+				const ripple = Math.sin(x * 1.4 + z * 0.9) * Math.cos(z * 1.6) * 0.01;
 				positions[i + 1] = dune + ripple;
 			}
 			ground.updateVerticesData(VertexBuffer.PositionKind, positions);
@@ -325,7 +326,7 @@ export class SouqManagerGame {
 		groundMat.diffuseColor = new Color3(0.86, 0.765, 0.576);
 		groundMat.specularColor = new Color3(0.08, 0.08, 0.08);
 		ground.material = groundMat;
-		ground.position.y = -0.05;
+		ground.position.y = -0.08;
 		ground.isPickable = false;
 
 		// Invisible, low-poly pick plane for ground clicks. Raycasting the detailed terrain was slow.
@@ -407,10 +408,11 @@ export class SouqManagerGame {
 		this.setupShelves();
 
 		this.cashierMesh = this.createFeaturedCashierTable('cashier');
-		this.cashierMesh.position = new Vector3(8, 0.3, -4);
+		// Center the tabletop so the table legs rest on the sand.
+		this.cashierMesh.position = new Vector3(8, 0.325, -4);
 
 		this.temporaryDropMat = MeshBuilder.CreateGround('temporaryDropMat', { width: 1.6, height: 1.2 }, this.scene);
-		this.temporaryDropMat.position = new Vector3(0, 0.01, -5);
+		this.temporaryDropMat.position = new Vector3(0, 0.08, -5);
 		const tempMatMat = new StandardMaterial('temporaryDropMatMat', this.scene);
 		tempMatMat.diffuseColor = new Color3(0.72, 0.52, 0.38);
 		this.temporaryDropMat.material = tempMatMat;
@@ -614,7 +616,8 @@ export class SouqManagerGame {
 			const mesh = this.createStationMesh(station.type);
 			mesh.position.x = station.position.x;
 			mesh.position.z = station.position.y;
-			mesh.position.y = 0;
+			// Lift packaging tables so their legs sit on the sand; other stations sit just above the dunes.
+			mesh.position.y = station.type === 'packagingTable' ? 0.275 : 0.05;
 			mesh.metadata = { stationId: station.id };
 			this.stationMeshes.set(station.id, mesh);
 			if (mesh.metadata?.dates) {
@@ -1184,7 +1187,7 @@ export class SouqManagerGame {
 			const mesh = this.createDisplayTray(`shelf${shelf.id}`, 1.6, 1, new Color3(0.72, 0.6, 0.42));
 			mesh.position.x = shelf.position.x;
 			mesh.position.z = shelf.position.y;
-			mesh.position.y = 0.02;
+			mesh.position.y = 0.08;
 			this.shelfMeshes.push(mesh);
 		}
 	}
