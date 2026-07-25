@@ -337,10 +337,10 @@ export class SouqManagerGame {
 		this.setupStations();
 		this.setupShelves();
 
-		this.cashierMesh = MeshBuilder.CreateGround('cashier', { width: 2, height: 2 }, this.scene);
-		this.cashierMesh.position = new Vector3(8, 0.01, -4);
+		this.cashierMesh = this.createTraditionalTable('cashier', 2, 1.2, 0.6);
+		this.cashierMesh.position = new Vector3(8, 0.3, -4);
 		const cashierMat = new StandardMaterial('cashierMat', this.scene);
-		cashierMat.diffuseColor = new Color3(0.2, 0.6, 0.4);
+		cashierMat.diffuseColor = new Color3(0.55, 0.36, 0.22);
 		this.cashierMesh.material = cashierMat;
 
 		this.temporaryDropMat = MeshBuilder.CreateGround('temporaryDropMat', { width: 1.6, height: 1.2 }, this.scene);
@@ -473,6 +473,33 @@ export class SouqManagerGame {
 		}
 
 		root.metadata = { dates: dateMeshes };
+		return root;
+	}
+
+	private createTraditionalTable(name: string, width: number, depth: number, height: number): Mesh {
+		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-top`, { width, height: 0.12, depth }, this.scene));
+
+		const legMat = new StandardMaterial(`${name}-legMat`, this.scene);
+		legMat.diffuseColor = new Color3(0.45, 0.3, 0.18);
+		const legW = 0.14;
+		const legH = height - 0.06;
+		for (const sx of [-1, 1]) {
+			for (const sz of [-1, 1]) {
+				const leg = this.flatShade(MeshBuilder.CreateBox(`${name}-leg${sx}${sz}`, { width: legW, height: legH, depth: legW }, this.scene));
+				leg.position.set(sx * (width / 2 - legW), -height / 2, sz * (depth / 2 - legW));
+				leg.material = legMat;
+				leg.parent = root;
+			}
+		}
+
+		// Small brass coin bowl on top.
+		const bowl = this.flatShade(MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.08, diameter: 0.35, tessellation: 8 }, this.scene));
+		bowl.position.y = 0.1;
+		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
+		bowlMat.diffuseColor = new Color3(0.85, 0.65, 0.2);
+		bowl.material = bowlMat;
+		bowl.parent = root;
+
 		return root;
 	}
 
