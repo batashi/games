@@ -812,9 +812,11 @@ export class SouqManagerLogic {
 	private spawnCustomer(): void {
 		const desired = this.pickDesiredGood();
 		if (!desired) return;
+		// Spread spawn positions so entering customers do not overlap.
+		const spawnOffset = (this.nextCustomerId % 5) * 0.6;
 		this.customers.push({
 			id: this.nextCustomerId++,
-			position: clampToBounds({ x: 8, y: 5 }),
+			position: clampToBounds({ x: 8, y: 5 - spawnOffset }),
 			target: null,
 			targetShelfId: null,
 			state: 'entering',
@@ -841,6 +843,8 @@ export class SouqManagerLogic {
 					customer.target = clampToBounds(this.getShelfSlotPosition(shelf, customer.id));
 					customer.state = 'shopping';
 				} else {
+					// Spread waiting customers along a line so they do not overlap.
+					customer.target = clampToBounds({ x: 8, y: 5 + (customer.id % 5) * 0.9 });
 					customer.patience -= dt;
 					if (customer.patience <= 0) {
 						customer.state = 'leaving';
@@ -906,7 +910,7 @@ export class SouqManagerLogic {
 	private getCashierQueuePosition(index: number): Point2D {
 		const base = this.cashierMat.position;
 		if (index <= 0) return { ...base };
-		const spacing = 0.9;
+		const spacing = 1.2;
 		const side = index % 2 === 1 ? -1 : 1;
 		const row = Math.floor((index + 1) / 2);
 		return {
@@ -919,8 +923,8 @@ export class SouqManagerLogic {
 		const index = this.getShelfSlotIndex(shelf, customerId);
 		const side = index % 2 === 0 ? -1 : 1;
 		const row = Math.floor(index / 2);
-		const sideSpacing = 0.7;
-		const backSpacing = 0.8;
+		const sideSpacing = 1.3;
+		const backSpacing = 1.0;
 		return {
 			x: shelf.position.x + side * sideSpacing,
 			y: shelf.position.y + backSpacing * (row + 1)
