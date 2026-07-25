@@ -297,45 +297,11 @@ const PLAY_BOUNDS = {
 	maxY: 9
 };
 
-const INTERACTION_RADIUS = 1.5;
-
 function clampToBounds(point: Point2D): Point2D {
 	return {
 		x: Math.max(PLAY_BOUNDS.minX, Math.min(PLAY_BOUNDS.maxX, point.x)),
 		y: Math.max(PLAY_BOUNDS.minY, Math.min(PLAY_BOUNDS.maxY, point.y))
 	};
-}
-
-function moveAlongPath(
-	position: Point2D,
-	path: Point2D[],
-	speed: number,
-	dt: number
-): { position: Point2D; path: Point2D[] } {
-	let remaining = speed * dt;
-	let pos = { ...position };
-	const remainingPath = [...path];
-	while (remainingPath.length > 0 && remaining > 0.001) {
-		const target = remainingPath[0];
-		const d = Math.sqrt((pos.x - target.x) ** 2 + (pos.y - target.y) ** 2);
-		if (d <= 0.001) {
-			remainingPath.shift();
-			continue;
-		}
-		if (remaining >= d) {
-			pos = { ...target };
-			remaining -= d;
-			remainingPath.shift();
-		} else {
-			const ratio = remaining / d;
-			pos = {
-				x: pos.x + (target.x - pos.x) * ratio,
-				y: pos.y + (target.y - pos.y) * ratio
-			};
-			remaining = 0;
-		}
-	}
-	return { position: pos, path: remainingPath };
 }
 
 export class SouqManagerLogic {
@@ -371,17 +337,6 @@ export class SouqManagerLogic {
 		playerCapacityBonus: 0,
 		workerSpeedBonus: 0
 	};
-
-	// Obstacle-avoidance grid for player, workers, and customers.
-	private readonly cellSize = 0.5;
-	private readonly minGridX = -12;
-	private readonly maxGridX = 12;
-	private readonly minGridY = -10;
-	private readonly maxGridY = 10;
-	private blockedCells = new Set<string>();
-	private playerPath: Point2D[] = [];
-	private workerPaths = new Map<number, Point2D[]>();
-	private customerPaths = new Map<number, Point2D[]>();
 
 	constructor(
 		onChange: (state: SouqManagerState) => void,
@@ -494,10 +449,6 @@ export class SouqManagerLogic {
 		this.stations = this.createStations();
 		this.shelves = this.createShelves();
 		this.cashierMat = this.createCashierMat();
-		this.buildObstacleGrid();
-		this.playerPath = [];
-		this.workerPaths.clear();
-		this.customerPaths.clear();
 		this.notify();
 	}
 
@@ -508,7 +459,6 @@ export class SouqManagerLogic {
 	setPlayerTarget(target: Point2D): void {
 		if (this.gameState !== 'playing') return;
 		this.player.target = clampToBounds({ ...target });
-		this.playerPath = this.findPath(this.player.position, this.player.target);
 		this.notify();
 	}
 
@@ -529,7 +479,7 @@ export class SouqManagerLogic {
 	private handlePlayerArrival(): void {
 		// Auto-deposit carried items when the player arrives at a valid station or shelf.
 		if (this.player.carrying) {
-			const station = this.findNearestStation(this.player.position, INTERACTION_RADIUS);
+			const station = this.findNearestStation(this.player.position, 1.2);
 			if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
 				station.input = this.player.carrying;
 				this.player.carrying = null;
@@ -540,7 +490,7 @@ export class SouqManagerLogic {
 				return;
 			}
 
-			const shelf = this.findNearestShelf(this.player.position, INTERACTION_RADIUS);
+			const shelf = this.findNearestShelf(this.player.position, 1.2);
 			if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
 				shelf.items.push(this.player.carrying);
 				this.player.carrying = null;
@@ -551,12 +501,12 @@ export class SouqManagerLogic {
 		}
 
 		for (const station of this.stations) {
-			if (distance(this.player.position, station.position) < INTERACTION_RADIUS) {
+			if (distance(this.player.position, station.position) < 1.2) {
 				this.interactWithStation(station);
 				return;
 			}
 		}
-		if (distance(this.player.position, this.cashierMat.position) < INTERACTION_RADIUS) {
+		if (distance(this.player.position, this.cashierMat.position) < 1.2) {
 			this.collectPayments();
 		}
 	}
@@ -565,7 +515,7 @@ export class SouqManagerLogic {
 		if (this.gameState !== 'playing') return;
 		if (!this.player.carrying) return;
 
-		const station = this.findNearestStation(this.player.position, INTERACTION_RADIUS);
+		const station = this.findNearestStation(this.player.position, 1.2);
 		if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
 			station.input = this.player.carrying;
 			this.player.carrying = null;
@@ -576,7 +526,7 @@ export class SouqManagerLogic {
 			return;
 		}
 
-		const shelf = this.findNearestShelf(this.player.position, INTERACTION_RADIUS);
+		const shelf = this.findNearestShelf(this.player.position, 1.2);
 		if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
 			shelf.items.push(this.player.carrying);
 			this.player.carrying = null;
@@ -616,13 +566,13 @@ export class SouqManagerLogic {
 		this.playerNearShelfId = null;
 		if (this.gameState !== 'playing' || !this.player.carrying) return;
 
-		const station = this.findNearestStation(this.player.position, INTERACTION_RADIUS);
+		const station = this.findNearestStation(this.player.position, 1.2);
 		if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
 			this.playerNearStationId = station.id;
 			return;
 		}
 
-		const shelf = this.findNearestShelf(this.player.position, INTERACTION_RADIUS);
+		const shelf = this.findNearestShelf(this.player.position, 1.2);
 		if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
 			this.playerNearShelfId = shelf.id;
 		}
@@ -645,7 +595,7 @@ export class SouqManagerLogic {
 
 	private collectTemporaryDrop(): void {
 		if (!this.temporaryDrop || this.player.carrying) return;
-		if (distance(this.player.position, this.temporaryDrop.position) < INTERACTION_RADIUS) {
+		if (distance(this.player.position, this.temporaryDrop.position) < 1.2) {
 			this.player.carrying = this.temporaryDrop.item;
 			this.temporaryDrop = null;
 			this.updatePlayerContext();
@@ -800,14 +750,10 @@ export class SouqManagerLogic {
 
 	private updatePlayer(dt: number): void {
 		if (this.player.target) {
-			this.playerPath = this.pathForEntity(this.playerPath, this.player.position, this.player.target);
-			const result = moveAlongPath(this.player.position, this.playerPath, this.player.speed, dt);
-			this.player.position = result.position;
-			this.playerPath = result.path;
-			if (this.playerPath.length === 0 || distance(this.player.position, this.player.target) < 0.2) {
+			this.player.position = moveTowards(this.player.position, this.player.target, this.player.speed, dt);
+			if (distance(this.player.position, this.player.target) < 0.2) {
 				this.handlePlayerArrival();
 				this.player.target = null;
-				this.playerPath = [];
 			}
 		}
 	}
@@ -844,14 +790,9 @@ export class SouqManagerLogic {
 			const station = worker.stationId !== null ? this.stations.find((s) => s.id === worker.stationId) : null;
 			if (!station) continue;
 			if (worker.target) {
-				let path = this.workerPaths.get(worker.id);
-				path = this.pathForEntity(path, worker.position, worker.target);
-				const result = moveAlongPath(worker.position, path, worker.speed, dt);
-				worker.position = result.position;
-				this.workerPaths.set(worker.id, result.path);
-				if (result.path.length === 0 || distance(worker.position, worker.target) < 0.3) {
+				worker.position = moveTowards(worker.position, worker.target, worker.speed, dt);
+				if (distance(worker.position, worker.target) < 0.3) {
 					worker.target = null;
-					this.workerPaths.delete(worker.id);
 				}
 			} else {
 				worker.target = { ...station.position };
@@ -915,11 +856,7 @@ export class SouqManagerLogic {
 
 			if (customer.target) {
 				customer.target = clampToBounds(customer.target);
-				this.recomputePathForCustomer(customer);
-				const path = this.customerPaths.get(customer.id) ?? [customer.target];
-				const result = moveAlongPath(customer.position, path, this.config.customerSpeed, dt);
-				customer.position = result.position;
-				this.customerPaths.set(customer.id, result.path);
+				customer.position = moveTowards(customer.position, customer.target, this.config.customerSpeed, dt);
 			}
 
 			if (customer.state === 'shopping' && customer.target && distance(customer.position, customer.target) < 0.3) {
@@ -963,26 +900,17 @@ export class SouqManagerLogic {
 			}
 		}
 
-		const remainingIds = new Set<number>();
 		this.customers = this.customers.filter((c) => {
-			if (c.state !== 'leaving') {
-				remainingIds.add(c.id);
-				return true;
-			}
+			if (c.state !== 'leaving') return true;
 			if (!c.target) return false;
-			const keep = distance(c.position, c.target) > 0.3;
-			if (keep) remainingIds.add(c.id);
-			return keep;
+			return distance(c.position, c.target) > 0.3;
 		});
-		for (const id of this.customerPaths.keys()) {
-			if (!remainingIds.has(id)) this.customerPaths.delete(id);
-		}
 	}
 
 	private getCashierQueuePosition(index: number): Point2D {
 		const base = this.cashierMat.position;
 		if (index <= 0) return { ...base };
-		const spacing = INTERACTION_RADIUS;
+		const spacing = 1.2;
 		const side = index % 2 === 1 ? -1 : 1;
 		const row = Math.floor((index + 1) / 2);
 		return {
@@ -1020,217 +948,6 @@ export class SouqManagerLogic {
 		if (index !== -1) shelf.items.splice(index, 1);
 	}
 
-	// ------------------------------------------------------------------
-	// Obstacle grid and A* pathfinding so tables/stations are not crossed.
-	// ------------------------------------------------------------------
-
-	private buildObstacleGrid(): void {
-		this.blockedCells.clear();
-		const mark = (x: number, y: number, radius: number) => {
-			const gx0 = this.worldToGrid(x - radius);
-			const gx1 = this.worldToGrid(x + radius);
-			const gy0 = this.worldToGrid(y - radius);
-			const gy1 = this.worldToGrid(y + radius);
-			for (let gx = gx0; gx <= gx1; gx++) {
-				for (let gy = gy0; gy <= gy1; gy++) {
-					if (this.inGrid(gx, gy)) {
-						this.blockedCells.add(`${gx},${gy}`);
-					}
-				}
-			}
-		};
-		for (const station of this.stations) {
-			mark(station.position.x, station.position.y, 0.9);
-		}
-		for (const shelf of this.shelves) {
-			mark(shelf.position.x, shelf.position.y, 0.9);
-		}
-		mark(this.cashierMat.position.x, this.cashierMat.position.y, 0.9);
-		if (this.temporaryDrop) {
-			mark(this.temporaryDrop.position.x, this.temporaryDrop.position.y, 0.8);
-		}
-	}
-
-	private worldToGrid(v: number): number {
-		return Math.floor(v / this.cellSize);
-	}
-
-	private gridToWorld(gx: number, gy: number): Point2D {
-		return {
-			x: (gx + 0.5) * this.cellSize,
-			y: (gy + 0.5) * this.cellSize
-		};
-	}
-
-	private inGrid(gx: number, gy: number): boolean {
-		const wx = (gx + 0.5) * this.cellSize;
-		const wy = (gy + 0.5) * this.cellSize;
-		return wx >= this.minGridX && wx <= this.maxGridX && wy >= this.minGridY && wy <= this.maxGridY;
-	}
-
-	private isBlockedCell(gx: number, gy: number): boolean {
-		return this.blockedCells.has(`${gx},${gy}`);
-	}
-
-	private findNearestFreeCell(gx: number, gy: number): { gx: number; gy: number } | null {
-		if (!this.isBlockedCell(gx, gy)) return { gx, gy };
-		for (let r = 1; r <= 5; r++) {
-			for (let dx = -r; dx <= r; dx++) {
-				for (let dy = -r; dy <= r; dy++) {
-					if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-					const nx = gx + dx;
-					const ny = gy + dy;
-					if (this.inGrid(nx, ny) && !this.isBlockedCell(nx, ny)) {
-						return { gx: nx, gy: ny };
-					}
-				}
-			}
-		}
-		return null;
-	}
-
-	private heuristic(a: { gx: number; gy: number }, b: { gx: number; gy: number }): number {
-		return Math.sqrt((a.gx - b.gx) ** 2 + (a.gy - b.gy) ** 2);
-	}
-
-	private findPath(start: Point2D, end: Point2D): Point2D[] {
-		const sgx = this.worldToGrid(start.x);
-		const sgy = this.worldToGrid(start.y);
-		const egx = this.worldToGrid(end.x);
-		const egy = this.worldToGrid(end.y);
-
-		const startCell = this.findNearestFreeCell(sgx, sgy);
-		const endCell = this.findNearestFreeCell(egx, egy);
-		if (!startCell || !endCell) return [end];
-
-		if (startCell.gx === endCell.gx && startCell.gy === endCell.gy) {
-			if (this.isBlockedCell(egx, egy)) {
-				const cell = this.gridToWorld(endCell.gx, endCell.gy);
-				return [cell];
-			}
-			return [end];
-		}
-
-		const open: { gx: number; gy: number; g: number; f: number }[] = [];
-		const closed = new Set<string>();
-		const cameFrom = new Map<string, { gx: number; gy: number } | null>();
-		const gScore = new Map<string, number>();
-
-		const startKey = `${startCell.gx},${startCell.gy}`;
-		gScore.set(startKey, 0);
-		cameFrom.set(startKey, null);
-		open.push({ gx: startCell.gx, gy: startCell.gy, g: 0, f: this.heuristic(startCell, endCell) });
-
-		const directions = [
-			{ dx: 1, dy: 0 },
-			{ dx: -1, dy: 0 },
-			{ dx: 0, dy: 1 },
-			{ dx: 0, dy: -1 },
-			{ dx: 1, dy: 1 },
-			{ dx: 1, dy: -1 },
-			{ dx: -1, dy: 1 },
-			{ dx: -1, dy: -1 }
-		];
-
-		while (open.length > 0) {
-			open.sort((a, b) => a.f - b.f);
-			const current = open.shift()!;
-			const ckey = `${current.gx},${current.gy}`;
-			if (current.gx === endCell.gx && current.gy === endCell.gy) {
-				const path: Point2D[] = [];
-				let cur: { gx: number; gy: number } | null = { gx: endCell.gx, gy: endCell.gy };
-				while (cur) {
-					path.unshift(this.gridToWorld(cur.gx, cur.gy));
-					cur = cameFrom.get(`${cur.gx},${cur.gy}`) ?? null;
-				}
-				// Only walk to the exact clicked point if it is not inside an obstacle.
-				if (endCell.gx === egx && endCell.gy === egy) {
-					path.push(end);
-				}
-				return this.simplifyPath(path);
-			}
-			if (closed.has(ckey)) continue;
-			closed.add(ckey);
-
-			for (const dir of directions) {
-				const ngx = current.gx + dir.dx;
-				const ngy = current.gy + dir.dy;
-				if (!this.inGrid(ngx, ngy)) continue;
-				const nkey = `${ngx},${ngy}`;
-				if (this.isBlockedCell(ngx, ngy) || closed.has(nkey)) continue;
-				// Prevent cutting corners through blocked diagonal neighbours.
-				if (dir.dx !== 0 && dir.dy !== 0) {
-					if (this.isBlockedCell(current.gx + dir.dx, current.gy) || this.isBlockedCell(current.gx, current.gy + dir.dy)) {
-						continue;
-					}
-				}
-				const cost = dir.dx !== 0 && dir.dy !== 0 ? Math.SQRT2 : 1;
-				const tentative = current.g + cost;
-				const existing = gScore.get(nkey);
-				if (existing === undefined || tentative < existing) {
-					gScore.set(nkey, tentative);
-					cameFrom.set(nkey, { gx: current.gx, gy: current.gy });
-					open.push({
-						gx: ngx,
-						gy: ngy,
-						g: tentative,
-						f: tentative + this.heuristic({ gx: ngx, gy: ngy }, endCell)
-					});
-				}
-			}
-		}
-
-		// No path found: fall back to direct movement.
-		return [end];
-	}
-
-	private simplifyPath(path: Point2D[]): Point2D[] {
-		if (path.length < 3) return path;
-		const simplified: Point2D[] = [path[0]];
-		for (let i = 1; i < path.length - 1; i++) {
-			const prev = simplified[simplified.length - 1];
-			const curr = path[i];
-			const next = path[i + 1];
-			const dx1 = curr.x - prev.x;
-			const dy1 = curr.y - prev.y;
-			const dx2 = next.x - curr.x;
-			const dy2 = next.y - curr.y;
-			const cross = dx1 * dy2 - dy1 * dx2;
-			if (Math.abs(cross) > 0.001) {
-				simplified.push(curr);
-			}
-		}
-		simplified.push(path[path.length - 1]);
-		return simplified;
-	}
-
-	private pathNeedsRefresh(path: Point2D[] | undefined, target: Point2D): boolean {
-		if (!path || path.length === 0) return true;
-		const end = path[path.length - 1];
-		return Math.abs(end.x - target.x) > this.cellSize || Math.abs(end.y - target.y) > this.cellSize;
-	}
-
-	private pathForEntity(currentPath: Point2D[] | undefined, position: Point2D, target: Point2D): Point2D[] {
-		if (currentPath && currentPath.length > 0) {
-			const end = currentPath[currentPath.length - 1];
-			if (distance(end, target) < this.cellSize * 0.8) {
-				return currentPath;
-			}
-		}
-		return this.findPath(position, target);
-	}
-
-	private recomputePathForCustomer(customer: SouqCustomer): void {
-		if (!customer.target) {
-			this.customerPaths.delete(customer.id);
-			return;
-		}
-		const existing = this.customerPaths.get(customer.id);
-		if (this.pathNeedsRefresh(existing, customer.target)) {
-			this.customerPaths.set(customer.id, this.findPath(customer.position, customer.target));
-		}
-	}
-
 	private checkLevelEnd(): void {
 		if (this.gameState !== 'playing') return;
 		if (this.totalCoinsEarned >= this.levelConfig.targetCoins) {
@@ -1243,7 +960,7 @@ export class SouqManagerLogic {
 	private completeLevel(): void {
 		const ratio = this.totalCoinsEarned / this.levelConfig.targetCoins;
 		if (ratio >= 1.5) this.stars = 3;
-		else if (ratio >= INTERACTION_RADIUS) this.stars = 2;
+		else if (ratio >= 1.2) this.stars = 2;
 		else this.stars = 1;
 		this.gameState = 'levelComplete';
 		this.callbacks.onLevelComplete?.(this.stars);
