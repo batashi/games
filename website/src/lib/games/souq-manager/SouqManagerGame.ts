@@ -13,7 +13,8 @@ import {
 	TransformNode,
 	PointerEventTypes,
 	HighlightLayer,
-	VertexData
+	VertexData,
+	DynamicTexture
 } from '@babylonjs/core';
 import {
 	SouqManagerLogic,
@@ -348,6 +349,114 @@ export class SouqManagerGame {
 		const tempMatMat = new StandardMaterial('temporaryDropMatMat', this.scene);
 		tempMatMat.diffuseColor = new Color3(0.72, 0.52, 0.38);
 		this.temporaryDropMat.material = tempMatMat;
+
+		this.createShopSign();
+		this.createBoundaryFence();
+	}
+
+	private createShopSign(): void {
+		const root = new TransformNode('shopSignRoot', this.scene);
+		root.position.set(0, 5.8, -5.5);
+		root.billboardMode = Mesh.BILLBOARDMODE_ALL;
+
+		// Carved wooden board backing.
+		const board = this.flatShade(MeshBuilder.CreateBox('shopSignBoard', { width: 4.4, height: 1.3, depth: 0.15 }, this.scene));
+		const boardMat = new StandardMaterial('shopSignBoardMat', this.scene);
+		boardMat.diffuseColor = new Color3(0.5, 0.32, 0.18);
+		board.material = boardMat;
+		board.parent = root;
+
+		// Decorative border frame.
+		const frameMat = new StandardMaterial('shopSignFrameMat', this.scene);
+		frameMat.diffuseColor = new Color3(0.4, 0.24, 0.12);
+		const frameTop = this.flatShade(MeshBuilder.CreateBox('shopSignFrameTop', { width: 4.6, height: 0.12, depth: 0.18 }, this.scene));
+		frameTop.position.y = 0.65;
+		frameTop.material = frameMat;
+		frameTop.parent = root;
+		const frameBottom = this.flatShade(MeshBuilder.CreateBox('shopSignFrameBottom', { width: 4.6, height: 0.12, depth: 0.18 }, this.scene));
+		frameBottom.position.y = -0.65;
+		frameBottom.material = frameMat;
+		frameBottom.parent = root;
+
+		// Arabic name texture.
+		const texture = new DynamicTexture('shopSignTex', { width: 512, height: 128 }, this.scene);
+		const ctx = texture.getContext() as unknown as CanvasRenderingContext2D;
+		ctx.fillStyle = '#5a3a20';
+		ctx.fillRect(0, 0, 512, 128);
+		ctx.fillStyle = '#fff8e7';
+		ctx.font = "bold 72px 'Segoe UI', Tahoma, Arial, sans-serif";
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.direction = 'rtl';
+		ctx.fillText('سوق الفريج', 256, 64);
+		texture.update();
+
+		const textMat = new StandardMaterial('shopSignTextMat', this.scene);
+		textMat.diffuseTexture = texture;
+		textMat.emissiveColor = new Color3(0.9, 0.85, 0.7);
+		textMat.specularColor = new Color3(0, 0, 0);
+		textMat.backFaceCulling = false;
+
+		const textPlane = MeshBuilder.CreatePlane('shopSignText', { width: 4.0, height: 1.0 }, this.scene);
+		textPlane.position.z = -0.09;
+		textPlane.parent = root;
+		textPlane.material = textMat;
+	}
+
+	private createBoundaryFence(): void {
+		const postMat = new StandardMaterial('fencePostMat', this.scene);
+		postMat.diffuseColor = new Color3(0.52, 0.34, 0.2);
+		const railMat = new StandardMaterial('fenceRailMat', this.scene);
+		railMat.diffuseColor = new Color3(0.6, 0.4, 0.24);
+
+		const halfW = 12;
+		const halfD = 10;
+		const postH = 1.0;
+		const interval = 3;
+
+		const addPost = (x: number, z: number) => {
+			const post = this.flatShade(
+				MeshBuilder.CreateCylinder(`fencePost-${x}-${z}`, { height: postH, diameter: 0.2, tessellation: 8 }, this.scene)
+			);
+			post.position.set(x, postH / 2, z);
+			post.material = postMat;
+		};
+
+		const addRail = (x1: number, z1: number, x2: number, z2: number, y: number) => {
+			const midX = (x1 + x2) / 2;
+			const midZ = (z1 + z2) / 2;
+			const dx = x2 - x1;
+			const dz = z2 - z1;
+			const len = Math.sqrt(dx * dx + dz * dz);
+			const rail = this.flatShade(
+				MeshBuilder.CreateBox(`fenceRail-${x1}-${z1}-${y}`, { width: len, height: 0.1, depth: 0.06 }, this.scene)
+			);
+			rail.position.set(midX, y, midZ);
+			rail.rotation.y = -Math.atan2(dz, dx);
+			rail.material = railMat;
+		};
+
+		for (let x = -halfW; x <= halfW; x += interval) {
+			addPost(x, -halfD);
+			addPost(x, halfD);
+		}
+		for (let z = -halfD + interval; z < halfD; z += interval) {
+			addPost(-halfW, z);
+			addPost(halfW, z);
+		}
+
+		for (let x = -halfW; x < halfW; x += interval) {
+			addRail(x, -halfD, x + interval, -halfD, 0.75);
+			addRail(x, -halfD, x + interval, -halfD, 0.45);
+			addRail(x, halfD, x + interval, halfD, 0.75);
+			addRail(x, halfD, x + interval, halfD, 0.45);
+		}
+		for (let z = -halfD; z < halfD; z += interval) {
+			addRail(-halfW, z, -halfW, z + interval, 0.75);
+			addRail(-halfW, z, -halfW, z + interval, 0.45);
+			addRail(halfW, z, halfW, z + interval, 0.75);
+			addRail(halfW, z, halfW, z + interval, 0.45);
+		}
 	}
 
 	private setupStations(): void {
