@@ -9,6 +9,8 @@
 	let fortBattleRef: import('$lib/components/games/FortBattle.svelte').default | null = $state(null);
 	let SouqManager = $state<typeof import('$lib/components/games/SouqManager.svelte').default | null>(null);
 	let souqManagerRef: import('$lib/components/games/SouqManager.svelte').default | null = $state(null);
+	let FalconFlight = $state<typeof import('$lib/components/games/FalconFlight.svelte').default | null>(null);
+	let falconFlightRef: import('$lib/components/games/FalconFlight.svelte').default | null = $state(null);
 	let muted = $state(false);
 
 	onMount(async () => {
@@ -17,6 +19,9 @@
 		}
 		if (game.id === 'souq-alfereej') {
 			SouqManager = (await import('$lib/components/games/SouqManager.svelte')).default;
+		}
+		if (game.id === 'falcon') {
+			FalconFlight = (await import('$lib/components/games/FalconFlight.svelte')).default;
 		}
 	});
 
@@ -27,6 +32,9 @@
 		} else if (game.id === 'souq-alfereej') {
 			souqManagerRef?.toggleMute();
 			muted = souqManagerRef?.isMuted() ?? false;
+		} else if (game.id === 'falcon') {
+			falconFlightRef?.toggleMute();
+			muted = falconFlightRef?.isMuted() ?? false;
 		}
 	}
 </script>
@@ -73,6 +81,8 @@
 			<FortBattle bind:this={fortBattleRef} />
 		{:else if game.id === 'souq-alfereej' && SouqManager}
 			<SouqManager bind:this={souqManagerRef} />
+		{:else if game.id === 'falcon' && FalconFlight}
+			<FalconFlight bind:this={falconFlightRef} />
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
 				<div>

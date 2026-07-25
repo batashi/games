@@ -17,7 +17,7 @@ Six games are specified in the repository:
 | `archery` | Fort Battle | معركة القلاع | Ready (design + playable prototype) |
 | `luban-sorter` | Luban Sorter | فرز اللبان | Ready (design) |
 | `souq-alfereej` | Souq Al-Fereej | سوق الفريج | Ready (design + playable prototype) |
-| `falcon` | Falcon Flight | رحلة الصقر | Ready (design) |
+| `falcon` | Falcon Flight | رحلة الصقر | Ready (design + playable prototype) |
 
 Additional games may be added to `data/games.json` as the catalogue grows.
 

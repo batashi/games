@@ -110,4 +110,34 @@ test.describe('game smoke tests', () => {
 		expect(errors, `Unexpected console/page errors: ${errors.join('\n')}`).toHaveLength(0);
 		console.log('Console warnings:', warnings);
 	});
+
+	test('Falcon Flight loads and starts a run without console errors', async ({ page }) => {
+		const { errors, warnings } = captureConsoleErrors(page);
+
+		await page.goto('/play/falcon');
+
+		// Wait for the page title and game header to render.
+		await expect(page).toHaveTitle(/رحلة الصقر/);
+		await expect(page.locator('h1')).toHaveText('رحلة الصقر');
+
+		// Wait for the Babylon.js canvas and the start button to be ready.
+		const canvas = page.locator('canvas');
+		await expect(canvas).toBeAttached();
+		await expect(canvas).toBeVisible();
+		await expect(page.getByRole('button', { name: 'ابدأ الرحلة' })).toBeVisible();
+
+		// Start the run.
+		await page.getByRole('button', { name: 'ابدأ الرحلة' }).click();
+
+		// The HUD should appear once the game starts.
+		await expect(page.getByText('المسافة', { exact: true })).toBeVisible();
+		await expect(page.getByText('الطاقة', { exact: true })).toBeVisible();
+		await expect(page.getByText('النقاط', { exact: true })).toBeVisible();
+
+		// Give async game initialization a moment to finish.
+		await page.waitForTimeout(2500);
+
+		expect(errors, `Unexpected console/page errors: ${errors.join('\n')}`).toHaveLength(0);
+		console.log('Console warnings:', warnings);
+	});
 });
