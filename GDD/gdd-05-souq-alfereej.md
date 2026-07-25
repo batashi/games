@@ -1,8 +1,8 @@
-# GDD 05 — Souq al-Khaleej
+# GDD 05 — Souq Al-Fereej
 
 **Game ID:** `souq-manager`  
-**Arabic Name:** سوق الخليج  
-**English Name:** Souq al-Khaleej  
+**Arabic Name:** سوق الفريج  
+**English Name:** Souq Al-Fereej  
 **Icon:** 🧺 (placeholder; final icon: a young Gulf merchant child behind a woven-basket stall)  
 **Version:** 2.0  
 **Date:** 2026-07-24  
@@ -35,8 +35,8 @@ Step into a Gulf souq from the days before oil — a time of caravans, palm grov
 ```ts
 export const souqManagerConfig: GameConfig = {
   id: 'souq-manager',
-  name: 'سوق الخليج',
-  nameEn: 'Souq al-Khaleej',
+  name: 'سوق الفريج',
+  nameEn: 'Souq Al-Fereej',
   icon: '🧺', // Final art: young Gulf merchant child behind a woven-basket stall
   supportsSingle: true,
   supportsDaily: true,

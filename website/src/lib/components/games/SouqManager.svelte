@@ -83,7 +83,7 @@
 		<div class="absolute inset-0 flex items-center justify-center bg-charcoal/60 px-4">
 			<div class="bg-sea-dark text-cream rounded-2xl p-6 sm:p-8 max-w-md w-full text-center shadow-xl">
 				<div class="text-5xl mb-3">🧺</div>
-				<h2 class="font-display font-bold text-2xl mb-2">سوق الخليج</h2>
+				<h2 class="font-display font-bold text-2xl mb-2">سوق الفريج</h2>
 				<p class="text-sm opacity-80 mb-6">
 					أدر دكاناً تقليدياً: ازرع التمر، احمص القهوة، وفرّز اللبان. اخدم زبائنك وحقق هدف اليوم!
 				</p>

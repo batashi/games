@@ -81,14 +81,14 @@ test.describe('game smoke tests', () => {
 		expect(errors, `Unexpected console/page errors: ${errors.join('\n')}`).toHaveLength(0);
 	});
 
-	test('Souq al-Khaleej loads and starts a level without console errors', async ({ page }) => {
+	test('Souq Al-Fereej loads and starts a level without console errors', async ({ page }) => {
 		const { errors, warnings } = captureConsoleErrors(page);
 
 		await page.goto('/play/souq-manager');
 
 		// Wait for the page title and game header to render.
-		await expect(page).toHaveTitle(/سوق الخليج/);
-		await expect(page.getByRole('heading', { name: 'سوق الخليج', exact: true })).toBeVisible();
+		await expect(page).toHaveTitle(/سوق الفريج/);
+		await expect(page.getByRole('heading', { name: 'سوق الفريج', exact: true })).toBeVisible();
 
 		// Wait for the Babylon.js canvas and the level picker to be ready.
 		const canvas = page.locator('canvas');

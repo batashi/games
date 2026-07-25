@@ -122,13 +122,13 @@
     },
     {
       "id": "souq-manager",
-      "slug": "souq-alkhaleej",
-      "nameAr": "سوق الخليج",
-      "nameEn": "Souq al-Khaleej",
-      "taglineAr": "أدير دكانك التقليدي وانتج التمر والقهوة واللبان بيدك",
-      "taglineEn": "Run your traditional stall and hand-craft dates, qahwa, and frankincense",
-      "descriptionAr": "ادير دكاناً تقليدياً في سوق خليجي ما قبل عصر النفط. ازرع النخيل، جفف التمر، احمص البن واطحنه ودله، وفرّز اللبان وعبئه. اخدم الحيوانات الزائرة، ووظف مساعدين لتحقيق هدف كل مستوى قبل انتهاء الوقت.",
-      "descriptionEn": "Run a traditional stall in a pre-oil Gulf souq. Plant palms and dry dates, roast, grind, and brew Arabic coffee, sort and pack frankincense. Serve visiting animal customers and hire helpers to hit each level's target before time runs out.",
+      "slug": "souq-alfereej",
+      "nameAr": "سوق الفريج",
+      "nameEn": "Souq Al-Fereej",
+      "taglineAr": "أدير دكانك في فريج قديم وانتج التمر والقهوة واللبان بيدك",
+      "taglineEn": "Run your stall in an old fereej and hand-craft dates, qahwa, and frankincense",
+      "descriptionAr": "ادير دكاناً تقليدياً في فريج قديم ما قبل عصر النفط. ازرع النخيل، جفف التمر، احمص البن واطحنه ودله، وفرّز اللبان وعبئه. اخدم الحيوانات الزائرة، ووظف مساعدين لتحقيق هدف كل مستوى قبل انتهاء الوقت.",
+      "descriptionEn": "Run a traditional stall in an old pre-oil fereej. Plant palms and dry dates, roast, grind, and brew Arabic coffee, sort and pack frankincense. Serve visiting animal customers and hire helpers to hit each level's target before time runs out.",
       "icon": "🧺",
       "genre": "shop-simulation",
       "genreLabelAr": "إدارة متجر",
@@ -158,10 +158,10 @@
       ],
       "culturalNoteAr": "الأسواق التقليدية (السواق) كانت قلب الحياة الاقتصادية والاجتماعية في الخليج، حيث تباع التوابل والتمور واللبان والعود وتجتمع فيها العائلات.",
       "culturalNoteEn": "Traditional markets (souqs) were the economic and social heart of the Gulf, where spices, dates, frankincense, and oud were sold and families gathered.",
-      "metaTitleAr": "سوق الخليج - لعبة إدارة متجر للأطفال",
-      "metaTitleEn": "Souq al-Khaleej — GCC Shop Sim for Kids",
-      "metaDescriptionAr": "العب سوق الخليج مجاناً. أدير دكانك التقليدي، خدم الزبائن، ووظف مساعدين في لعبة إدارة متجر خليجية.",
-      "metaDescriptionEn": "Play Souq al-Khaleej for free. Run your traditional stall, serve customers, and hire helpers in a Gulf-themed shop sim."
+      "metaTitleAr": "سوق الفريج - لعبة إدارة متجر للأطفال",
+      "metaTitleEn": "Souq Al-Fereej — GCC Shop Sim for Kids",
+      "metaDescriptionAr": "العب سوق الفريج مجاناً. أدير دكانك التقليدي، خدم الزبائن، ووظف مساعدين في لعبة إدارة متجر خليجية.",
+      "metaDescriptionEn": "Play Souq Al-Fereej for free. Run your traditional stall, serve customers, and hire helpers in a Gulf-themed shop sim."
     }
   ]
 }
