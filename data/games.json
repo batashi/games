@@ -162,6 +162,47 @@
       "metaTitleEn": "Souq Al-Fereej — GCC Shop Sim for Kids",
       "metaDescriptionAr": "العب سوق الفريج مجاناً. أدير دكانك التقليدي، خدم الزبائن، ووظف مساعدين في لعبة إدارة متجر خليجية.",
       "metaDescriptionEn": "Play Souq Al-Fereej for free. Run your traditional stall, serve customers, and hire helpers in a Gulf-themed shop sim."
+    },
+    {
+      "id": "falcon",
+      "slug": "falcon-flight",
+      "nameAr": "رحلة الصقر",
+      "nameEn": "Falcon Flight",
+      "taglineAr": "حلق فوق كثبان الصحراء واصطاد الفريسة كصقر محترف",
+      "taglineEn": "Soar over desert dunes and hunt prey like a master falcon",
+      "descriptionAr": "انطلق في رحلة جوية لا نهائية فوق صحراء الخليج الذهبية. تجاوز الصخور والعواصف الرملية، واقتنص الأرانب والحبارى والسمان، وعُد إلى قفاز الصقار.",
+      "descriptionEn": "Take an endless flight over the golden Gulf desert. Dodge cliffs and dust devils, swoop down on hares, houbaras, and quail, then return to the falconer’s glove.",
+      "icon": "🦅",
+      "genre": "endless-flier",
+      "genreLabelAr": "طائر لا نهائي",
+      "genreLabelEn": "Endless Flier",
+      "ageRange": "7-12",
+      "sessionLength": "1-3 min",
+      "modes": ["single", "daily", "practice"],
+      "countries": ["OM", "SA", "AE", "QA", "BH", "KW"],
+      "status": "ready",
+      "supportedPlatforms": ["desktop", "tablet", "mobile"],
+      "heroImage": "/images/games/falcon-hero.webp",
+      "thumbnail": "/images/games/falcon-thumb.webp",
+      "video": "/videos/falcon-loop.webm",
+      "howToPlayAr": [
+        "استمر بالضغط ليطير الصقر للأعلى",
+        "اترك لينخفض الصقر بفعل الجاذبية",
+        "اجتاز الفرائس لجمع النقاط واستعادة الطاقة",
+        "تجنب الصخور والعواصف الرملية"
+      ],
+      "howToPlayEn": [
+        "Hold to make the falcon climb",
+        "Release to dive with gravity",
+        "Fly through prey to score and refill energy",
+        "Avoid cliffs and dust devils"
+      ],
+      "culturalNoteAr": "الصقارة من أعرق تقاليد الخليج، حيث يدرب الصقارون الصقور على الصيد في الصحراء ويعتبرونها رمزاً للشجاعة والصبر.",
+      "culturalNoteEn": "Falconry is one of the Gulf’s oldest traditions; falconers train falcons to hunt in the desert and regard them as symbols of courage and patience.",
+      "metaTitleAr": "رحلة الصقر - لعبة طيران خليجية للأطفال",
+      "metaTitleEn": "Falcon Flight — GCC Endless Flier for Kids",
+      "metaDescriptionAr": "العب رحلة الصقر مجاناً. حلق فوق كثبان الصحراء، اصطد الفريسة، وتجنب العوائق في لعبة طيران مليئة بالتراث الخليجي.",
+      "metaDescriptionEn": "Play Falcon Flight for free. Soar over desert dunes, hunt prey, and dodge hazards in a Gulf-themed endless flier."
     }
   ]
 }

@@ -8,7 +8,7 @@ This repository is the planning and design home for the **GCC Kids Web Game Plat
 
 The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first two playable games (Fort Battle and Souq Al-Fereej) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
 
-Five games are specified in the repository:
+Six games are specified in the repository:
 
 | ID | English Name | Arabic Name | Status |
 |---|---|---|---|
@@ -17,6 +17,7 @@ Five games are specified in the repository:
 | `archery` | Fort Battle | معركة القلاع | Ready (design + playable prototype) |
 | `luban-sorter` | Luban Sorter | فرز اللبان | Ready (design) |
 | `souq-alfereej` | Souq Al-Fereej | سوق الفريج | Ready (design + playable prototype) |
+| `falcon` | Falcon Flight | رحلة الصقر | Ready (design) |
 
 Additional games may be added to `data/games.json` as the catalogue grows.
 
@@ -35,7 +36,8 @@ Additional games may be added to `data/games.json` as the catalogue grows.
 │   ├── gdd-02-gulf-tic-tac-toe.md
 │   ├── gdd-03-fort-battle.md
 │   ├── gdd-04-luban-sorter.md
-│   └── gdd-05-souq-alfereej.md
+│   ├── gdd-05-souq-alfereej.md
+│   └── gdd-06-falcon-flight.md
 └── website/                    # SvelteKit + Vite + Babylon.js application
     ├── src/
     │   ├── lib/
