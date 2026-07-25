@@ -303,7 +303,7 @@ export class SouqManagerGame {
 
 	private setupEnvironment(): void {
 		// Continuous sandy ground with gentle low-poly dunes.
-		const ground = MeshBuilder.CreateGround('ground', { width: 30, height: 26, subdivisions: 24 }, this.scene);
+		const ground = MeshBuilder.CreateGround('ground', { width: 30, height: 26, subdivisions: 12 }, this.scene);
 		const positions = ground.getVerticesData(VertexBuffer.PositionKind);
 		if (positions) {
 			for (let i = 0; i < positions.length; i += 3) {
@@ -326,6 +326,15 @@ export class SouqManagerGame {
 		groundMat.specularColor = new Color3(0.08, 0.08, 0.08);
 		ground.material = groundMat;
 		ground.position.y = -0.05;
+		ground.isPickable = false;
+
+		// Invisible, low-poly pick plane for ground clicks. Raycasting the detailed terrain was slow.
+		const pickPlane = MeshBuilder.CreateGround('groundPickPlane', { width: 30, height: 26, subdivisions: 1 }, this.scene);
+		pickPlane.position.y = -0.02;
+		const pickMat = new StandardMaterial('groundPickMat', this.scene);
+		pickMat.alpha = 0;
+		pickPlane.material = pickMat;
+		pickPlane.isPickable = true;
 
 		// Scatter a few small stones around the edges for detail.
 		const stoneMat = new StandardMaterial('stoneMat', this.scene);
@@ -350,6 +359,7 @@ export class SouqManagerGame {
 			stone.scaling.set(1 + Math.sin(i) * 0.3, 0.6 + Math.cos(i * 1.3) * 0.2, 1 + Math.cos(i * 0.7) * 0.3);
 			stone.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 			stone.material = stoneMat;
+			stone.isPickable = false;
 		}
 
 		// Stall awning over the front selling area.
@@ -363,12 +373,14 @@ export class SouqManagerGame {
 			const post = MeshBuilder.CreateCylinder(`post-${x}`, { height: 4, diameter: 0.25 }, this.scene);
 			post.position.set(x, 2, -5.5);
 			post.material = woodMat;
+			post.isPickable = false;
 		}
 
 		// Awning roof with striped feel (one box for now).
 		const awning = MeshBuilder.CreateBox('awning', { width: 11, height: 0.15, depth: 3 }, this.scene);
 		awning.position = new Vector3(0, 4, -5.2);
 		awning.material = awningMat;
+		awning.isPickable = false;
 
 		// Hanging brass lantern under the awning.
 		const lanternRoot = new TransformNode('lanternRoot', this.scene);
@@ -402,6 +414,7 @@ export class SouqManagerGame {
 		const tempMatMat = new StandardMaterial('temporaryDropMatMat', this.scene);
 		tempMatMat.diffuseColor = new Color3(0.72, 0.52, 0.38);
 		this.temporaryDropMat.material = tempMatMat;
+		this.temporaryDropMat.isPickable = false;
 
 		this.createShopSign();
 		this.createBoundaryFence();
@@ -418,6 +431,7 @@ export class SouqManagerGame {
 		boardMat.diffuseColor = new Color3(0.5, 0.32, 0.18);
 		board.material = boardMat;
 		board.parent = root;
+		board.isPickable = false;
 
 		// Decorative border frame.
 		const frameMat = new StandardMaterial('shopSignFrameMat', this.scene);
@@ -426,10 +440,12 @@ export class SouqManagerGame {
 		frameTop.position.y = 0.65;
 		frameTop.material = frameMat;
 		frameTop.parent = root;
+		frameTop.isPickable = false;
 		const frameBottom = this.flatShade(MeshBuilder.CreateBox('shopSignFrameBottom', { width: 4.6, height: 0.12, depth: 0.18 }, this.scene));
 		frameBottom.position.y = -0.65;
 		frameBottom.material = frameMat;
 		frameBottom.parent = root;
+		frameBottom.isPickable = false;
 
 		// Arabic name texture.
 		const texture = new DynamicTexture('shopSignTex', { width: 512, height: 128 }, this.scene);
@@ -454,6 +470,7 @@ export class SouqManagerGame {
 		textPlane.position.z = -0.09;
 		textPlane.parent = root;
 		textPlane.material = textMat;
+		textPlane.isPickable = false;
 	}
 
 	private createBoundaryFence(): void {
@@ -529,6 +546,7 @@ export class SouqManagerGame {
 			post.rotation.z = jitter(p.idx, 0.12);
 			post.rotation.x = jitter(p.idx + 3, 0.1);
 			post.material = postMat;
+			post.isPickable = false;
 		}
 
 		// Connect consecutive posts with uneven double rails.
@@ -558,6 +576,7 @@ export class SouqManagerGame {
 				rail.rotation.y = angle;
 				rail.rotation.z = jitter(i, 0.04);
 				rail.material = railMat;
+				rail.isPickable = false;
 			}
 		}
 
@@ -573,16 +592,19 @@ export class SouqManagerGame {
 			const lintel = this.flatShade(MeshBuilder.CreateBox('gateLintel', { width: gw + 0.6, height: 0.18, depth: 0.28 }, this.scene));
 			lintel.position.set(gx, 1.25, gz);
 			lintel.material = gateMat;
+			lintel.isPickable = false;
 
 			const leftBrace = this.flatShade(MeshBuilder.CreateBox('gateBraceL', { width: 0.18, height: 0.75, depth: 0.18 }, this.scene));
 			leftBrace.position.set(leftPost.x, 0.85, gz);
 			leftBrace.rotation.z = -0.15;
 			leftBrace.material = gateMat;
+			leftBrace.isPickable = false;
 
 			const rightBrace = this.flatShade(MeshBuilder.CreateBox('gateBraceR', { width: 0.18, height: 0.75, depth: 0.18 }, this.scene));
 			rightBrace.position.set(rightPost.x, 0.85, gz);
 			rightBrace.rotation.z = 0.15;
 			rightBrace.material = gateMat;
+			rightBrace.isPickable = false;
 		}
 	}
 
@@ -1221,6 +1243,9 @@ export class SouqManagerGame {
 		this.decorativeCamel = this.createAnimalMesh('camel', 0.7);
 		this.decorativeCamel.root.position.set(-8, 0, 5);
 		this.decorativeCamel.root.rotation.y = Math.PI / 4;
+		for (const m of this.decorativeCamel.root.getChildMeshes()) {
+			m.isPickable = false;
+		}
 	}
 
 	private syncScene(): void {
