@@ -20,8 +20,8 @@
 			<a href="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity">
 				<span class="text-2xl">🎮</span>
 				<div class="hidden sm:block">
-					<h1 class="font-display font-bold text-lg leading-tight">ألعاب أطفال الخليج</h1>
-					<p class="text-xs opacity-80">GCC Kids Games</p>
+					<h1 class="font-display font-bold text-lg leading-tight">صحراء بلاي</h1>
+					<p class="text-xs opacity-80">Sahara Play</p>
 				</div>
 			</a>
 

@@ -1,6 +1,6 @@
 <svelte:head>
-	<title>للمعلمين | ألعاب أطفال الخليج</title>
-	<meta name="description" content="استخدم منصة ألعاب أطفال الخليج في الفصول الدراسية." />
+	<title>للمعلمين | صحراء بلاي</title>
+	<meta name="description" content="استخدم صحراء بلاي / Sahara Play في الفصول الدراسية." />
 </svelte:head>
 
 <section class="bg-sea-dark text-cream py-16">

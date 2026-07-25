@@ -10,8 +10,8 @@
 				<div class="flex items-center gap-2 mb-3">
 					<span class="text-2xl">🎮</span>
 					<div>
-						<h3 class="font-display font-bold">ألعاب أطفال الخليج</h3>
-						<p class="text-xs opacity-70">GCC Kids Games</p>
+						<h3 class="font-display font-bold">صحراء بلاي</h3>
+						<p class="text-xs opacity-70">Sahara Play</p>
 					</div>
 				</div>
 				<p class="text-sm opacity-80 leading-relaxed">

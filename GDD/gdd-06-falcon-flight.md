@@ -7,7 +7,7 @@
 **Version:** 1.0  
 **Date:** 2026-07-25  
 **Studio:** Aldoolab  
-**Platform:** GCC Kids Web Game Platform  
+**Platform:** Sahara Play / صحراء بلاي  
 **Engine:** Babylon.js  
 **Target Age:** 7–12
 
@@ -281,4 +281,4 @@ At the end of every flight the falcon returns to the falconer’s glove, earning
 
 ---
 
-*Prepared by Aldoolab for the GCC Kids Web Game Platform.*
+*Prepared by Aldoolab for Sahara Play / صحراء بلاي.*

@@ -7,7 +7,7 @@
 **Version:** 1.0  
 **Date:** 2026-07-21  
 **Studio:** Aldoolab  
-**Platform:** GCC Kids Web Game Platform  
+**Platform:** Sahara Play / صحراء بلاي  
 **Engine:** Babylon.js  
 **Target Age:** 7–11  
 
@@ -241,4 +241,4 @@ All input goes through the shared `InputManager` / Babylon.js pointer system. Ga
 
 ---
 
-*Prepared by Aldoolab for the GCC Kids Web Game Platform.*
+*Prepared by Aldoolab for Sahara Play / صحراء بلاي.*

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E smoke tests for the GCC Kids Web Game Platform.
+ * E2E smoke tests for Sahara Play / صحراء بلاي.
  * Runs against the production static build so we catch build-time and runtime
  * regressions that unit tests cannot.
  */

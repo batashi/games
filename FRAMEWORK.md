@@ -1,8 +1,8 @@
-# Project Framework — GCC Kids Web Game Platform
+# Project Framework — Sahara Play / صحراء بلاي
 
 **Version:** 1.0  
 **Date:** 2026-07-21  
-**Purpose:** Technical blueprint for evolving the prototype into a production-ready platform of 20 culturally-themed web games for children across the Gulf Cooperation Council (GCC).
+**Purpose:** Technical blueprint for evolving the prototype into a production-ready Sahara Play / صحراء بلاي platform of 20 culturally-themed web games for children across the Gulf Cooperation Council (GCC).
 
 ---
 

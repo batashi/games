@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Date:** 2026-07-21  
-**Purpose:** Operational reference for developing, testing, releasing, and maintaining the GCC Kids Web Game Platform website and games.
+**Purpose:** Operational reference for developing, testing, releasing, and maintaining the Sahara Play / صحراء بلاي website and games.
 
 ---
 

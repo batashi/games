@@ -1,6 +1,6 @@
 <svelte:head>
-	<title>للأهل | ألعاب أطفال الخليج</title>
-	<meta name="description" content="تعرف على ميزات الأمان والخصوصية في منصة ألعاب أطفال الخليج." />
+	<title>للأهل | صحراء بلاي</title>
+	<meta name="description" content="تعرف على ميزات الأمان والخصوصية في صحراء بلاي / Sahara Play." />
 </svelte:head>
 
 <section class="bg-sea-dark text-cream py-16">

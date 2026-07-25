@@ -24,8 +24,8 @@
 </script>
 
 <svelte:head>
-	<title>الألعاب | ألعاب أطفال الخليج</title>
-	<meta name="description" content="استكشف جميع ألعاب منصة ألعاب أطفال الخليج الثقافية والتعليمية." />
+	<title>الألعاب | صحراء بلاي</title>
+	<meta name="description" content="استكشف جميع ألعاب صحراء بلاي / Sahara Play الثقافية والتعليمية." />
 </svelte:head>
 
 <section class="bg-sea-dark text-cream py-16">

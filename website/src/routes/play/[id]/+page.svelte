@@ -40,7 +40,7 @@
 </script>
 
 <svelte:head>
-	<title>العب {game.nameAr} | ألعاب أطفال الخليج</title>
+	<title>العب {game.nameAr} | صحراء بلاي</title>
 	<meta name="description" content="العب {game.nameAr} مباشرة في المتصفح." />
 </svelte:head>
 

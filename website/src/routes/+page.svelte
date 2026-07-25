@@ -6,8 +6,8 @@
 </script>
 
 <svelte:head>
-	<title>ألعاب أطفال الخليج | GCC Kids Games</title>
-	<meta name="description" content="منصة ألعاب ويب آمنة ومجانية للأطفال من عمر 7 إلى 12 عاماً، تحتفي بتراث دول مجلس التعاون الخليجي." />
+	<title>صحراء بلاي | Sahara Play</title>
+	<meta name="description" content="منصة Sahara Play / صحراء بلاي: ألعاب ويب آمنة ومجانية للأطفال من عمر 7 إلى 12 عاماً، تحتفي بتراث دول مجلس التعاون الخليجي." />
 </svelte:head>
 
 <!-- Hero -->

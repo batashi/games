@@ -7,7 +7,7 @@
 **Version:** 1.0  
 **Date:** 2026-07-21  
 **Studio:** Aldoolab  
-**Platform:** GCC Kids Web Game Platform  
+**Platform:** Sahara Play / صحراء بلاي  
 **Engine:** Babylon.js  
 **Target Age:** 10–12  
 
@@ -297,4 +297,4 @@ Country-specific skins and landmark silhouettes are future enhancements.
 
 ---
 
-*Prepared by Aldoolab for the GCC Kids Web Game Platform.*
+*Prepared by Aldoolab for Sahara Play / صحراء بلاي.*

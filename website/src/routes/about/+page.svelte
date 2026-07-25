@@ -1,6 +1,6 @@
 <svelte:head>
-	<title>عن المنصة | ألعاب أطفال الخليج</title>
-	<meta name="description" content="تعرف على رؤية منصة ألعاب أطفال الخليج ومهمتها الثقافية." />
+	<title>عن المنصة | صحراء بلاي</title>
+	<meta name="description" content="تعرف على رؤية صحراء بلاي / Sahara Play ومهمتها الثقافية." />
 </svelte:head>
 
 <section class="bg-sea-dark text-cream py-16">

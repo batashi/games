@@ -1,10 +1,10 @@
-# AGENTS.md — GCC Kids Web Game Platform
+# AGENTS.md — Sahara Play / صحراء بلاي
 
 > This file is written for AI coding agents. It describes the project as it actually exists in the repository right now, not as a future plan.
 
 ## 1. Project Overview
 
-This repository is the planning and design home for the **GCC Kids Web Game Platform** (working title), a browser-based collection of culturally-themed games for children aged 7–12 across the Gulf Cooperation Council (GCC). It is maintained by **Aldoolab**.
+This repository is the planning and design home for **Sahara Play / صحراء بلاي**, a browser-based collection of culturally-themed games for children aged 7–12 across the Gulf Cooperation Council (GCC). It is maintained by **Aldoolab**.
 
 The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first two playable games (Fort Battle and Souq Al-Fereej) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
 
@@ -20,6 +20,8 @@ Six games are specified in the repository:
 | `falcon` | Falcon Flight | رحلة الصقر | Ready (design + playable prototype) |
 
 Additional games may be added to `data/games.json` as the catalogue grows.
+
+> **Pending rebrand:** Existing game names are under review. New titles will follow the culture-first, place-second convention (e.g. *Falcon Flight — Dubai / رحلة الصقر — دبي*) while keeping stable English URL slugs. Existing IDs, slugs, and code folders will not change until the rebrand is finalized per game.
 
 ## 2. Repository Layout
 

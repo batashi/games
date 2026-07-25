@@ -1,6 +1,6 @@
 <svelte:head>
-	<title>سياسة الخصوصية | ألعاب أطفال الخليج</title>
-	<meta name="description" content="سياسة الخصوصية لمنصة ألعاب أطفال الخليج." />
+	<title>سياسة الخصوصية | صحراء بلاي</title>
+	<meta name="description" content="سياسة الخصوصية لصحراء بلاي / Sahara Play." />
 </svelte:head>
 
 <section class="bg-sea-dark text-cream py-16">

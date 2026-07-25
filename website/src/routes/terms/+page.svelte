@@ -1,6 +1,6 @@
 <svelte:head>
-	<title>شروط الاستخدام | ألعاب أطفال الخليج</title>
-	<meta name="description" content="شروط استخدام منصة ألعاب أطفال الخليج." />
+	<title>شروط الاستخدام | صحراء بلاي</title>
+	<meta name="description" content="شروط استخدام صحراء بلاي / Sahara Play." />
 </svelte:head>
 
 <section class="bg-sea-dark text-cream py-16">

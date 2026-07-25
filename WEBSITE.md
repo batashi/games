@@ -1,9 +1,9 @@
-# Aldoolab — GCC Kids Game Platform Website Specification
+# Aldoolab — Sahara Play / صحراء بلاي Website Specification
 
 **Version:** 1.0  
 **Date:** 2026-07-21  
 **Studio:** Aldoolab  
-**Purpose:** Define the marketing, discovery, and monetization website for the GCC Kids Web Game Platform. The website is separate from the game app but shares the same brand, tech stack, and business model.
+**Purpose:** Define the marketing, discovery, and monetization website for Sahara Play / صحراء بلاي. The website is separate from the game app but shares the same brand, tech stack, and business model.
 
 ---
 
@@ -363,4 +363,4 @@ See `data/games.json` for complete examples of `frankincense`, `tictactoe`, and 
 
 ---
 
-*Prepared by Aldoolab for the GCC Kids Web Game Platform.*
+*Prepared by Aldoolab for Sahara Play / صحراء بلاي.*

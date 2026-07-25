@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>تواصل معنا | ألعاب أطفال الخليج</title>
+	<title>تواصل معنا | صحراء بلاي</title>
 	<meta name="description" content="تواصل مع فريق Aldoolab لأسئلة، اقتراحات، أو فرص تعاون." />
 </svelte:head>
 
