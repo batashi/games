@@ -121,7 +121,7 @@
       "metaDescriptionEn": "Play Fort Battle for free. Aim your arrows and destroy the enemy fort in a Gulf-themed archery game."
     },
     {
-      "id": "souq-manager",
+      "id": "souq-alfereej",
       "slug": "souq-alfereej",
       "nameAr": "سوق الفريج",
       "nameEn": "Souq Al-Fereej",
@@ -139,9 +139,9 @@
       "countries": ["OM", "SA", "AE", "QA", "BH", "KW"],
       "status": "ready",
       "supportedPlatforms": ["desktop", "tablet", "mobile"],
-      "heroImage": "/images/games/souq-manager-hero.webp",
-      "thumbnail": "/images/games/souq-manager-thumb.webp",
-      "video": "/videos/souq-manager-loop.webm",
+      "heroImage": "/images/games/souq-alfereej-hero.webp",
+      "thumbnail": "/images/games/souq-alfereej-thumb.webp",
+      "video": "/videos/souq-alfereej-loop.webm",
       "howToPlayAr": [
         "اضغط على محطة لإرسال اللاعب إليها",
         "أكمل سلسلة الإنتاج: تمر (نخلة → تجفيف → تعبئة)، قهوة (بن أخضر → محمص → هاون → دلة)، لبان (خام → فرز → تعبئة)",

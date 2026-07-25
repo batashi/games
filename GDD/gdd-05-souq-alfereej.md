@@ -1,6 +1,6 @@
 # GDD 05 — Souq Al-Fereej
 
-**Game ID:** `souq-manager`  
+**Game ID:** `souq-alfereej`  
 **Arabic Name:** سوق الفريج  
 **English Name:** Souq Al-Fereej  
 **Icon:** 🧺 (placeholder; final icon: a young Gulf merchant child behind a woven-basket stall)  
@@ -33,8 +33,8 @@ Step into a Gulf souq from the days before oil — a time of caravans, palm grov
 ### 2.1 GameConfig Contract
 
 ```ts
-export const souqManagerConfig: GameConfig = {
-  id: 'souq-manager',
+export const souqAlFereejConfig: GameConfig = {
+  id: 'souq-alfereej',
   name: 'سوق الفريج',
   nameEn: 'Souq Al-Fereej',
   icon: '🧺', // Final art: young Gulf merchant child behind a woven-basket stall

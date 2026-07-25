@@ -15,7 +15,7 @@
 		if (game.id === 'archery') {
 			FortBattle = (await import('$lib/components/games/FortBattle.svelte')).default;
 		}
-		if (game.id === 'souq-manager') {
+		if (game.id === 'souq-alfereej') {
 			SouqManager = (await import('$lib/components/games/SouqManager.svelte')).default;
 		}
 	});
@@ -24,7 +24,7 @@
 		if (game.id === 'archery') {
 			fortBattleRef?.toggleMute();
 			muted = fortBattleRef?.isMuted() ?? false;
-		} else if (game.id === 'souq-manager') {
+		} else if (game.id === 'souq-alfereej') {
 			souqManagerRef?.toggleMute();
 			muted = souqManagerRef?.isMuted() ?? false;
 		}
@@ -71,7 +71,7 @@
 	<div class="flex-1 relative min-h-0 bg-gradient-to-br from-charcoal to-sea-dark/50">
 		{#if game.id === 'archery' && FortBattle}
 			<FortBattle bind:this={fortBattleRef} />
-		{:else if game.id === 'souq-manager' && SouqManager}
+		{:else if game.id === 'souq-alfereej' && SouqManager}
 			<SouqManager bind:this={souqManagerRef} />
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">

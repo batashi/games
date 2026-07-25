@@ -84,7 +84,7 @@ test.describe('game smoke tests', () => {
 	test('Souq Al-Fereej loads and starts a level without console errors', async ({ page }) => {
 		const { errors, warnings } = captureConsoleErrors(page);
 
-		await page.goto('/play/souq-manager');
+		await page.goto('/play/souq-alfereej');
 
 		// Wait for the page title and game header to render.
 		await expect(page).toHaveTitle(/سوق الفريج/);
