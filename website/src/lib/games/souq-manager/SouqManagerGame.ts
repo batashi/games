@@ -405,57 +405,131 @@ export class SouqManagerGame {
 
 	private createBoundaryFence(): void {
 		const postMat = new StandardMaterial('fencePostMat', this.scene);
-		postMat.diffuseColor = new Color3(0.52, 0.34, 0.2);
+		postMat.diffuseColor = new Color3(0.48, 0.3, 0.18);
 		const railMat = new StandardMaterial('fenceRailMat', this.scene);
-		railMat.diffuseColor = new Color3(0.6, 0.4, 0.24);
+		railMat.diffuseColor = new Color3(0.58, 0.38, 0.22);
 
-		const halfW = 12;
-		const halfD = 10;
-		const postH = 1.0;
-		const interval = 3;
+		// Deterministic "random" offsets so the fence looks hand-built and aged
+		// but stays the same every play session.
+		const jitter = (i: number, scale: number) => {
+			const sin = Math.sin(i * 1.618 + 0.7) * 0.5 + 0.5;
+			const cos = Math.cos(i * 2.414 + 0.3) * 0.5 + 0.5;
+			return (sin * cos - 0.25) * scale;
+		};
 
-		const addPost = (x: number, z: number) => {
+		// Pull the fence inward slightly so it has clear margin from the screen edge
+		// and leave a wide entrance on the front (-z) side where customers arrive.
+		const halfW = 10.5;
+		const halfD = 8.5;
+		const gateHalf = 3.2;
+		const postBaseH = 1.05;
+
+		interface PostPoint {
+			x: number;
+			z: number;
+			idx: number;
+			lean?: number;
+		}
+
+		const posts: PostPoint[] = [];
+
+		// Front-left segment (with entrance gap in the middle).
+		let idx = 0;
+		for (let t = 0; t <= 1; t += 0.34) {
+			const x = -halfW + t * (-gateHalf - -halfW);
+			const z = -halfD + jitter(idx, 0.45);
+			posts.push({ x, z, idx: idx++ });
+		}
+		// Front-right segment.
+		for (let t = 0; t <= 1; t += 0.34) {
+			const x = gateHalf + t * (halfW - gateHalf);
+			const z = -halfD + jitter(idx, 0.45);
+			posts.push({ x, z, idx: idx++ });
+		}
+		// Right side.
+		for (let t = 0; t <= 1; t += 0.28) {
+			const z = -halfD + t * (halfD * 2);
+			const x = halfW + jitter(idx, 0.5);
+			posts.push({ x, z, idx: idx++ });
+		}
+		// Back side.
+		for (let t = 0; t <= 1; t += 0.3) {
+			const x = halfW - t * (halfW * 2);
+			const z = halfD + jitter(idx, 0.5);
+			posts.push({ x, z, idx: idx++ });
+		}
+		// Left side.
+		for (let t = 0; t <= 1; t += 0.28) {
+			const z = halfD - t * (halfD * 2);
+			const x = -halfW + jitter(idx, 0.5);
+			posts.push({ x, z, idx: idx++ });
+		}
+
+		// Place posts with varied height, thickness, and slight lean.
+		for (const p of posts) {
+			const h = postBaseH + jitter(p.idx, 0.35);
+			const d = 0.18 + jitter(p.idx, 0.06);
 			const post = this.flatShade(
-				MeshBuilder.CreateCylinder(`fencePost-${x}-${z}`, { height: postH, diameter: 0.2, tessellation: 8 }, this.scene)
+				MeshBuilder.CreateCylinder(`fencePost-${p.idx}`, { height: h, diameter: d, tessellation: 7 }, this.scene)
 			);
-			post.position.set(x, postH / 2, z);
+			post.position.set(p.x, h / 2, p.z);
+			post.rotation.z = jitter(p.idx, 0.12);
+			post.rotation.x = jitter(p.idx + 3, 0.1);
 			post.material = postMat;
-		};
+		}
 
-		const addRail = (x1: number, z1: number, x2: number, z2: number, y: number) => {
-			const midX = (x1 + x2) / 2;
-			const midZ = (z1 + z2) / 2;
-			const dx = x2 - x1;
-			const dz = z2 - z1;
+		// Connect consecutive posts with uneven double rails.
+		for (let i = 0; i < posts.length - 1; i++) {
+			const a = posts[i];
+			const b = posts[i + 1];
+			// Skip rails across the entrance gap on the front side.
+			if (a.z < -halfD + 0.5 && b.z < -halfD + 0.5 && a.x < 0 && b.x > 0) continue;
+
+			const dx = b.x - a.x;
+			const dz = b.z - a.z;
 			const len = Math.sqrt(dx * dx + dz * dz);
-			const rail = this.flatShade(
-				MeshBuilder.CreateBox(`fenceRail-${x1}-${z1}-${y}`, { width: len, height: 0.1, depth: 0.06 }, this.scene)
-			);
-			rail.position.set(midX, y, midZ);
-			rail.rotation.y = -Math.atan2(dz, dx);
-			rail.material = railMat;
-		};
+			const midX = (a.x + b.x) / 2;
+			const midZ = (a.z + b.z) / 2;
+			const angle = -Math.atan2(dz, dx);
 
-		for (let x = -halfW; x <= halfW; x += interval) {
-			addPost(x, -halfD);
-			addPost(x, halfD);
-		}
-		for (let z = -halfD + interval; z < halfD; z += interval) {
-			addPost(-halfW, z);
-			addPost(halfW, z);
+			const railH = 0.08 + jitter(i, 0.03);
+			const railD = 0.055 + jitter(i, 0.015);
+			const y1 = 0.72 + jitter(i, 0.1);
+			const y2 = 0.4 + jitter(i + 7, 0.1);
+
+			for (const y of [y1, y2]) {
+				const rail = this.flatShade(
+					MeshBuilder.CreateBox(`fenceRail-${i}-${y}`, { width: len, height: railH, depth: railD }, this.scene)
+				);
+				rail.position.set(midX, y, midZ);
+				rail.rotation.y = angle;
+				rail.rotation.z = jitter(i, 0.04);
+				rail.material = railMat;
+			}
 		}
 
-		for (let x = -halfW; x < halfW; x += interval) {
-			addRail(x, -halfD, x + interval, -halfD, 0.75);
-			addRail(x, -halfD, x + interval, -halfD, 0.45);
-			addRail(x, halfD, x + interval, halfD, 0.75);
-			addRail(x, halfD, x + interval, halfD, 0.45);
-		}
-		for (let z = -halfD; z < halfD; z += interval) {
-			addRail(-halfW, z, -halfW, z + interval, 0.75);
-			addRail(-halfW, z, -halfW, z + interval, 0.45);
-			addRail(halfW, z, halfW, z + interval, 0.75);
-			addRail(halfW, z, halfW, z + interval, 0.45);
+		// Add a small arched gateway over the entrance.
+		const gateMat = new StandardMaterial('gateMat', this.scene);
+		gateMat.diffuseColor = new Color3(0.55, 0.35, 0.2);
+		const leftPost = posts.find((p) => p.x <= -gateHalf + 0.1 && p.z < -halfD + 0.5);
+		const rightPost = posts.find((p) => p.x >= gateHalf - 0.1 && p.z < -halfD + 0.5);
+		if (leftPost && rightPost) {
+			const gx = (leftPost.x + rightPost.x) / 2;
+			const gz = -halfD;
+			const gw = rightPost.x - leftPost.x;
+			const lintel = this.flatShade(MeshBuilder.CreateBox('gateLintel', { width: gw + 0.6, height: 0.18, depth: 0.28 }, this.scene));
+			lintel.position.set(gx, 1.25, gz);
+			lintel.material = gateMat;
+
+			const leftBrace = this.flatShade(MeshBuilder.CreateBox('gateBraceL', { width: 0.18, height: 0.75, depth: 0.18 }, this.scene));
+			leftBrace.position.set(leftPost.x, 0.85, gz);
+			leftBrace.rotation.z = -0.15;
+			leftBrace.material = gateMat;
+
+			const rightBrace = this.flatShade(MeshBuilder.CreateBox('gateBraceR', { width: 0.18, height: 0.75, depth: 0.18 }, this.scene));
+			rightBrace.position.set(rightPost.x, 0.85, gz);
+			rightBrace.rotation.z = 0.15;
+			rightBrace.material = gateMat;
 		}
 	}
 

@@ -267,7 +267,7 @@ This keeps every product near its source and processing steps, but lets customer
   - **Player:** A cute stylized cat merchant in a simple white thobe-style garment.
   - **Customers:** Full low-poly sculpts of iconic GCC animals (camel, falcon, oryx, fox, goat, sheep) with big expressive eyes, small cultural accessories, and idle animations: tail wags, wing flaps, head bobs, and ear twitches.
   - **Workers:** Young apprentice children or helper animals in simple traditional clothing.
-- **Environment:** Sand floor, stone walls, palm-wood beams, distant mosque silhouette, warm sunset lantern lighting.
+- **Environment:** Sand floor, weathered wooden boundary fence with an uneven hand-built look and a front entrance gate where customers arrive, carved wooden signboard with the Arabic name "سوق الفريج", palm-wood beams, distant mosque silhouette, warm sunset lantern lighting.
 - **Camera:** Fixed isometric view, slightly angled, touch-friendly.
 - **Effects:** Smoke from the brazier, steam from the dallah, coin pop-ups, item restock bounce, happy animal reactions (tail wag, wing flap), lantern glow.
 
@@ -275,7 +275,7 @@ This keeps every product near its source and processing steps, but lets customer
 
 | Category | Assets |
 |----------|--------|
-| Environment | Sand ground plane, stone walls, palm-wood beams, stall structure, hanging lanterns, woven awning |
+| Environment | Sand ground plane, weathered wooden boundary fence with entrance gate, carved Arabic signboard, stone walls, palm-wood beams, stall structure, hanging lanterns, woven awning |
 | Production | Palm plot, drying mat, packaging table, coffee brazier, stone mortar, dallah station, luban sorting mat, raw-goods sacks |
 | Storage | Woven shelves, cashier mat |
 | Characters | Child merchant player, camel customer, falcon customer, oryx customer, fox customer, goat customer, sheep customer, apprentice workers |
