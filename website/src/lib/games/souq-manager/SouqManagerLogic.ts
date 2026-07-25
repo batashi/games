@@ -297,6 +297,8 @@ const PLAY_BOUNDS = {
 	maxY: 9
 };
 
+const INTERACTION_RADIUS = 1.5;
+
 function clampToBounds(point: Point2D): Point2D {
 	return {
 		x: Math.max(PLAY_BOUNDS.minX, Math.min(PLAY_BOUNDS.maxX, point.x)),
@@ -527,7 +529,7 @@ export class SouqManagerLogic {
 	private handlePlayerArrival(): void {
 		// Auto-deposit carried items when the player arrives at a valid station or shelf.
 		if (this.player.carrying) {
-			const station = this.findNearestStation(this.player.position, 1.2);
+			const station = this.findNearestStation(this.player.position, INTERACTION_RADIUS);
 			if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
 				station.input = this.player.carrying;
 				this.player.carrying = null;
@@ -538,7 +540,7 @@ export class SouqManagerLogic {
 				return;
 			}
 
-			const shelf = this.findNearestShelf(this.player.position, 1.2);
+			const shelf = this.findNearestShelf(this.player.position, INTERACTION_RADIUS);
 			if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
 				shelf.items.push(this.player.carrying);
 				this.player.carrying = null;
@@ -549,12 +551,12 @@ export class SouqManagerLogic {
 		}
 
 		for (const station of this.stations) {
-			if (distance(this.player.position, station.position) < 1.2) {
+			if (distance(this.player.position, station.position) < INTERACTION_RADIUS) {
 				this.interactWithStation(station);
 				return;
 			}
 		}
-		if (distance(this.player.position, this.cashierMat.position) < 1.2) {
+		if (distance(this.player.position, this.cashierMat.position) < INTERACTION_RADIUS) {
 			this.collectPayments();
 		}
 	}
@@ -563,7 +565,7 @@ export class SouqManagerLogic {
 		if (this.gameState !== 'playing') return;
 		if (!this.player.carrying) return;
 
-		const station = this.findNearestStation(this.player.position, 1.2);
+		const station = this.findNearestStation(this.player.position, INTERACTION_RADIUS);
 		if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
 			station.input = this.player.carrying;
 			this.player.carrying = null;
@@ -574,7 +576,7 @@ export class SouqManagerLogic {
 			return;
 		}
 
-		const shelf = this.findNearestShelf(this.player.position, 1.2);
+		const shelf = this.findNearestShelf(this.player.position, INTERACTION_RADIUS);
 		if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
 			shelf.items.push(this.player.carrying);
 			this.player.carrying = null;
@@ -614,13 +616,13 @@ export class SouqManagerLogic {
 		this.playerNearShelfId = null;
 		if (this.gameState !== 'playing' || !this.player.carrying) return;
 
-		const station = this.findNearestStation(this.player.position, 1.2);
+		const station = this.findNearestStation(this.player.position, INTERACTION_RADIUS);
 		if (station && station.status === 'idle' && this.canStationAccept(station, this.player.carrying)) {
 			this.playerNearStationId = station.id;
 			return;
 		}
 
-		const shelf = this.findNearestShelf(this.player.position, 1.2);
+		const shelf = this.findNearestShelf(this.player.position, INTERACTION_RADIUS);
 		if (shelf && shelf.items.length < shelf.capacity && isFinishedGood(this.player.carrying)) {
 			this.playerNearShelfId = shelf.id;
 		}
@@ -643,7 +645,7 @@ export class SouqManagerLogic {
 
 	private collectTemporaryDrop(): void {
 		if (!this.temporaryDrop || this.player.carrying) return;
-		if (distance(this.player.position, this.temporaryDrop.position) < 1.2) {
+		if (distance(this.player.position, this.temporaryDrop.position) < INTERACTION_RADIUS) {
 			this.player.carrying = this.temporaryDrop.item;
 			this.temporaryDrop = null;
 			this.updatePlayerContext();
@@ -980,7 +982,7 @@ export class SouqManagerLogic {
 	private getCashierQueuePosition(index: number): Point2D {
 		const base = this.cashierMat.position;
 		if (index <= 0) return { ...base };
-		const spacing = 1.2;
+		const spacing = INTERACTION_RADIUS;
 		const side = index % 2 === 1 ? -1 : 1;
 		const row = Math.floor((index + 1) / 2);
 		return {
@@ -1101,7 +1103,13 @@ export class SouqManagerLogic {
 		const endCell = this.findNearestFreeCell(egx, egy);
 		if (!startCell || !endCell) return [end];
 
-		if (startCell.gx === endCell.gx && startCell.gy === endCell.gy) return [end];
+		if (startCell.gx === endCell.gx && startCell.gy === endCell.gy) {
+			if (this.isBlockedCell(egx, egy)) {
+				const cell = this.gridToWorld(endCell.gx, endCell.gy);
+				return [cell];
+			}
+			return [end];
+		}
 
 		const open: { gx: number; gy: number; g: number; f: number }[] = [];
 		const closed = new Set<string>();
@@ -1135,7 +1143,10 @@ export class SouqManagerLogic {
 					path.unshift(this.gridToWorld(cur.gx, cur.gy));
 					cur = cameFrom.get(`${cur.gx},${cur.gy}`) ?? null;
 				}
-				path.push(end);
+				// Only walk to the exact clicked point if it is not inside an obstacle.
+				if (endCell.gx === egx && endCell.gy === egy) {
+					path.push(end);
+				}
 				return this.simplifyPath(path);
 			}
 			if (closed.has(ckey)) continue;
@@ -1232,7 +1243,7 @@ export class SouqManagerLogic {
 	private completeLevel(): void {
 		const ratio = this.totalCoinsEarned / this.levelConfig.targetCoins;
 		if (ratio >= 1.5) this.stars = 3;
-		else if (ratio >= 1.2) this.stars = 2;
+		else if (ratio >= INTERACTION_RADIUS) this.stars = 2;
 		else this.stars = 1;
 		this.gameState = 'levelComplete';
 		this.callbacks.onLevelComplete?.(this.stars);
