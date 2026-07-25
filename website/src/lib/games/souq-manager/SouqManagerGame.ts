@@ -866,12 +866,42 @@ export class SouqManagerGame {
 	}
 
 	private createItemMesh(item: Item): Mesh {
+		if (item.type === 'dates' && (item.stage === 'dried' || item.stage === 'packed')) {
+			return this.createDateBag(`item-${item.type}-${item.stage}`);
+		}
 		const color = this.itemColor(item);
 		const mesh = MeshBuilder.CreateSphere(`item-${item.type}-${item.stage}`, { diameter: 0.35, segments: 8 }, this.scene);
 		const mat = new StandardMaterial(`itemMat-${item.type}-${item.stage}`, this.scene);
 		mat.diffuseColor = color;
 		mesh.material = mat;
 		return this.flatShade(mesh);
+	}
+
+	private createDateBag(name: string): Mesh {
+		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-body`, { diameter: 0.32, segments: 8 }, this.scene));
+		root.scaling.set(0.9, 1.1, 0.75);
+		const bagMat = new StandardMaterial(`${name}-bagMat`, this.scene);
+		bagMat.diffuseColor = new Color3(0.72, 0.55, 0.32);
+		root.material = bagMat;
+
+		// Neck cinched at the top.
+		const neck = this.flatShade(MeshBuilder.CreateCylinder(`${name}-neck`, { height: 0.12, diameterTop: 0.14, diameterBottom: 0.2, tessellation: 8 }, this.scene));
+		neck.position.y = 0.16;
+		const neckMat = new StandardMaterial(`${name}-neckMat`, this.scene);
+		neckMat.diffuseColor = new Color3(0.65, 0.5, 0.28);
+		neck.material = neckMat;
+		neck.parent = root;
+
+		// Rope tie.
+		const rope = this.flatShade(MeshBuilder.CreateTorus(`${name}-rope`, { diameter: 0.18, thickness: 0.025, tessellation: 8 }, this.scene));
+		rope.position.y = 0.12;
+		rope.rotation.x = Math.PI / 2;
+		const ropeMat = new StandardMaterial(`${name}-ropeMat`, this.scene);
+		ropeMat.diffuseColor = new Color3(0.85, 0.75, 0.55);
+		rope.material = ropeMat;
+		rope.parent = root;
+
+		return root;
 	}
 
 	private flatShade(mesh: Mesh): Mesh {
