@@ -337,7 +337,7 @@ export class SouqManagerGame {
 		this.setupStations();
 		this.setupShelves();
 
-		this.cashierMesh = this.createTraditionalTable('cashier', 2, 1.2, 0.6);
+		this.cashierMesh = this.createFeaturedCashierTable('cashier');
 		this.cashierMesh.position = new Vector3(8, 0.3, -4);
 		const cashierMat = new StandardMaterial('cashierMat', this.scene);
 		cashierMat.diffuseColor = new Color3(0.55, 0.36, 0.22);
@@ -373,14 +373,10 @@ export class SouqManagerGame {
 				mesh = this.createPalmTree(`station-${type}`);
 				break;
 			case 'dryingMat':
-				mesh = MeshBuilder.CreateGround(`station-${type}`, { width: 1.6, height: 1.2 }, this.scene);
-				mat.diffuseColor = new Color3(0.75, 0.65, 0.45);
-				mesh.material = mat;
+				mesh = this.createWovenMat(`station-${type}`, 1.6, 1.2, new Color3(0.78, 0.66, 0.44));
 				break;
 			case 'packagingTable':
-				mesh = MeshBuilder.CreateBox(`station-${type}`, { width: 1.6, height: 0.8, depth: 1 }, this.scene);
-				mat.diffuseColor = new Color3(0.6, 0.4, 0.25);
-				mesh.material = mat;
+				mesh = this.createPackagingTable(`station-${type}`);
 				break;
 			case 'brazier':
 				mesh = this.createBrazier(`station-${type}`);
@@ -392,9 +388,7 @@ export class SouqManagerGame {
 				mesh = this.createDallah(`station-${type}`);
 				break;
 			case 'sortingMat':
-				mesh = MeshBuilder.CreateGround(`station-${type}`, { width: 1.4, height: 1 }, this.scene);
-				mat.diffuseColor = new Color3(0.8, 0.7, 0.5);
-				mesh.material = mat;
+				mesh = this.createWovenMat(`station-${type}`, 1.4, 1, new Color3(0.82, 0.72, 0.52));
 				break;
 			case 'greenBeans':
 				mesh = this.createCoffeeSack(`station-${type}`);
@@ -499,6 +493,82 @@ export class SouqManagerGame {
 		bowlMat.diffuseColor = new Color3(0.85, 0.65, 0.2);
 		bowl.material = bowlMat;
 		bowl.parent = root;
+
+		return root;
+	}
+
+	private createPackagingTable(name: string): Mesh {
+		const root = this.createTraditionalTable(name, 1.6, 1, 0.55);
+
+		// Palm-leaf strips / cloth on top for packing.
+		const clothMat = new StandardMaterial(`${name}-clothMat`, this.scene);
+		clothMat.diffuseColor = new Color3(0.65, 0.5, 0.3);
+		const cloth = this.flatShade(MeshBuilder.CreateBox(`${name}-cloth`, { width: 1.2, height: 0.04, depth: 0.7 }, this.scene));
+		cloth.position.y = 0.08;
+		cloth.material = clothMat;
+		cloth.parent = root;
+
+		return root;
+	}
+
+	private createFeaturedCashierTable(name: string): Mesh {
+		const root = this.createTraditionalTable(name, 2.2, 1.4, 0.65);
+
+		// Small striped awning/sign above the cashier to make it stand out.
+		const postMat = new StandardMaterial(`${name}-postMat`, this.scene);
+		postMat.diffuseColor = new Color3(0.45, 0.3, 0.18);
+		for (const sx of [-1, 1]) {
+			const post = this.flatShade(MeshBuilder.CreateCylinder(`${name}-post${sx}`, { height: 1.4, diameter: 0.08, tessellation: 6 }, this.scene));
+			post.position.set(sx * 0.9, 0.9, -0.5);
+			post.material = postMat;
+			post.parent = root;
+		}
+
+		const awningMat = new StandardMaterial(`${name}-awningMat`, this.scene);
+		awningMat.diffuseColor = new Color3(0.85, 0.25, 0.25);
+		const awning = this.flatShade(MeshBuilder.CreateBox(`${name}-awning`, { width: 2.4, height: 0.1, depth: 0.9 }, this.scene));
+		awning.position.set(0, 1.55, -0.25);
+		awning.material = awningMat;
+		awning.parent = root;
+
+		const stripeMat = new StandardMaterial(`${name}-stripeMat`, this.scene);
+		stripeMat.diffuseColor = new Color3(0.95, 0.9, 0.75);
+		for (let i = 0; i < 4; i++) {
+			const stripe = this.flatShade(MeshBuilder.CreateBox(`${name}-stripe${i}`, { width: 0.18, height: 0.12, depth: 0.92 }, this.scene));
+			stripe.position.set(-0.9 + i * 0.6, 1.55, -0.25);
+			stripe.material = stripeMat;
+			stripe.parent = root;
+		}
+
+		return root;
+	}
+
+	private createWovenMat(name: string, width: number, depth: number, color: Color3): Mesh {
+		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-base`, { width, height: 0.04, depth }, this.scene));
+		const mat = new StandardMaterial(`${name}-mat`, this.scene);
+		mat.diffuseColor = color;
+		root.material = mat;
+
+		// Woven border strips.
+		const borderMat = new StandardMaterial(`${name}-borderMat`, this.scene);
+		borderMat.diffuseColor = new Color3(color.r * 0.85, color.g * 0.85, color.b * 0.85);
+		const stripW = 0.08;
+		const longStrip = this.flatShade(MeshBuilder.CreateBox(`${name}-borderLong`, { width, height: 0.05, depth: stripW }, this.scene));
+		longStrip.position.z = -depth / 2 + stripW / 2;
+		longStrip.material = borderMat;
+		longStrip.parent = root;
+		const longStrip2 = this.flatShade(MeshBuilder.CreateBox(`${name}-borderLong2`, { width, height: 0.05, depth: stripW }, this.scene));
+		longStrip2.position.z = depth / 2 - stripW / 2;
+		longStrip2.material = borderMat;
+		longStrip2.parent = root;
+		const shortStrip = this.flatShade(MeshBuilder.CreateBox(`${name}-borderShort`, { width: stripW, height: 0.05, depth: depth - stripW * 2 }, this.scene));
+		shortStrip.position.x = -width / 2 + stripW / 2;
+		shortStrip.material = borderMat;
+		shortStrip.parent = root;
+		const shortStrip2 = this.flatShade(MeshBuilder.CreateBox(`${name}-borderShort2`, { width: stripW, height: 0.05, depth: depth - stripW * 2 }, this.scene));
+		shortStrip2.position.x = width / 2 - stripW / 2;
+		shortStrip2.material = borderMat;
+		shortStrip2.parent = root;
 
 		return root;
 	}
