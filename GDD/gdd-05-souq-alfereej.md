@@ -3,9 +3,9 @@
 **Game ID:** `souq-alfereej`  
 **Arabic Name:** سوق الفريج  
 **English Name:** Souq Al-Fereej  
-**Icon:** 🧺 (placeholder; final icon: a young Gulf merchant child behind a woven-basket stall)  
-**Version:** 2.0  
-**Date:** 2026-07-24  
+**Icon:** 🐱 (final icon: a stylized cat merchant in a simple thobe behind a woven-basket stall)  
+**Version:** 2.1  
+**Date:** 2026-07-25  
 **Studio:** Aldoolab  
 **Platform:** GCC Kids Web Game Platform  
 **Engine:** Babylon.js  
@@ -37,7 +37,7 @@ export const souqAlFereejConfig: GameConfig = {
   id: 'souq-alfereej',
   name: 'سوق الفريج',
   nameEn: 'Souq Al-Fereej',
-  icon: '🧺', // Final art: young Gulf merchant child behind a woven-basket stall
+  icon: '🐱', // Final art: stylized cat merchant in a simple thobe behind a woven-basket stall
   supportsSingle: true,
   supportsDaily: true,
   supportsOnline: false,
@@ -63,10 +63,10 @@ Each level represents a busier market day. In endless mode, the child keeps the 
 - **Stall:** A low wooden counter covered with woven palm baskets, clay jars, brass scales, a small charcoal brazier for roasting coffee, and a hand-woven striped awning.
 - **Shelves:** Finished goods are displayed on small woven floor mats or low palm-leaf baskets rather than tall modern shelves, keeping the stall close to the sand.
 - **Sources:** Each raw good comes from its own designated source — dates from a planted date palm, luban from a small frankincense tree, and qahwa beans from a burlap sack of green coffee beans.
-- **Player:** A cute stylized cat merchant wearing a simple white thobe-style garment, moving busily between production stations, mats, and cashier mat.
+- **Player:** A cute stylized cat merchant wearing a simple white thobe-style garment, moving busily between production stations, mats, and the traditional wooden cashier table.
 - **Customers:** Beloved and iconic animals of the GCC region, each dressed or accessorized with a tiny cultural hint.
 - **Workers:** Young apprentice helpers (other children or friendly animals) who can be hired to tend stations, carry goods, or handle payments.
-- **Visual Style:** Cute, rounded low-poly characters inspired by cozy shop simulators. The cat merchant and animal customers have soft shapes, big expressive eyes, and small cultural accessories. Everything is built from procedural meshes; no external model files are required for the playable version.
+- **Visual Style:** Cute, rounded low-poly characters inspired by cozy shop simulators. The cat merchant and animal customers have soft shapes, big expressive eyes, and small cultural accessories. All visuals are low-poly from the same fixed isometric camera view, with a papercraft / carved look. Most meshes are built procedurally in Babylon.js; the camel customer showcase uses an external low-poly GLB/GLTF model.
 
 ### 3.2 Customers (Animal Visitors)
 
@@ -90,10 +90,10 @@ Every good is made by hand through a short production chain and shown as a physi
 | **Sapling** | Small date palm shoot in a clay pot | Child plants it at the palm plot. |
 | **Fresh dates** | Cluster of yellow-brown dates on a palm frond | Child harvests when ripe. |
 | **Drying dates** | Dates spread on a woven mat in the sun | Child places them on the drying mat and waits. |
-| **Packed dates** | Dried dates in a small palm-leaf box | Child packs them at the packaging table. |
-| **Shelf ready** | Palm-leaf box on the shelf | Customer buys it. |
+| **Packed dates** | Dried dates packed in traditional woven bags tied with rope | Child packs them at the packaging table. |
+| **Shelf ready** | Woven bag tied with rope on the shelf | Customer buys it. |
 
-**Price:** 5 coins per packed box.
+**Price:** 5 coins per packed bag.
 
 #### Arabic Coffee (Qahwa) Chain
 
@@ -141,8 +141,8 @@ After the core three chains are polished, additional goods may be added as level
    - Roast, grind, and brew qahwa.
    - Sort and pack luban.
 4. Finished goods are placed on shelves.
-5. Animal customers enter the souq, walk to a stocked shelf, pick an item, then wait at the **cashier mat**.
-6. The player moves to the cashier mat to **collect coins**.
+5. Animal customers enter the souq, walk to a stocked shelf, pick an item, then wait at the **traditional wooden cashier table**.
+6. The player moves to the cashier table to **collect coins**.
 7. Coins can be spent to unlock:
    - More shelves / product types.
    - Faster walking / production speed.
@@ -174,7 +174,7 @@ After the core three chains are polished, additional goods may be added as level
 |---------|---------|-------|
 | **Palm plot** | Plant sapling → wait → harvest fresh dates | Dates chain |
 | **Drying mat** | Fresh dates → dried dates | Dates chain |
-| **Packaging table (dates)** | Dried dates → palm-leaf box | Dates |
+| **Packaging table (dates)** | Dried dates → woven bag tied with rope | Dates |
 | **Packaging table (luban)** | Sorted luban → cloth pouch | Luban |
 | **Coffee brazier** | Green beans → roasted beans | Qahwa chain |
 | **Stone mortar** | Roasted beans → ground coffee | Qahwa chain |
@@ -182,7 +182,7 @@ After the core three chains are polished, additional goods may be added as level
 | **Luban sorting mat** | Raw resin → sorted resin | Luban chain |
 | **Raw-goods corner** | Stores green coffee beans and raw luban resin | Qahwa, Luban |
 | **Shelves** | Holds finished goods for sale | All |
-| **Cashier mat** | Customers pay here | All |
+| **Traditional wooden cashier table (featured)** | Customers pay here | All |
 
 #### 6.1.1 Souq Layout
 
@@ -191,9 +191,9 @@ The stall is arranged into clearly separated zones so each production stream is 
 - **Dates zone** — palm plot, drying mat, and dates packaging table clustered together.
 - **Qahwa zone** — green beans sack, brazier, mortar, and dallah clustered together.
 - **Luban zone** — frankincense tree, sorting mat, and luban packaging table clustered together.
-- **Selling zone** — all shelves and the cashier mat clustered in the front of the souq, regardless of which good they hold.
+- **Selling zone** — all shelves and the traditional wooden cashier table clustered in the front of the souq, regardless of which good they hold.
 
-This keeps every product near its source and processing steps, but lets customers find every finished good in one compact display area.
+This keeps every product near its source and processing steps, but lets customers find every finished good in one compact display area. Palm plot, luban tree, and other source positions are randomized per play session while keeping each production stream clustered nearby; the final selling shelves are always grouped close together at the front.
 
 ### 6.2 Production Rules
 
@@ -207,7 +207,7 @@ This keeps every product near its source and processing steps, but lets customer
 
 - Customers spawn at the entrance based on level spawn rate and max capacity.
 - Each customer has a preferred good; if unavailable, they wait briefly, then may leave.
-- Customers walk to a **left or right slot** beside the target shelf, take the item, then join a spaced left/right queue at the cashier mat.
+- Customers walk to a **left or right slot** beside the target shelf, take the item, then join a spaced left/right queue at the traditional wooden cashier table.
 - If both left and right slots at a shelf are occupied, additional customers form a short line behind the shelf.
 - All customer movement and waiting positions are clamped inside the visible play area so animals never stack on the same point or walk off-screen.
 - If a customer waits too long at the cashier, they leave without paying.
@@ -230,7 +230,7 @@ This keeps every product near its source and processing steps, but lets customer
 | Process / Pack / Stock | Carry the good to the correct station or shelf; it is placed automatically on arrival. `Space` (or the on-screen unload button) remains as a manual fallback. |
 | Temporary drop | Press `T` (or tap "وضع مؤقت") to place a carried item on the resting mat. This frees the child’s hands. The item stays on the mat for a limited time and can be recovered; if ignored too long, it spoils and must be remade. |
 | Collect temporary item | Walk over the resting mat to pick the item back up. |
-| Collect payment | Walk to the cashier mat. |
+| Collect payment | Walk to the traditional wooden cashier table. |
 
 ### 6.6 Workers
 
@@ -238,7 +238,7 @@ This keeps every product near its source and processing steps, but lets customer
 - Each worker has a single role assigned by the player:
   - **Restocker / Station tender:** Stays at one assigned station and processes goods continuously.
   - **Carrier:** Picks up finished/intermediate goods and moves them to the next station or shelf.
-  - **Cashier:** Walks to the cashier mat and collects payment from waiting animals.
+  - **Cashier:** Walks to the traditional wooden cashier table and collects payment from waiting animals.
 - Workers move slower than the upgraded child but scale with upgrades.
 - Later levels require workers to manage multiple chains and hit the coin target.
 
@@ -246,7 +246,7 @@ This keeps every product near its source and processing steps, but lets customer
 
 - **Station glow:** A station glows when it is ready for the next step.
 - **Shelf glow:** Shelves glow when stock is low.
-- **Cashier glow:** The cashier mat glows when customers are waiting.
+- **Cashier glow:** The traditional wooden cashier table glows when customers are waiting.
 - **Patience indicator:** A small timer above a waiting customer shows how much patience remains.
 
 ---
@@ -254,10 +254,10 @@ This keeps every product near its source and processing steps, but lets customer
 ## 7. 3D Art Direction
 
 - **Era:** Pre-oil Gulf — everything is handmade, woven, clay, brass, or wood. No plastic, no glass-and-steel, no electric objects.
-- **Style:** Stylized low-poly procedural meshes built in Babylon.js (no external model files in v1.0).
+- **Style:** Stylized low-poly procedural meshes built in Babylon.js, viewed from a fixed isometric camera, with a papercraft / carved look. Most assets are procedural; the camel customer showcase uses an external low-poly GLB/GLTF model.
 - **Stall:** Wooden counter, woven palm baskets, brass scales, hanging lanterns, clay brazier, stone mortar, brass dallah, hand-woven awning.
 - **Production zones:** Clearly separated by props and ground mats:
-  - Palm plot with a small date palm.
+  - Palm plot with a small date palm (smoothly bent trunk, no green circle at the base, only showing harvestable date clusters when ripe).
   - Sun drying mat.
   - Packaging table with palm-leaf strips and cloth.
   - Coffee brazier with charcoal glow.
@@ -267,7 +267,7 @@ This keeps every product near its source and processing steps, but lets customer
   - **Player:** A cute stylized cat merchant in a simple white thobe-style garment.
   - **Customers:** Full low-poly sculpts of iconic GCC animals (camel, falcon, oryx, fox, goat, sheep) with big expressive eyes, small cultural accessories, and idle animations: tail wags, wing flaps, head bobs, and ear twitches.
   - **Workers:** Young apprentice children or helper animals in simple traditional clothing.
-- **Environment:** Sand floor, weathered wooden boundary fence with an uneven hand-built look and a front entrance gate where customers arrive, carved wooden signboard with the Arabic name "سوق الفريج", palm-wood beams, distant mosque silhouette, warm sunset lantern lighting.
+- **Environment:** Sand floor, weathered wooden boundary fence with an uneven hand-built look and a front entrance gate where customers arrive, carved wooden signboard with the Arabic name "سوق الفريج", palm-wood beams, distant mosque silhouette, warm sunset lantern lighting. The fence opening is at the front-right / bottom area where customers enter and exit.
 - **Camera:** Fixed isometric view, slightly angled, touch-friendly.
 - **Effects:** Smoke from the brazier, steam from the dallah, coin pop-ups, item restock bounce, happy animal reactions (tail wag, wing flap), lantern glow.
 
@@ -275,11 +275,11 @@ This keeps every product near its source and processing steps, but lets customer
 
 | Category | Assets |
 |----------|--------|
-| Environment | Sand ground plane, weathered wooden boundary fence with entrance gate, carved Arabic signboard, stone walls, palm-wood beams, stall structure, hanging lanterns, woven awning |
+| Environment | Sand ground plane, weathered wooden boundary fence with entrance gate at the front-right/bottom, carved Arabic signboard, stone walls, palm-wood beams, stall structure, hanging lanterns, woven awning |
 | Production | Palm plot, drying mat, packaging table, coffee brazier, stone mortar, dallah station, luban sorting mat, raw-goods sacks |
-| Storage | Woven shelves, cashier mat |
-| Characters | Child merchant player, camel customer, falcon customer, oryx customer, fox customer, goat customer, sheep customer, apprentice workers |
-| Goods (Dates) | Palm sapling, fresh date cluster, drying dates, palm-leaf box |
+| Storage | Woven shelves, traditional wooden cashier table (featured) |
+| Characters | Cat merchant player, GLTF camel showcase model, camel customer, falcon customer, oryx customer, fox customer, goat customer, sheep customer, apprentice workers |
+| Goods (Dates) | Palm sapling, fresh date cluster, drying dates, woven bag tied with rope |
 | Goods (Qahwa) | Green bean sack, roasting pan, ground coffee in mortar, brass dallah, small cup |
 | Goods (Luban) | Raw resin lumps, sorted resin, cloth pouch |
 | UI | Level picker cards, coin counter, timer bar, reputation meter, star icons, upgrade buttons, station role badges |
@@ -291,7 +291,7 @@ This keeps every product near its source and processing steps, but lets customer
 
 | Device | Input |
 |--------|-------|
-| Desktop | Mouse click / drag to move the child merchant; click stations, shelves, or cashier to move to them. Press `Space` to unload at the nearest station or shelf; press `T` for a temporary drop on the resting mat. |
+| Desktop | Mouse click / drag to move the child merchant; click stations, shelves, or the traditional wooden cashier table to move to them. Press `Space` to unload at the nearest station or shelf; press `T` for a temporary drop on the resting mat. |
 | Tablet / Mobile | Touch and drag to move; tap targets to move to them. Tap the on-screen "ضع السلعة" button to unload, or "وضع مؤقت" to place the item on the resting mat. |
 
 ---
@@ -350,7 +350,7 @@ This keeps every product near its source and processing steps, but lets customer
 
 | Asset Type | Format | Notes |
 |------------|--------|-------|
-| Models | Procedural Babylon.js meshes | Boxes, cylinders, spheres, planes, simple animal silhouettes |
+| Models | Procedural Babylon.js meshes + one external GLB/GLTF | Boxes, cylinders, spheres, planes, simple animal silhouettes; camel showcase uses an external low-poly GLB/GLTF model |
 | Textures | CSS / canvas gradients | Minimal; WebP fallback if needed |
 | UI sprites | WebP / PNG | Packed into small atlases |
 | Audio | Web Audio API synthesized | No external audio files in v1.0 |
@@ -398,16 +398,17 @@ This keeps every product near its source and processing steps, but lets customer
 
 ---
 
-## 18. Implementation Notes (v2.0)
+## 18. Implementation Notes (v2.1)
 
 - Built as a Babylon.js scene inside a SvelteKit lazy-loaded component.
-- All meshes are procedural; no external GLB/texture assets required for the playable version.
+- Most meshes are procedural; the camel customer showcase uses an external low-poly GLB/GLTF model.
 - Game logic is pure TypeScript (`SouqManagerLogic.ts`) with matching unit tests.
 - Player, customers, and workers are simple entities with positions, targets, and movement speed.
 - Production stations are state machines with timers and input/output good types.
-- Collision/pathfinding is grid-free: characters move in straight lines toward targets and stop when close enough.
+- Collision/pathfinding is grid-free and A* has been reverted: characters move in straight lines toward targets and stop when close enough, with no obstacle avoidance.
 - Audio is synthesized at runtime via the Web Audio API; a mute toggle is exposed through the game header.
 - Level data is defined in a JSON/TS config so designers can tweak targets, spawn rates, production times, and unlocks without touching code.
+- Palm plot, luban tree, and other source positions are randomized per play session while keeping each production stream clustered nearby; final selling shelves remain grouped at the front.
 
 ---
 
