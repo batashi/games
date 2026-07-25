@@ -14,7 +14,8 @@ import {
 	PointerEventTypes,
 	HighlightLayer,
 	VertexData,
-	DynamicTexture
+	DynamicTexture,
+	VertexBuffer
 } from '@babylonjs/core';
 import {
 	SouqManagerLogic,
@@ -208,6 +209,7 @@ export class SouqManagerGame {
 
 	private customerAnimals = new Map<number, AnimalType>();
 	private decorativeCamel: EntityMesh | null = null;
+	private woodGrainTexture: DynamicTexture | null = null;
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -300,22 +302,54 @@ export class SouqManagerGame {
 	}
 
 	private setupEnvironment(): void {
-		// Sand ground with subtle warm tone.
-		const ground = MeshBuilder.CreateGround('ground', { width: 28, height: 24 }, this.scene);
+		// Continuous sandy ground with gentle low-poly dunes.
+		const ground = MeshBuilder.CreateGround('ground', { width: 30, height: 26, subdivisions: 24 }, this.scene);
+		const positions = ground.getVerticesData(VertexBuffer.PositionKind);
+		if (positions) {
+			for (let i = 0; i < positions.length; i += 3) {
+				const x = positions[i];
+				const z = positions[i + 2];
+				const dune =
+					Math.sin(x * 0.35) * 0.14 +
+					Math.cos(z * 0.28) * 0.11 +
+					Math.sin((x + z) * 0.15) * 0.09 +
+					Math.cos((x - z) * 0.22) * 0.06;
+				const ripple = Math.sin(x * 1.4 + z * 0.9) * Math.cos(z * 1.6) * 0.025;
+				positions[i + 1] = dune + ripple;
+			}
+			ground.updateVerticesData(VertexBuffer.PositionKind, positions);
+			ground.refreshBoundingInfo();
+		}
+		this.flatShade(ground);
 		const groundMat = new StandardMaterial('groundMat', this.scene);
-		groundMat.diffuseColor = new Color3(0.84, 0.74, 0.58);
+		groundMat.diffuseColor = new Color3(0.86, 0.765, 0.576);
+		groundMat.specularColor = new Color3(0.08, 0.08, 0.08);
 		ground.material = groundMat;
 		ground.position.y = -0.05;
 
-		// Decorative ground tiles / mats to break up the flat sand.
-		const tileMat = new StandardMaterial('tileMat', this.scene);
-		tileMat.diffuseColor = new Color3(0.78, 0.68, 0.52);
-		for (let x = -10; x <= 10; x += 5) {
-			for (let z = -7; z <= 7; z += 5) {
-				const tile = MeshBuilder.CreateGround(`tile-${x}-${z}`, { width: 4.2, height: 4.2 }, this.scene);
-				tile.position.set(x, -0.04, z);
-				tile.material = tileMat;
-			}
+		// Scatter a few small stones around the edges for detail.
+		const stoneMat = new StandardMaterial('stoneMat', this.scene);
+		stoneMat.diffuseColor = new Color3(0.55, 0.5, 0.45);
+		stoneMat.specularColor = new Color3(0.05, 0.05, 0.05);
+		const stonePositions = [
+			{ x: -11, z: -7.5, s: 0.22 },
+			{ x: -12.5, z: 5, s: 0.18 },
+			{ x: 12, z: -6, s: 0.25 },
+			{ x: 11.5, z: 7, s: 0.2 },
+			{ x: -9, z: 9, s: 0.16 },
+			{ x: 9, z: -9, s: 0.19 },
+			{ x: -13, z: -2, s: 0.15 },
+			{ x: 13.5, z: 2.5, s: 0.21 }
+		];
+		for (let i = 0; i < stonePositions.length; i++) {
+			const p = stonePositions[i];
+			const stone = this.flatShade(
+				MeshBuilder.CreateSphere(`stone-${i}`, { diameter: p.s, segments: 4 }, this.scene)
+			);
+			stone.position.set(p.x, p.s * 0.25, p.z);
+			stone.scaling.set(1 + Math.sin(i) * 0.3, 0.6 + Math.cos(i * 1.3) * 0.2, 1 + Math.cos(i * 0.7) * 0.3);
+			stone.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+			stone.material = stoneMat;
 		}
 
 		// Stall awning over the front selling area.
@@ -362,9 +396,6 @@ export class SouqManagerGame {
 
 		this.cashierMesh = this.createFeaturedCashierTable('cashier');
 		this.cashierMesh.position = new Vector3(8, 0.3, -4);
-		const cashierMat = new StandardMaterial('cashierMat', this.scene);
-		cashierMat.diffuseColor = new Color3(0.55, 0.36, 0.22);
-		this.cashierMesh.material = cashierMat;
 
 		this.temporaryDropMat = MeshBuilder.CreateGround('temporaryDropMat', { width: 1.6, height: 1.2 }, this.scene);
 		this.temporaryDropMat.position = new Vector3(0, 0.01, -5);
@@ -675,29 +706,119 @@ export class SouqManagerGame {
 		return root;
 	}
 
-	private createTraditionalTable(name: string, width: number, depth: number, height: number): Mesh {
-		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-top`, { width, height: 0.12, depth }, this.scene));
+	private getWoodGrainTexture(): DynamicTexture {
+		if (this.woodGrainTexture) return this.woodGrainTexture;
+		const size = 256;
+		const tex = new DynamicTexture('woodGrainTex', { width: size, height: size }, this.scene);
+		tex.wrapU = 1;
+		tex.wrapV = 1;
+		const ctx = tex.getContext() as unknown as CanvasRenderingContext2D;
+		ctx.fillStyle = '#c4a47c';
+		ctx.fillRect(0, 0, size, size);
+		// Vertical grain stripes.
+		for (let i = 0; i < 48; i++) {
+			const x = Math.random() * size;
+			const w = 1 + Math.random() * 3;
+			const alpha = 0.08 + Math.random() * 0.18;
+			ctx.fillStyle = `rgba(90, 65, 40, ${alpha})`;
+			ctx.fillRect(x, 0, w, size);
+		}
+		// Occasional wavy darker grain lines.
+		for (let i = 0; i < 8; i++) {
+			ctx.beginPath();
+			const x = Math.random() * size;
+			ctx.moveTo(x, 0);
+			for (let y = 0; y <= size; y += 8) {
+				ctx.lineTo(x + Math.sin(y * 0.05 + i) * 4, y);
+			}
+			ctx.strokeStyle = `rgba(75, 52, 32, ${0.1 + Math.random() * 0.12})`;
+			ctx.lineWidth = 1 + Math.random() * 2;
+			ctx.stroke();
+		}
+		// Subtle knots.
+		for (let i = 0; i < 4; i++) {
+			const x = Math.random() * size;
+			const y = Math.random() * size;
+			const r = 3 + Math.random() * 7;
+			ctx.beginPath();
+			ctx.ellipse(x, y, r, r * 0.45, Math.random() * Math.PI, 0, Math.PI * 2);
+			ctx.fillStyle = `rgba(65, 45, 28, ${0.12 + Math.random() * 0.1})`;
+			ctx.fill();
+		}
+		tex.update();
+		this.woodGrainTexture = tex;
+		return tex;
+	}
 
-		const legMat = new StandardMaterial(`${name}-legMat`, this.scene);
-		legMat.diffuseColor = new Color3(0.45, 0.3, 0.18);
+	private createWoodMaterial(name: string, tint: Color3): StandardMaterial {
+		const mat = new StandardMaterial(name, this.scene);
+		mat.diffuseTexture = this.getWoodGrainTexture();
+		mat.diffuseColor = tint;
+		mat.specularColor = new Color3(0.08, 0.08, 0.08);
+		return mat;
+	}
+
+	private createTraditionalTable(
+		name: string,
+		width: number,
+		depth: number,
+		height: number,
+		withBowl = true
+	): Mesh {
+		const tint = new Color3(0.55, 0.36, 0.2);
+		const woodMat = this.createWoodMaterial(`${name}-woodMat`, tint);
+
+		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-top`, { width, height: 0.12, depth }, this.scene));
+		root.material = woodMat;
+
 		const legW = 0.14;
 		const legH = height - 0.06;
+		const legInset = legW * 0.7;
 		for (const sx of [-1, 1]) {
 			for (const sz of [-1, 1]) {
-				const leg = this.flatShade(MeshBuilder.CreateBox(`${name}-leg${sx}${sz}`, { width: legW, height: legH, depth: legW }, this.scene));
-				leg.position.set(sx * (width / 2 - legW), -height / 2, sz * (depth / 2 - legW));
-				leg.material = legMat;
+				const leg = this.flatShade(
+					MeshBuilder.CreateBox(`${name}-leg${sx}${sz}`, { width: legW, height: legH, depth: legW }, this.scene)
+				);
+				leg.position.set(sx * (width / 2 - legInset), -height / 2, sz * (depth / 2 - legInset));
+				leg.material = woodMat;
 				leg.parent = root;
 			}
 		}
 
-		// Small brass coin bowl on top.
-		const bowl = this.flatShade(MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.08, diameter: 0.35, tessellation: 8 }, this.scene));
-		bowl.position.y = 0.1;
-		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
-		bowlMat.diffuseColor = new Color3(0.85, 0.65, 0.2);
-		bowl.material = bowlMat;
-		bowl.parent = root;
+		// Wooden apron joining the tabletop to the legs.
+		const apronH = 0.1;
+		const apron = this.flatShade(
+			MeshBuilder.CreateBox(`${name}-apron`, { width: width - 0.04, height: apronH, depth: depth - 0.04 }, this.scene)
+		);
+		apron.position.y = -0.06 - apronH / 2;
+		apron.material = woodMat;
+		apron.parent = root;
+
+		// Crossed braces on the long sides for a carved, hand-built look.
+		const braceThick = 0.05;
+		const braceSpan = Math.sqrt(depth * depth + legH * legH);
+		const braceAngle = Math.atan(depth / legH);
+		for (const sx of [-1, 1]) {
+			for (const dir of [-1, 1]) {
+				const brace = this.flatShade(
+					MeshBuilder.CreateBox(`${name}-brace${sx}${dir}`, { width: braceThick, height: braceSpan, depth: braceThick }, this.scene)
+				);
+				brace.position.set(sx * (width / 2 - legInset), -height / 2, 0);
+				brace.rotation.z = dir * braceAngle;
+				brace.material = woodMat;
+				brace.parent = root;
+			}
+		}
+
+		if (withBowl) {
+			// Small brass coin bowl on top.
+			const bowl = this.flatShade(MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.08, diameter: 0.35, tessellation: 8 }, this.scene));
+			bowl.position.y = 0.1;
+			const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
+			bowlMat.diffuseColor = new Color3(0.85, 0.65, 0.2);
+			bowl.material = bowlMat;
+			bowl.parent = root;
+		}
 
 		return root;
 	}
@@ -713,11 +834,84 @@ export class SouqManagerGame {
 		cloth.material = clothMat;
 		cloth.parent = root;
 
+		// Small rope coil resting on one corner of the cloth.
+		const ropeMat = new StandardMaterial(`${name}-ropeMat`, this.scene);
+		ropeMat.diffuseColor = new Color3(0.8, 0.72, 0.5);
+		const coil = this.flatShade(MeshBuilder.CreateTorus(`${name}-coil`, { diameter: 0.28, thickness: 0.045, tessellation: 10 }, this.scene));
+		coil.position.set(0.45, 0.12, 0.22);
+		coil.rotation.x = Math.PI / 2;
+		coil.scaling.set(1, 0.85, 1);
+		coil.material = ropeMat;
+		coil.parent = root;
+
+		// A couple of empty woven sacks behind the table.
+		const sackMat = new StandardMaterial(`${name}-sackMat`, this.scene);
+		sackMat.diffuseColor = new Color3(0.72, 0.6, 0.4);
+		for (let i = 0; i < 2; i++) {
+			const sack = this.flatShade(MeshBuilder.CreateSphere(`${name}-sack${i}`, { diameter: 0.32, segments: 6 }, this.scene));
+			sack.position.set(-0.35 + i * 0.3, 0.18, -0.55 - i * 0.12);
+			sack.scaling.set(0.8, 1.1, 0.65);
+			sack.material = sackMat;
+			sack.parent = root;
+		}
+
 		return root;
 	}
 
 	private createFeaturedCashierTable(name: string): Mesh {
-		const root = this.createTraditionalTable(name, 2.2, 1.4, 0.65);
+		const root = this.createTraditionalTable(name, 2.2, 1.4, 0.65, false);
+
+		// Brass balance scale on the counter.
+		const brassMat = new StandardMaterial(`${name}-brassMat`, this.scene);
+		brassMat.diffuseColor = new Color3(0.8, 0.62, 0.18);
+		brassMat.specularColor = new Color3(0.4, 0.35, 0.15);
+		const scalePillar = this.flatShade(MeshBuilder.CreateCylinder(`${name}-scalePillar`, { height: 0.35, diameter: 0.05, tessellation: 8 }, this.scene));
+		scalePillar.position.set(-0.55, 0.22, -0.25);
+		scalePillar.material = brassMat;
+		scalePillar.parent = root;
+		const scaleBeam = this.flatShade(MeshBuilder.CreateBox(`${name}-scaleBeam`, { width: 0.7, height: 0.03, depth: 0.03 }, this.scene));
+		scaleBeam.position.set(-0.55, 0.42, -0.25);
+		scaleBeam.material = brassMat;
+		scaleBeam.parent = root;
+		for (const sx of [-1, 1]) {
+			const chain = this.flatShade(MeshBuilder.CreateCylinder(`${name}-scaleChain${sx}`, { height: 0.12, diameter: 0.015, tessellation: 6 }, this.scene));
+			chain.position.set(-0.55 + sx * 0.32, 0.34, -0.25);
+			chain.material = brassMat;
+			chain.parent = root;
+			const pan = this.flatShade(MeshBuilder.CreateCylinder(`${name}-scalePan${sx}`, { height: 0.03, diameter: 0.2, tessellation: 8 }, this.scene));
+			pan.position.set(-0.55 + sx * 0.32, 0.25, -0.25);
+			pan.material = brassMat;
+			pan.parent = root;
+		}
+
+		// Small pile of gold coins.
+		const coinMat = new StandardMaterial(`${name}-coinMat`, this.scene);
+		coinMat.diffuseColor = new Color3(0.95, 0.78, 0.15);
+		coinMat.specularColor = new Color3(0.3, 0.25, 0.1);
+		for (let i = 0; i < 8; i++) {
+			const coin = this.flatShade(MeshBuilder.CreateCylinder(`${name}-coin${i}`, { height: 0.015, diameter: 0.06, tessellation: 8 }, this.scene));
+			coin.position.set(
+				0.1 + (i % 3) * 0.05 + Math.sin(i * 2.3) * 0.02,
+				0.07 + Math.floor(i / 3) * 0.015,
+				0.1 + Math.cos(i * 1.7) * 0.03
+			);
+			coin.rotation.z = Math.random() * 0.3;
+			coin.material = coinMat;
+			coin.parent = root;
+		}
+
+		// Tiny ledger/scroll.
+		const paperMat = new StandardMaterial(`${name}-paperMat`, this.scene);
+		paperMat.diffuseColor = new Color3(0.92, 0.88, 0.78);
+		const ledger = this.flatShade(MeshBuilder.CreateBox(`${name}-ledger`, { width: 0.3, height: 0.03, depth: 0.22 }, this.scene));
+		ledger.position.set(0.55, 0.08, 0.2);
+		ledger.material = paperMat;
+		ledger.parent = root;
+		const scroll = this.flatShade(MeshBuilder.CreateCylinder(`${name}-scroll`, { height: 0.24, diameter: 0.04, tessellation: 8 }, this.scene));
+		scroll.position.set(0.55, 0.1, 0.35);
+		scroll.rotation.x = Math.PI / 2;
+		scroll.material = paperMat;
+		scroll.parent = root;
 
 		// Small striped awning/sign above the cashier to make it stand out.
 		const postMat = new StandardMaterial(`${name}-postMat`, this.scene);
@@ -738,9 +932,11 @@ export class SouqManagerGame {
 
 		const stripeMat = new StandardMaterial(`${name}-stripeMat`, this.scene);
 		stripeMat.diffuseColor = new Color3(0.95, 0.9, 0.75);
-		for (let i = 0; i < 4; i++) {
-			const stripe = this.flatShade(MeshBuilder.CreateBox(`${name}-stripe${i}`, { width: 0.18, height: 0.12, depth: 0.92 }, this.scene));
-			stripe.position.set(-0.9 + i * 0.6, 1.55, -0.25);
+		const stripeCount = 6;
+		const stripeSpacing = 2.5 / stripeCount;
+		for (let i = 0; i < stripeCount; i++) {
+			const stripe = this.flatShade(MeshBuilder.CreateBox(`${name}-stripe${i}`, { width: 0.1, height: 0.12, depth: 0.92 }, this.scene));
+			stripe.position.set(-1.2 + (i + 0.5) * stripeSpacing, 1.55, -0.25);
 			stripe.material = stripeMat;
 			stripe.parent = root;
 		}
@@ -774,6 +970,38 @@ export class SouqManagerGame {
 		shortStrip2.position.x = width / 2 - stripW / 2;
 		shortStrip2.material = borderMat;
 		shortStrip2.parent = root;
+
+		return root;
+	}
+
+	private createDisplayTray(name: string, width: number, depth: number, color: Color3): Mesh {
+		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-base`, { width, height: 0.03, depth }, this.scene));
+		const mat = new StandardMaterial(`${name}-mat`, this.scene);
+		mat.diffuseColor = color;
+		root.material = mat;
+
+		// Low basket-like rim around the display area.
+		const rimH = 0.08;
+		const rimThick = 0.06;
+		const rimMat = new StandardMaterial(`${name}-rimMat`, this.scene);
+		rimMat.diffuseColor = new Color3(color.r * 0.8, color.g * 0.8, color.b * 0.8);
+
+		for (const z of [-1, 1]) {
+			const rim = this.flatShade(
+				MeshBuilder.CreateBox(`${name}-rimLong${z}`, { width, height: rimH, depth: rimThick }, this.scene)
+			);
+			rim.position.set(0, rimH / 2, z * (depth / 2 - rimThick / 2));
+			rim.material = rimMat;
+			rim.parent = root;
+		}
+		for (const x of [-1, 1]) {
+			const rim = this.flatShade(
+				MeshBuilder.CreateBox(`${name}-rimShort${x}`, { width: rimThick, height: rimH, depth: depth - rimThick * 2 }, this.scene)
+			);
+			rim.position.set(x * (width / 2 - rimThick / 2), rimH / 2, 0);
+			rim.material = rimMat;
+			rim.parent = root;
+		}
 
 		return root;
 	}
@@ -931,11 +1159,7 @@ export class SouqManagerGame {
 	private setupShelves(): void {
 		const state = this.logic.getState();
 		for (const shelf of state.shelves) {
-			const mesh = MeshBuilder.CreateGround(`shelf${shelf.id}`, { width: 1.6, height: 1 }, this.scene);
-			const mat = new StandardMaterial(`shelfMat${shelf.id}`, this.scene);
-			mat.diffuseColor = new Color3(0.72, 0.6, 0.42);
-			mat.alpha = 0.95;
-			mesh.material = mat;
+			const mesh = this.createDisplayTray(`shelf${shelf.id}`, 1.6, 1, new Color3(0.72, 0.6, 0.42));
 			mesh.position.x = shelf.position.x;
 			mesh.position.z = shelf.position.y;
 			mesh.position.y = 0.02;
