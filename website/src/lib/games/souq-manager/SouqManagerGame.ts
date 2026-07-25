@@ -418,31 +418,31 @@ export class SouqManagerGame {
 		};
 
 		// Pull the fence inward slightly so it has clear margin from the screen edge
-		// and leave a wide entrance on the front (-z) side where customers arrive.
+		// and leave an entrance on the front-right side where customers arrive and leave.
 		const halfW = 10.5;
 		const halfD = 8.5;
-		const gateHalf = 3.2;
+		const gateLeft = 3.5;
+		const gateRight = 8.5;
 		const postBaseH = 1.05;
 
 		interface PostPoint {
 			x: number;
 			z: number;
 			idx: number;
-			lean?: number;
 		}
 
 		const posts: PostPoint[] = [];
-
-		// Front-left segment (with entrance gap in the middle).
 		let idx = 0;
+
+		// Front-left segment (closed up to the entrance).
 		for (let t = 0; t <= 1; t += 0.34) {
-			const x = -halfW + t * (-gateHalf - -halfW);
+			const x = -halfW + t * (gateLeft - -halfW);
 			const z = -halfD + jitter(idx, 0.45);
 			posts.push({ x, z, idx: idx++ });
 		}
-		// Front-right segment.
+		// Front-right segment (short closed section after the entrance).
 		for (let t = 0; t <= 1; t += 0.34) {
-			const x = gateHalf + t * (halfW - gateHalf);
+			const x = gateRight + t * (halfW - gateRight);
 			const z = -halfD + jitter(idx, 0.45);
 			posts.push({ x, z, idx: idx++ });
 		}
@@ -483,7 +483,7 @@ export class SouqManagerGame {
 			const a = posts[i];
 			const b = posts[i + 1];
 			// Skip rails across the entrance gap on the front side.
-			if (a.z < -halfD + 0.5 && b.z < -halfD + 0.5 && a.x < 0 && b.x > 0) continue;
+			if (a.z < -halfD + 0.5 && b.z < -halfD + 0.5 && a.x <= gateLeft + 0.2 && b.x >= gateRight - 0.2) continue;
 
 			const dx = b.x - a.x;
 			const dz = b.z - a.z;
@@ -508,11 +508,11 @@ export class SouqManagerGame {
 			}
 		}
 
-		// Add a small arched gateway over the entrance.
+		// Add a small gateway over the front-right entrance.
 		const gateMat = new StandardMaterial('gateMat', this.scene);
 		gateMat.diffuseColor = new Color3(0.55, 0.35, 0.2);
-		const leftPost = posts.find((p) => p.x <= -gateHalf + 0.1 && p.z < -halfD + 0.5);
-		const rightPost = posts.find((p) => p.x >= gateHalf - 0.1 && p.z < -halfD + 0.5);
+		const leftPost = posts.find((p) => p.x <= gateLeft + 0.2 && p.z < -halfD + 0.5);
+		const rightPost = posts.find((p) => p.x >= gateRight - 0.2 && p.z < -halfD + 0.5);
 		if (leftPost && rightPost) {
 			const gx = (leftPost.x + rightPost.x) / 2;
 			const gz = -halfD;
