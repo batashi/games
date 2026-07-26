@@ -8,7 +8,7 @@ This repository is the planning and design home for **Sahara Play / صحراء �
 
 The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first two playable games (Fort Battle and Souq Al-Fereej) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
 
-Six games are specified in the repository:
+Seven games are specified in the repository:
 
 | ID | English Name | Arabic Name | Status |
 |---|---|---|---|
@@ -18,6 +18,7 @@ Six games are specified in the repository:
 | `luban-sorter` | Luban Sorter | فرز اللبان | Ready (design) |
 | `souq-alfereej` | Souq Al-Fereej | سوق الفريج | Ready (design + playable prototype) |
 | `falcon` | Falcon Flight | رحلة الصقر | Ready (design + playable prototype) |
+| `majlis-host` | Majlis Host | ضيافة المجلس | Coming soon (design) |
 
 Additional games may be added to `data/games.json` as the catalogue grows.
 

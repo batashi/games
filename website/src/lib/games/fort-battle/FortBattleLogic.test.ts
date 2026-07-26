@@ -115,6 +115,13 @@ describe('FortBattleLogic', () => {
 
 			expect(logic.getState().powerShotActive).toBe(true);
 
+			// A new gift may have spawned after the turn switch; move it out of the
+			// second shot's path so the test only verifies power-shot damage.
+			const newGift = logic.getGift();
+			if (newGift) {
+				newGift.position = { x: 999, y: 999 };
+			}
+
 			// Next turn: fire a powered shot at the enemy fort.
 			logic.startCharge();
 			logic.updateCharge(2);

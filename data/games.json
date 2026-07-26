@@ -159,7 +159,7 @@
       "culturalNoteAr": "الأسواق التقليدية (السواق) كانت قلب الحياة الاقتصادية والاجتماعية في الخليج، حيث تباع التوابل والتمور واللبان والعود وتجتمع فيها العائلات.",
       "culturalNoteEn": "Traditional markets (souqs) were the economic and social heart of the Gulf, where spices, dates, frankincense, and oud were sold and families gathered.",
       "metaTitleAr": "سوق الفريج - لعبة إدارة متجر للأطفال",
-      "metaTitleEn": "Souq Al-Fereej — GCC Shop Sim for Kids",
+      "metaTitleEn": "Souq Al-Fereej — Sahara Play Shop Sim for Kids",
       "metaDescriptionAr": "العب سوق الفريج مجاناً. أدير دكانك التقليدي، خدم الزبائن، ووظف مساعدين في لعبة إدارة متجر خليجية.",
       "metaDescriptionEn": "Play Souq Al-Fereej for free. Run your traditional stall, serve customers, and hire helpers in a Gulf-themed shop sim."
     },
@@ -200,9 +200,52 @@
       "culturalNoteAr": "الصقارة من أعرق تقاليد الخليج، حيث يدرب الصقارون الصقور على الصيد في الصحراء ويعتبرونها رمزاً للشجاعة والصبر.",
       "culturalNoteEn": "Falconry is one of the Gulf’s oldest traditions; falconers train falcons to hunt in the desert and regard them as symbols of courage and patience.",
       "metaTitleAr": "رحلة الصقر - لعبة طيران خليجية للأطفال",
-      "metaTitleEn": "Falcon Flight — GCC Endless Flier for Kids",
+      "metaTitleEn": "Falcon Flight — Sahara Play Endless Flier for Kids",
       "metaDescriptionAr": "العب رحلة الصقر مجاناً. حلق فوق كثبان الصحراء، اصطد الفريسة، وتجنب العوائق في لعبة طيران مليئة بالتراث الخليجي.",
-      "metaDescriptionEn": "Play Falcon Flight for free. Soar over desert dunes, hunt prey, and dodge hazards in a Gulf-themed endless flier."
+      "metaDescriptionEn": "Play Falcon Flight for free. Soar over desert dunes, hunt prey, and dodge hazards in a Sahara Play endless flier."
+    },
+    {
+      "id": "majlis-host",
+      "slug": "majlis-host",
+      "nameAr": "ضيافة المجلس",
+      "nameEn": "Majlis Host",
+      "taglineAr": "خدم ضيوفك بالقهوة والتمور والبخور بترتيب المجلس",
+      "taglineEn": "Serve your guests coffee, dates, and incense in proper majlis order",
+      "descriptionAr": "ادخل إلى مجلس خليجي تقليدي في الرياض. استقبل الضيوف وقدم لهم البخور ثم القهوة العربية ثم التمر ثم الماء بسرعة ودقة. تعلم ترتيب الضيافة واكسب سمعة طيبة كأفضل مضيف.",
+      "descriptionEn": "Step into a traditional Gulf majlis in Riyadh. Welcome guests and serve them incense, Arabic coffee, dates, and water in the correct order, quickly and gracefully. Learn the hospitality sequence and earn a reputation as the best host.",
+      "icon": "🫖",
+      "genre": "memory",
+      "genreLabelAr": "ذاكرة",
+      "genreLabelEn": "Memory",
+      "ageRange": "7-11",
+      "sessionLength": "2-4 min",
+      "modes": ["single", "daily", "practice"],
+      "countries": ["OM", "SA", "AE", "QA", "BH", "KW"],
+      "status": "coming-soon",
+      "supportedPlatforms": ["desktop", "tablet", "mobile"],
+      "heroImage": "/images/games/majlis-host-hero.webp",
+      "thumbnail": "/images/games/majlis-host-thumb.webp",
+      "video": "/videos/majlis-host-loop.webm",
+      "howToPlayAr": [
+        "انقر على البخور أولاً لتطيب المجلس",
+        "قدم القهوة العربية من الدلة",
+        "قدم التمر للضيف",
+        "أنهِ الضيافة بكأس ماء",
+        "اتبع الترتيب الصحيح بأسرع وقت"
+      ],
+      "howToPlayEn": [
+        "Click the incense first to fragrance the majlis",
+        "Serve Arabic coffee from the dallah",
+        "Offer dates to the guest",
+        "Finish with a glass of water",
+        "Follow the correct order as fast as you can"
+      ],
+      "culturalNoteAr": "المجلس هو قلب البيت الخليجي، وممارسة الضيافة فيه ترتيب ثابت: البخور ثم القهوة ثم التمر ثم الماء. هذه العادة تعبر عن الكرم والاحترام والترابط الاجتماعي.",
+      "culturalNoteEn": "The majlis is the heart of the Gulf home, and its hospitality follows a set order: incense, then coffee, then dates, then water. This custom expresses generosity, respect, and social connection.",
+      "metaTitleAr": "ضيافة المجلس - لعبة ذاكرة وضيافة للأطفال",
+      "metaTitleEn": "Majlis Host — Sahara Play Memory Game for Kids",
+      "metaDescriptionAr": "العب ضيافة المجلس مجاناً. تعلم ترتيب الضيافة الخليجية وخدم الضيوف في لعبة ذاكرة وتعليمية.",
+      "metaDescriptionEn": "Play Majlis Host for free. Learn the Gulf hospitality sequence and serve guests in this educational memory game."
     }
   ]
 }
