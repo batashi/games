@@ -307,6 +307,8 @@ export class FalconFlightGame {
 
 		this.handleResize = () => this.engine.resize();
 		window.addEventListener('resize', this.handleResize);
+		// Ensure the canvas matches its container on first load.
+		this.engine.resize();
 
 		this.handleKeydown = (e: KeyboardEvent) => {
 			if (e.code === 'Space') {
@@ -344,7 +346,7 @@ export class FalconFlightGame {
 		camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
 		camera.orthoLeft = -12;
 		camera.orthoRight = 12;
-		camera.orthoTop = 10;
+		camera.orthoTop = 13;
 		camera.orthoBottom = -6;
 		camera.inputs.clear();
 		return camera;
@@ -579,7 +581,7 @@ export class FalconFlightGame {
 	}
 
 	private updateCamera(state: FalconFlightState, dt: number): void {
-		const targetY = state.falcon.y * 0.55 + 4;
+		const targetY = state.falcon.y * 0.65 + 3.5;
 		this.camera.position.y += (targetY - this.camera.position.y) * Math.min(1, dt * 3);
 		this.camera.setTarget(new Vector3(0, this.camera.position.y - 1, 0));
 	}
