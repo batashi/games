@@ -583,14 +583,13 @@ export class MajlisHostGame {
 	}
 
 	private setupServingItems(): void {
-		// Arrange items right-to-left so the serving sequence matches Arabic reading order.
 		const positions: Record<ServingItem, Vector3> = {
-			bukhoor: new Vector3(2.2, 0.78, -2),
-			qahwa: new Vector3(0.7, 0.78, -2),
-			dates: new Vector3(-0.8, 0.78, -2),
-			water: new Vector3(-2.2, 0.78, -2),
+			bukhoor: new Vector3(-2.2, 0.78, -2),
+			qahwa: new Vector3(-0.7, 0.78, -2),
+			dates: new Vector3(0.8, 0.78, -2),
+			water: new Vector3(2.2, 0.78, -2),
 			halwa: new Vector3(0, 0.78, -2),
-			refill: new Vector3(0.7, 0.78, -2)
+			refill: new Vector3(-0.7, 0.78, -2)
 		};
 
 		for (const item of ITEM_ORDER) {

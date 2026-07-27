@@ -200,4 +200,27 @@ All interactions are designed for one-handed tablet play.
 
 ---
 
+## 12. Pending Design Questions
+
+### 12.1 Tray Item Layout vs. Serving Sequence
+
+**Status:** Pending design decision.
+
+The standard hospitality sequence is **bukhoor → qahwa → dates → water**. The current prototype lays the four tray items out left-to-right in that same order. Feedback suggests this feels reversed to some players, possibly because:
+
+- The game is Arabic-first, so players may expect the sequence to read right-to-left.
+- Keyboard shortcuts `1-4` map to the sequence, not to screen position; a right-to-left layout would put the first sequence step (bukhoor) under the `1` key on the left side of the keyboard.
+- Players may interpret the tray as a spatial queue and try to serve from one end to the other.
+
+Open questions to resolve:
+
+1. Should the tray layout follow Arabic RTL (bukhoor on the right, water on the left) while keeping the sequence order unchanged?
+2. Should the keyboard shortcuts instead map to screen position (`1` = leftmost item, `4` = rightmost item) regardless of sequence?
+3. Should the guest’s request bubble explicitly mirror the tray layout so the spatial relationship is always 1:1?
+4. For the Desert Fox’s reversed sequence, how do we visually signal that the spatial queue is temporarily flipped?
+
+Next step: test both LTR and RTL layouts with native Arabic-speaking children on tablet and desktop, then lock the layout and update this section, the GDD controls table, and the implementation.
+
+---
+
 *Prepared by Aldoolab for Sahara Play / صحراء بلاي.*
