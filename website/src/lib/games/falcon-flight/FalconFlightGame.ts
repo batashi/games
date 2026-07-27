@@ -254,6 +254,7 @@ export class FalconFlightGame {
 	private logic: FalconFlightLogic;
 	private audio: FalconFlightAudio;
 	private onChange: (state: FalconFlightState) => void;
+	private config: FalconFlightConfig;
 
 	private falconRoot!: TransformNode;
 	private falconBody!: Mesh;
@@ -264,6 +265,8 @@ export class FalconFlightGame {
 
 	private ground!: Mesh;
 	private sun!: Mesh;
+	private ceilingWarning!: Mesh;
+	private ceilingLine!: Mesh;
 	private chunkMeshes: ChunkMesh[] = [];
 	private objectMeshes: ObjectMesh[] = [];
 	private particles: { mesh: Mesh; life: number; vy: number; vx: number }[] = [];
@@ -282,6 +285,7 @@ export class FalconFlightGame {
 	) {
 		this.canvas = canvas;
 		this.onChange = onChange;
+		this.config = { ...DEFAULT_FALCON_FLIGHT_CONFIG, ...options.config };
 		this.audio = new FalconFlightAudio();
 
 		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
@@ -342,7 +346,7 @@ export class FalconFlightGame {
 
 	private createCamera(): UniversalCamera {
 		const camera = new UniversalCamera('camera', new Vector3(0, 7, -18), this.scene);
-		camera.setTarget(new Vector3(0, 6, 0));
+		camera.setTarget(new Vector3(0, 7, 0));
 		camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
 		camera.orthoLeft = -12;
 		camera.orthoRight = 12;
@@ -400,6 +404,36 @@ export class FalconFlightGame {
 		sunMat.disableLighting = true;
 		this.sun.material = sunMat;
 		this.sun.isPickable = false;
+
+		// Ceiling warning zone: a translucent band that tells the player the sky has a limit.
+		const ceilingY = this.config.ceilingY;
+		this.ceilingWarning = MeshBuilder.CreateBox(
+			'ceilingWarning',
+			{ width: 80, height: 2.5, depth: 4 },
+			this.scene
+		);
+		this.ceilingWarning.position = new Vector3(0, ceilingY - 1.25, 0);
+		const warningMat = new StandardMaterial('ceilingWarningMat', this.scene);
+		warningMat.diffuseColor = new Color3(0.95, 0.25, 0.2);
+		warningMat.emissiveColor = new Color3(0.6, 0.1, 0.1);
+		warningMat.alpha = 0.18;
+		warningMat.disableLighting = true;
+		this.ceilingWarning.material = warningMat;
+		this.ceilingWarning.isPickable = false;
+
+		// Solid ceiling line at the very top.
+		this.ceilingLine = MeshBuilder.CreateBox(
+			'ceilingLine',
+			{ width: 80, height: 0.25, depth: 0.5 },
+			this.scene
+		);
+		this.ceilingLine.position = new Vector3(0, ceilingY - 0.15, 0);
+		const lineMat = new StandardMaterial('ceilingLineMat', this.scene);
+		lineMat.emissiveColor = new Color3(1, 0.2, 0.15);
+		lineMat.diffuseColor = new Color3(1, 0.2, 0.15);
+		lineMat.disableLighting = true;
+		this.ceilingLine.material = lineMat;
+		this.ceilingLine.isPickable = false;
 	}
 
 	private flatShade(mesh: Mesh): Mesh {
@@ -581,9 +615,10 @@ export class FalconFlightGame {
 	}
 
 	private updateCamera(state: FalconFlightState, dt: number): void {
-		const targetY = state.falcon.y * 0.65 + 3.5;
+		// Keep the falcon vertically centered so ceiling/ground warnings remain visible.
+		const targetY = state.falcon.y * 0.85 + 2;
 		this.camera.position.y += (targetY - this.camera.position.y) * Math.min(1, dt * 3);
-		this.camera.setTarget(new Vector3(0, this.camera.position.y - 1, 0));
+		this.camera.setTarget(new Vector3(0, this.camera.position.y, 0));
 	}
 
 	private syncChunks(state: FalconFlightState): void {
