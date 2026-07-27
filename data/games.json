@@ -221,7 +221,7 @@
       "sessionLength": "2-4 min",
       "modes": ["single", "daily", "practice"],
       "countries": ["OM", "SA", "AE", "QA", "BH", "KW"],
-      "status": "coming-soon",
+      "status": "ready",
       "supportedPlatforms": ["desktop", "tablet", "mobile"],
       "heroImage": "/images/games/majlis-host-hero.webp",
       "thumbnail": "/images/games/majlis-host-thumb.webp",

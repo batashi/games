@@ -111,6 +111,37 @@ test.describe('game smoke tests', () => {
 		console.log('Console warnings:', warnings);
 	});
 
+	test('Majlis Host loads and starts a level without console errors', async ({ page }) => {
+		const { errors, warnings } = captureConsoleErrors(page);
+
+		await page.goto('/play/majlis-host');
+
+		// Wait for the page title and game header to render.
+		await expect(page).toHaveTitle(/ضيافة المجلس/);
+		await expect(page.locator('h1')).toHaveText('ضيافة المجلس');
+
+		// Wait for the Babylon.js canvas and the level picker to be ready.
+		const canvas = page.locator('canvas');
+		await expect(canvas).toBeAttached();
+		await expect(canvas).toBeVisible();
+		await expect(page.locator('[data-level="1"]')).toBeVisible();
+
+		// Start level 1.
+		await page.locator('[data-level="1"]').click();
+
+		// The HUD should appear once the level starts.
+		await expect(page.getByText('النقاط', { exact: true })).toBeVisible();
+		await expect(page.getByText('الضيوف السعداء', { exact: true })).toBeVisible();
+		await expect(page.getByText('الوقت', { exact: true })).toBeVisible();
+		await expect(page.getByText('القلوب', { exact: true })).toBeVisible();
+
+		// Give async game initialization a moment to finish.
+		await page.waitForTimeout(2500);
+
+		expect(errors, `Unexpected console/page errors: ${errors.join('\n')}`).toHaveLength(0);
+		console.log('Console warnings:', warnings);
+	});
+
 	test('Falcon Flight loads and starts a run without console errors', async ({ page }) => {
 		const { errors, warnings } = captureConsoleErrors(page);
 

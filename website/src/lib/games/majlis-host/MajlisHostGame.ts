@@ -1,0 +1,1004 @@
+import {
+	Engine,
+	Scene,
+	Vector3,
+	Color3,
+	Color4,
+	HemisphericLight,
+	DirectionalLight,
+	PointLight,
+	UniversalCamera,
+	MeshBuilder,
+	StandardMaterial,
+	Mesh,
+	TransformNode,
+	PointerEventTypes,
+	DynamicTexture,
+	Animation,
+	VertexBuffer
+} from '@babylonjs/core';
+import {
+	MajlisHostLogic,
+	DEFAULT_MAJLIS_HOST_CONFIG,
+	type MajlisHostState,
+	type MajlisHostConfig,
+	type ServingItem,
+	type GuestType,
+	type PowerUpType
+} from './MajlisHostLogic';
+
+export type { MajlisHostState };
+
+export interface MajlisHostGameOptions {
+	level?: number;
+	config?: Partial<MajlisHostConfig>;
+}
+
+const ITEM_ORDER: ServingItem[] = ['bukhoor', 'qahwa', 'dates', 'water'];
+
+const GUEST_ICONS: Record<GuestType, string> = {
+	camel: '🐪',
+	falcon: '🦅',
+	oryx: '🦌',
+	fox: '🦊',
+	goat: '🐐',
+	sheep: '🐑'
+};
+
+const ITEM_ICONS: Record<ServingItem, string> = {
+	bukhoor: '🌿',
+	qahwa: '☕',
+	dates: '🌴',
+	water: '💧',
+	halwa: '🍬',
+	refill: '♨️'
+};
+
+class MajlisHostAudio {
+	private ctx: AudioContext | null = null;
+	private muted = false;
+	private musicTimer: ReturnType<typeof setInterval> | null = null;
+
+	setMuted(muted: boolean): void {
+		this.muted = muted;
+		if (muted) this.stopMusic();
+		else this.playMusic();
+	}
+
+	getMuted(): boolean {
+		return this.muted;
+	}
+
+	private getCtx(): AudioContext {
+		if (!this.ctx) {
+			this.ctx = new (window.AudioContext ||
+				(window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+		}
+		if (this.ctx.state === 'suspended') this.ctx.resume();
+		return this.ctx;
+	}
+
+	private ensureCtx(): AudioContext | null {
+		if (this.muted) return null;
+		return this.getCtx();
+	}
+
+	playMusic(): void {
+		if (this.musicTimer || this.muted) return;
+		this.musicTimer = setInterval(() => {
+			if (!this.muted) this.playMusicBar(this.getCtx());
+		}, 5200);
+		if (!this.muted) this.playMusicBar(this.getCtx());
+	}
+
+	stopMusic(): void {
+		if (this.musicTimer) {
+			clearInterval(this.musicTimer);
+			this.musicTimer = null;
+		}
+	}
+
+	private playMusicBar(ctx: AudioContext): void {
+		const now = ctx.currentTime;
+		// Maqam Bayati-ish phrase on D, calm oud-led loop.
+		const scale = [293.66, 311.13, 349.23, 392.0, 440.0, 466.16, 523.25];
+		const phrase = [0, 2, 3, 2, 1, 2, 3, 4, 3, 2, 0, 2];
+		const durations = [0.38, 0.3, 0.42, 0.26, 0.3, 0.38, 0.3, 0.26, 0.34, 0.3, 0.38, 0.65];
+		let t = 0;
+		phrase.forEach((noteIdx, i) => {
+			this.playOudNote(ctx, now + t, scale[noteIdx], durations[i]);
+			t += durations[i] + 0.06;
+		});
+	}
+
+	private playOudNote(ctx: AudioContext, when: number, freq: number, duration: number): void {
+		const osc = ctx.createOscillator();
+		osc.type = 'sawtooth';
+		osc.frequency.setValueAtTime(freq * 1.01, when);
+		osc.frequency.exponentialRampToValueAtTime(freq, when + 0.05);
+
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'lowpass';
+		filter.frequency.setValueAtTime(1300, when);
+		filter.frequency.exponentialRampToValueAtTime(600, when + 0.3);
+		filter.Q.value = 0.5;
+
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0, when);
+		gain.gain.linearRampToValueAtTime(0.04, when + 0.008);
+		gain.gain.exponentialRampToValueAtTime(0.015, when + 0.2);
+		gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
+
+		osc.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		osc.start(when);
+		osc.stop(when + duration + 0.08);
+	}
+
+	playServe(item: ServingItem): void {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		const now = ctx.currentTime;
+
+		switch (item) {
+			case 'bukhoor':
+				this.playSizzle(ctx, now);
+				break;
+			case 'qahwa':
+			case 'refill':
+				this.playPour(ctx, now);
+				break;
+			case 'dates':
+				this.playClink(ctx, now, 880);
+				break;
+			case 'halwa':
+				this.playClink(ctx, now, 1100);
+				break;
+			case 'water':
+				this.playSplash(ctx, now);
+				break;
+		}
+	}
+
+	private playPour(ctx: AudioContext, when: number): void {
+		const bufferSize = ctx.sampleRate * 0.25;
+		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+		const data = buffer.getChannelData(0);
+		for (let i = 0; i < bufferSize; i++) {
+			data[i] = (Math.random() * 2 - 1) * Math.max(0, 1 - i / bufferSize) * 0.5;
+		}
+		const noise = ctx.createBufferSource();
+		noise.buffer = buffer;
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'bandpass';
+		filter.frequency.value = 600;
+		filter.Q.value = 1.5;
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0.05, when);
+		gain.gain.exponentialRampToValueAtTime(0.001, when + 0.25);
+		noise.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		noise.start(when);
+	}
+
+	private playSizzle(ctx: AudioContext, when: number): void {
+		const bufferSize = ctx.sampleRate * 0.18;
+		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+		const data = buffer.getChannelData(0);
+		for (let i = 0; i < bufferSize; i++) {
+			data[i] = (Math.random() * 2 - 1) * Math.max(0, 1 - i / bufferSize);
+		}
+		const noise = ctx.createBufferSource();
+		noise.buffer = buffer;
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'highpass';
+		filter.frequency.value = 1200;
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0.03, when);
+		gain.gain.exponentialRampToValueAtTime(0.001, when + 0.18);
+		noise.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		noise.start(when);
+	}
+
+	private playClink(ctx: AudioContext, when: number, freq: number): void {
+		const osc = ctx.createOscillator();
+		osc.type = 'sine';
+		osc.frequency.setValueAtTime(freq, when);
+		osc.frequency.exponentialRampToValueAtTime(freq * 1.5, when + 0.06);
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0.05, when);
+		gain.gain.exponentialRampToValueAtTime(0.001, when + 0.1);
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		osc.start(when);
+		osc.stop(when + 0.1);
+	}
+
+	private playSplash(ctx: AudioContext, when: number): void {
+		const bufferSize = ctx.sampleRate * 0.15;
+		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+		const data = buffer.getChannelData(0);
+		for (let i = 0; i < bufferSize; i++) {
+			data[i] = (Math.random() * 2 - 1) * Math.max(0, 1 - i / bufferSize);
+		}
+		const noise = ctx.createBufferSource();
+		noise.buffer = buffer;
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'lowpass';
+		filter.frequency.value = 900;
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0.04, when);
+		gain.gain.exponentialRampToValueAtTime(0.001, when + 0.15);
+		noise.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		noise.start(when);
+	}
+
+	playMistake(): void {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		const now = ctx.currentTime;
+		const osc = ctx.createOscillator();
+		osc.type = 'sawtooth';
+		osc.frequency.setValueAtTime(150, now);
+		osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'lowpass';
+		filter.frequency.value = 400;
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0.08, now);
+		gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+		osc.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		osc.start(now);
+		osc.stop(now + 0.25);
+	}
+
+	playWin(): void {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		const now = ctx.currentTime;
+		[392, 523, 659, 784, 1047].forEach((freq, i) => {
+			const osc = ctx.createOscillator();
+			osc.type = 'sine';
+			osc.frequency.setValueAtTime(freq, now + i * 0.1);
+			const gain = ctx.createGain();
+			gain.gain.setValueAtTime(0.0001, now + i * 0.1);
+			gain.gain.exponentialRampToValueAtTime(0.14, now + i * 0.1 + 0.03);
+			gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.5);
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.start(now + i * 0.1);
+			osc.stop(now + i * 0.1 + 0.55);
+		});
+	}
+}
+
+interface ServingItemMesh {
+	item: ServingItem;
+	root: TransformNode;
+	mesh: Mesh;
+	highlight: Mesh;
+}
+
+interface GuestMesh {
+	root: TransformNode;
+	body: Mesh;
+	icon: Mesh;
+	patienceBar: Mesh;
+	patienceBg: Mesh;
+}
+
+export class MajlisHostGame {
+	private canvas: HTMLCanvasElement;
+	private engine: Engine;
+	private scene: Scene;
+	private camera: UniversalCamera;
+	private logic: MajlisHostLogic;
+	private audio: MajlisHostAudio;
+	private onChange: (state: MajlisHostState) => void;
+
+	private servingItems: ServingItemMesh[] = [];
+	private guestMesh: GuestMesh | null = null;
+	private smokeParticles: { mesh: Mesh; life: number; vy: number; vx: number; vz: number }[] = [];
+	private floatingLabels: { mesh: Mesh; life: number; vy: number }[] = [];
+
+	private disposed = false;
+	private time = 0;
+	private lastGuestId = -1;
+	private lastState: MajlisHostState | null = null;
+
+	private handleResize: () => void;
+	private handleKeydown: (e: KeyboardEvent) => void;
+
+	constructor(
+		canvas: HTMLCanvasElement,
+		onChange: (state: MajlisHostState) => void,
+		options: MajlisHostGameOptions = {}
+	) {
+		this.canvas = canvas;
+		this.onChange = onChange;
+		this.audio = new MajlisHostAudio();
+
+		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+		this.scene = this.createScene();
+		this.camera = this.createCamera();
+		this.setupLights();
+		this.setupEnvironment();
+		this.setupServingItems();
+		this.setupGuestArea();
+		this.setupInput();
+
+		this.logic = new MajlisHostLogic(
+			(state) => {
+				this.lastState = state;
+				this.onChange(state);
+			},
+			options.config,
+			{
+				onStepServed: (item, correct) => {
+					if (correct) {
+						this.audio.playServe(item);
+						this.animateItem(item);
+						this.spawnFloatingLabel(correct ? '✨' : '❌');
+					} else {
+						this.audio.playMistake();
+						this.spawnFloatingLabel('❌');
+					}
+				},
+				onGuestComplete: (happy) => {
+					this.spawnFloatingLabel(happy ? '😊' : '😞');
+				},
+				onLevelComplete: () => this.audio.playWin(),
+				onLevelFailed: () => this.audio.playMistake()
+			}
+		);
+
+		this.handleResize = () => this.engine.resize();
+		window.addEventListener('resize', this.handleResize);
+
+		this.handleKeydown = (e: KeyboardEvent) => {
+			const keyMap: Record<string, ServingItem> = {
+				Digit1: 'bukhoor',
+				Digit2: 'qahwa',
+				Digit3: 'dates',
+				Digit4: 'water'
+			};
+			const item = keyMap[e.code];
+			if (item) {
+				e.preventDefault();
+				this.logic.serveItem(item);
+			}
+		};
+		window.addEventListener('keydown', this.handleKeydown);
+
+		this.engine.runRenderLoop(() => {
+			if (this.disposed) return;
+			const dt = this.engine.getDeltaTime() / 1000;
+			this.time += dt;
+			this.logic.update(dt);
+			this.syncScene();
+			this.updateParticles(dt);
+			this.scene.render();
+		});
+
+		if (options.level) {
+			this.logic.startLevel(options.level);
+			this.audio.playMusic();
+		}
+	}
+
+	private createScene(): Scene {
+		const scene = new Scene(this.engine);
+		// Warm sandy interior.
+		scene.clearColor = new Color4(0.92, 0.82, 0.68, 1);
+		return scene;
+	}
+
+	private createCamera(): UniversalCamera {
+		const camera = new UniversalCamera('camera', new Vector3(0, 9, -12), this.scene);
+		camera.setTarget(new Vector3(0, 0, 0));
+		camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
+		camera.orthoLeft = -10;
+		camera.orthoRight = 10;
+		camera.orthoTop = 7.5;
+		camera.orthoBottom = -7.5;
+		camera.inputs.clear();
+		return camera;
+	}
+
+	private setupLights(): void {
+		const hemi = new HemisphericLight('hemi', new Vector3(0, 1, 0), this.scene);
+		hemi.intensity = 0.55;
+		hemi.diffuse = new Color3(1, 0.88, 0.68);
+		hemi.groundColor = new Color3(0.55, 0.42, 0.3);
+
+		const dir = new DirectionalLight('dir', new Vector3(-0.5, -1, -0.6), this.scene);
+		dir.intensity = 0.7;
+		dir.diffuse = new Color3(1, 0.82, 0.55);
+
+		// Lantern glow near the serving tray.
+		const point = new PointLight('lantern', new Vector3(0, 3, -2), this.scene);
+		point.intensity = 0.5;
+		point.diffuse = new Color3(1, 0.65, 0.25);
+		point.range = 10;
+	}
+
+	private setupEnvironment(): void {
+		// Woven carpet floor.
+		const floor = MeshBuilder.CreateGround('floor', { width: 22, height: 18, subdivisions: 16 }, this.scene);
+		floor.position.y = -0.05;
+		this.flatShade(floor);
+		const floorMat = new StandardMaterial('floorMat', this.scene);
+		floorMat.diffuseColor = new Color3(0.78, 0.62, 0.4);
+		floorMat.specularColor = new Color3(0.05, 0.05, 0.05);
+		floor.material = floorMat;
+		floor.isPickable = false;
+
+		// Back wall.
+		const wallMat = new StandardMaterial('wallMat', this.scene);
+		wallMat.diffuseColor = new Color3(0.82, 0.72, 0.55);
+		const backWall = MeshBuilder.CreatePlane('backWall', { width: 22, height: 10 }, this.scene);
+		backWall.position.set(0, 5, 9);
+		backWall.rotation.y = Math.PI;
+		backWall.material = wallMat;
+		backWall.isPickable = false;
+
+		// Side wall.
+		const sideWall = MeshBuilder.CreatePlane('sideWall', { width: 18, height: 10 }, this.scene);
+		sideWall.position.set(-11, 5, 0);
+		sideWall.rotation.y = Math.PI / 2;
+		sideWall.material = wallMat;
+		sideWall.isPickable = false;
+
+		// Decorative rug under the table.
+		const rug = MeshBuilder.CreateGround('rug', { width: 8, height: 5, subdivisions: 2 }, this.scene);
+		rug.position.set(0, 0.01, -2);
+		this.flatShade(rug);
+		const rugMat = new StandardMaterial('rugMat', this.scene);
+		rugMat.diffuseColor = new Color3(0.62, 0.28, 0.28);
+		rugMat.specularColor = new Color3(0.05, 0.05, 0.05);
+		rug.material = rugMat;
+		rug.isPickable = false;
+
+		// Low carved table.
+		this.createTable();
+	}
+
+	private createTable(): void {
+		const woodMat = new StandardMaterial('tableWoodMat', this.scene);
+		woodMat.diffuseColor = new Color3(0.48, 0.3, 0.18);
+		woodMat.specularColor = new Color3(0.08, 0.08, 0.08);
+
+		const top = this.flatShade(MeshBuilder.CreateBox('tableTop', { width: 6, height: 0.15, depth: 2.8 }, this.scene));
+		top.position.set(0, 0.55, -2);
+		top.material = woodMat;
+		top.isPickable = false;
+
+		for (const sx of [-1, 1]) {
+			for (const sz of [-1, 1]) {
+				const leg = this.flatShade(
+					MeshBuilder.CreateBox(`tableLeg${sx}${sz}`, { width: 0.18, height: 0.55, depth: 0.18 }, this.scene)
+				);
+				leg.position.set(sx * 2.7, 0.275, -2 + sz * 1.2);
+				leg.material = woodMat;
+				leg.isPickable = false;
+			}
+		}
+	}
+
+	private setupServingItems(): void {
+		const positions: Record<ServingItem, Vector3> = {
+			bukhoor: new Vector3(-2.2, 0.78, -2),
+			qahwa: new Vector3(-0.7, 0.78, -2),
+			dates: new Vector3(0.8, 0.78, -2),
+			water: new Vector3(2.2, 0.78, -2),
+			halwa: new Vector3(0, 0.78, -2),
+			refill: new Vector3(-0.7, 0.78, -2)
+		};
+
+		for (const item of ITEM_ORDER) {
+			const root = new TransformNode(`item-${item}`, this.scene);
+			root.position = positions[item].clone();
+
+			const mesh = this.createServingItemMesh(item);
+			mesh.parent = root;
+			mesh.metadata = { item };
+
+			// Invisible highlight disc shown on hover / hint.
+			const highlight = MeshBuilder.CreateDisc(`itemHighlight-${item}`, { radius: 0.9 }, this.scene);
+			highlight.position.y = -0.4;
+			highlight.rotation.x = Math.PI / 2;
+			const highlightMat = new StandardMaterial(`itemHighlightMat-${item}`, this.scene);
+			highlightMat.emissiveColor = new Color3(1, 0.85, 0.3);
+			highlightMat.alpha = 0;
+			highlightMat.disableLighting = true;
+			highlight.material = highlightMat;
+			highlight.parent = root;
+			highlight.isPickable = false;
+			highlight.setEnabled(false);
+
+			this.servingItems.push({ item, root, mesh, highlight });
+		}
+	}
+
+	private createServingItemMesh(item: ServingItem): Mesh {
+		switch (item) {
+			case 'bukhoor':
+				return this.createBukhoorBurner();
+			case 'qahwa':
+				return this.createDallah();
+			case 'dates':
+				return this.createDateBowl();
+			case 'water':
+				return this.createWaterPitcher();
+		}
+		return MeshBuilder.CreateBox(`item-${item}`, { size: 0.5 }, this.scene);
+	}
+
+	private createBukhoorBurner(): Mesh {
+		const root = new TransformNode('bukhoorRoot', this.scene);
+
+		const brassMat = new StandardMaterial('bukhoorBrassMat', this.scene);
+		brassMat.diffuseColor = new Color3(0.75, 0.55, 0.18);
+		brassMat.specularColor = new Color3(0.3, 0.25, 0.1);
+
+		const bowl = this.flatShade(
+			MeshBuilder.CreateCylinder('bukhoorBowl', { height: 0.35, diameterTop: 0.7, diameterBottom: 0.5, tessellation: 8 }, this.scene)
+		);
+		bowl.position.y = 0.175;
+		bowl.material = brassMat;
+		bowl.parent = root;
+
+		const coal = this.flatShade(MeshBuilder.CreateSphere('bukhoorCoal', { diameter: 0.35, segments: 5 }, this.scene));
+		coal.position.y = 0.35;
+		const coalMat = new StandardMaterial('bukhoorCoalMat', this.scene);
+		coalMat.diffuseColor = new Color3(0.25, 0.2, 0.18);
+		coalMat.emissiveColor = new Color3(0.4, 0.2, 0.05);
+		coal.material = coalMat;
+		coal.parent = root;
+
+		const mesh = MeshBuilder.CreateBox('bukhoorCollider', { size: 0.8 }, this.scene);
+		mesh.position.y = 0.4;
+		mesh.visibility = 0;
+		mesh.parent = root;
+		mesh.isPickable = true;
+		mesh.metadata = { item: 'bukhoor' };
+
+		return mesh;
+	}
+
+	private createDallah(): Mesh {
+		const root = new TransformNode('dallahRoot', this.scene);
+
+		const brassMat = new StandardMaterial('dallahBrassMat', this.scene);
+		brassMat.diffuseColor = new Color3(0.8, 0.6, 0.18);
+		brassMat.specularColor = new Color3(0.35, 0.3, 0.12);
+
+		const body = this.flatShade(
+			MeshBuilder.CreateSphere('dallahBody', { diameter: 0.7, segments: 8 }, this.scene)
+		);
+		body.scaling = new Vector3(0.8, 1, 0.8);
+		body.position.y = 0.35;
+		body.material = brassMat;
+		body.parent = root;
+
+		const neck = this.flatShade(
+			MeshBuilder.CreateCylinder('dallahNeck', { height: 0.5, diameterTop: 0.12, diameterBottom: 0.18, tessellation: 8 }, this.scene)
+		);
+		neck.position.set(0, 0.75, 0);
+		neck.material = brassMat;
+		neck.parent = root;
+
+		const spout = this.flatShade(
+			MeshBuilder.CreateCylinder('dallahSpout', { height: 0.55, diameterTop: 0.08, diameterBottom: 0.14, tessellation: 6 }, this.scene)
+		);
+		spout.position.set(0.35, 0.55, 0);
+		spout.rotation.z = -Math.PI / 4;
+		spout.material = brassMat;
+		spout.parent = root;
+
+		const handle = this.flatShade(
+			MeshBuilder.CreateTorus('dallahHandle', { diameter: 0.45, thickness: 0.05, tessellation: 8 }, this.scene)
+		);
+		handle.position.set(-0.35, 0.45, 0);
+		handle.rotation.y = Math.PI / 2;
+		handle.material = brassMat;
+		handle.parent = root;
+
+		const mesh = MeshBuilder.CreateBox('dallahCollider', { size: 0.9 }, this.scene);
+		mesh.position.y = 0.45;
+		mesh.visibility = 0;
+		mesh.parent = root;
+		mesh.isPickable = true;
+		mesh.metadata = { item: 'qahwa' };
+
+		return mesh;
+	}
+
+	private createDateBowl(): Mesh {
+		const root = new TransformNode('datesRoot', this.scene);
+
+		const bowlMat = new StandardMaterial('datesBowlMat', this.scene);
+		bowlMat.diffuseColor = new Color3(0.55, 0.35, 0.2);
+		bowlMat.specularColor = new Color3(0.1, 0.1, 0.1);
+
+		const bowl = this.flatShade(
+			MeshBuilder.CreateCylinder('datesBowl', { height: 0.25, diameterTop: 0.7, diameterBottom: 0.55, tessellation: 8 }, this.scene)
+		);
+		bowl.position.y = 0.125;
+		bowl.material = bowlMat;
+		bowl.parent = root;
+
+		const dateMat = new StandardMaterial('dateMat', this.scene);
+		dateMat.diffuseColor = new Color3(0.55, 0.4, 0.15);
+		for (let i = 0; i < 8; i++) {
+			const date = this.flatShade(MeshBuilder.CreateSphere(`date-${i}`, { diameter: 0.14, segments: 5 }, this.scene));
+			date.position.set(
+				(Math.random() - 0.5) * 0.35,
+				0.22 + Math.random() * 0.08,
+				(Math.random() - 0.5) * 0.3
+			);
+			date.material = dateMat;
+			date.parent = root;
+		}
+
+		const mesh = MeshBuilder.CreateBox('datesCollider', { size: 0.8 }, this.scene);
+		mesh.position.y = 0.3;
+		mesh.visibility = 0;
+		mesh.parent = root;
+		mesh.isPickable = true;
+		mesh.metadata = { item: 'dates' };
+
+		return mesh;
+	}
+
+	private createWaterPitcher(): Mesh {
+		const root = new TransformNode('waterRoot', this.scene);
+
+		const clayMat = new StandardMaterial('waterClayMat', this.scene);
+		clayMat.diffuseColor = new Color3(0.6, 0.42, 0.28);
+		clayMat.specularColor = new Color3(0.1, 0.1, 0.1);
+
+		const body = this.flatShade(
+			MeshBuilder.CreateCylinder('waterBody', { height: 0.7, diameterTop: 0.35, diameterBottom: 0.45, tessellation: 8 }, this.scene)
+		);
+		body.position.y = 0.35;
+		body.material = clayMat;
+		body.parent = root;
+
+		const neck = this.flatShade(
+			MeshBuilder.CreateCylinder('waterNeck', { height: 0.25, diameterTop: 0.15, diameterBottom: 0.25, tessellation: 8 }, this.scene)
+		);
+		neck.position.y = 0.82;
+		neck.material = clayMat;
+		neck.parent = root;
+
+		const handle = this.flatShade(
+			MeshBuilder.CreateTorus('waterHandle', { diameter: 0.4, thickness: 0.04, tessellation: 8 }, this.scene)
+		);
+		handle.position.set(-0.32, 0.55, 0);
+		handle.rotation.y = Math.PI / 2;
+		handle.material = clayMat;
+		handle.parent = root;
+
+		const mesh = MeshBuilder.CreateBox('waterCollider', { size: 0.8 }, this.scene);
+		mesh.position.y = 0.45;
+		mesh.visibility = 0;
+		mesh.parent = root;
+		mesh.isPickable = true;
+		mesh.metadata = { item: 'water' };
+
+		return mesh;
+	}
+
+	private setupGuestArea(): void {
+		// Large floor cushion where the guest sits.
+		const cushion = MeshBuilder.CreateCylinder('guestCushion', { height: 0.2, diameter: 2.2, tessellation: 12 }, this.scene);
+		cushion.position.set(0, 0.1, 3);
+		this.flatShade(cushion);
+		const cushionMat = new StandardMaterial('cushionMat', this.scene);
+		cushionMat.diffuseColor = new Color3(0.45, 0.25, 0.25);
+		cushion.material = cushionMat;
+		cushion.isPickable = false;
+
+		// Guest mesh root, hidden until a guest arrives.
+		const root = new TransformNode('guestRoot', this.scene);
+		root.position.set(0, 0.35, 3);
+		root.setEnabled(false);
+
+		const body = this.flatShade(MeshBuilder.CreateSphere('guestBody', { diameter: 1.1, segments: 7 }, this.scene));
+		body.scaling = new Vector3(1, 0.85, 0.9);
+		const bodyMat = new StandardMaterial('guestBodyMat', this.scene);
+		bodyMat.diffuseColor = new Color3(0.72, 0.55, 0.35);
+		body.material = bodyMat;
+		body.parent = root;
+
+		const icon = this.createEmojiPlane('guestIcon', '🐪', 1.2);
+		icon.position.set(0, 1.1, 0);
+		icon.parent = root;
+
+		// Patience bar background.
+		const patienceBg = MeshBuilder.CreatePlane('patienceBg', { width: 1.4, height: 0.18 }, this.scene);
+		patienceBg.position.set(0, 1.75, 0);
+		patienceBg.billboardMode = Mesh.BILLBOARDMODE_ALL;
+		const bgMat = new StandardMaterial('patienceBgMat', this.scene);
+		bgMat.diffuseColor = new Color3(0.2, 0.2, 0.2);
+		bgMat.emissiveColor = new Color3(0.1, 0.1, 0.1);
+		bgMat.disableLighting = true;
+		patienceBg.material = bgMat;
+		patienceBg.parent = root;
+		patienceBg.isPickable = false;
+
+		const patienceBar = MeshBuilder.CreatePlane('patienceBar', { width: 1.4, height: 0.18 }, this.scene);
+		patienceBar.position.set(-0.7, 1.75, -0.01);
+		patienceBar.billboardMode = Mesh.BILLBOARDMODE_ALL;
+		const barMat = new StandardMaterial('patienceBarMat', this.scene);
+		barMat.diffuseColor = new Color3(0.2, 0.75, 0.3);
+		barMat.emissiveColor = new Color3(0.1, 0.4, 0.15);
+		barMat.disableLighting = true;
+		patienceBar.material = barMat;
+		patienceBar.parent = root;
+		patienceBar.isPickable = false;
+
+		this.guestMesh = { root, body, icon, patienceBar, patienceBg };
+	}
+
+	private createEmojiPlane(name: string, emoji: string, size: number): Mesh {
+		const texture = new DynamicTexture(`${name}-tex`, { width: 128, height: 128 }, this.scene);
+		const ctx = texture.getContext() as unknown as CanvasRenderingContext2D;
+		ctx.clearRect(0, 0, 128, 128);
+		ctx.font = '96px serif';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.fillText(emoji, 64, 68);
+		texture.update();
+
+		const mat = new StandardMaterial(`${name}-mat`, this.scene);
+		mat.diffuseTexture = texture;
+		mat.emissiveColor = new Color3(1, 1, 1);
+		mat.specularColor = new Color3(0, 0, 0);
+		mat.disableLighting = true;
+		mat.backFaceCulling = false;
+		mat.alpha = 0.99;
+
+		const plane = MeshBuilder.CreatePlane(name, { width: size, height: size }, this.scene);
+		plane.material = mat;
+		plane.billboardMode = Mesh.BILLBOARDMODE_ALL;
+		return plane;
+	}
+
+	private setupInput(): void {
+		this.scene.onPointerObservable.add((pointerInfo) => {
+			if (pointerInfo.type === PointerEventTypes.POINTERDOWN && pointerInfo.pickInfo?.hit) {
+				const mesh = pointerInfo.pickInfo.pickedMesh;
+				if (mesh?.metadata?.item) {
+					this.logic.serveItem(mesh.metadata.item as ServingItem);
+				}
+			}
+		});
+	}
+
+	startLevel(level: number): void {
+		this.logic.startLevel(level);
+		this.audio.playMusic();
+	}
+
+	restartLevel(): void {
+		this.logic.restartLevel();
+		this.cleanupParticles();
+	}
+
+	backToMenu(): void {
+		this.logic.resetToMenu();
+		this.cleanupParticles();
+	}
+
+	serveItem(item: ServingItem): void {
+		this.logic.serveItem(item);
+	}
+
+	usePowerUp(type: PowerUpType): void {
+		this.logic.usePowerUp(type);
+	}
+
+	setMuted(muted: boolean): void {
+		this.audio.setMuted(muted);
+	}
+
+	getMuted(): boolean {
+		return this.audio.getMuted();
+	}
+
+	private cleanupParticles(): void {
+		for (const p of this.smokeParticles) p.mesh.dispose();
+		this.smokeParticles = [];
+		for (const l of this.floatingLabels) l.mesh.dispose();
+		this.floatingLabels = [];
+	}
+
+	private animateItem(item: ServingItem): void {
+		const found = this.servingItems.find((i) => i.item === item);
+		if (!found) return;
+
+		const mesh = found.mesh;
+		const startY = found.root.position.y;
+		const anim = new Animation(
+			`anim-${item}`,
+			'position.y',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CYCLE
+		);
+		const keys = [
+			{ frame: 0, value: startY },
+			{ frame: 10, value: startY + 0.25 },
+			{ frame: 20, value: startY }
+		];
+		anim.setKeys(keys);
+		this.scene.beginDirectAnimation(found.root, [anim], 0, 20, false, 1, () => {
+			found.root.position.y = startY;
+		});
+
+		if (item === 'bukhoor') {
+			this.spawnSmoke(found.root.position.add(new Vector3(0, 0.6, 0)));
+		}
+	}
+
+	private spawnSmoke(origin: Vector3): void {
+		for (let i = 0; i < 6; i++) {
+			const smoke = MeshBuilder.CreateSphere(`smoke-${Date.now()}-${i}`, { diameter: 0.1, segments: 4 }, this.scene);
+			smoke.position = origin.clone();
+			const mat = new StandardMaterial(`smokeMat-${Date.now()}-${i}`, this.scene);
+			mat.emissiveColor = new Color3(0.7, 0.7, 0.7);
+			mat.alpha = 0.4;
+			mat.disableLighting = true;
+			smoke.material = mat;
+			this.smokeParticles.push({
+				mesh: smoke,
+				life: 1 + Math.random() * 0.8,
+				vy: 0.4 + Math.random() * 0.3,
+				vx: (Math.random() - 0.5) * 0.2,
+				vz: (Math.random() - 0.5) * 0.2
+			});
+		}
+	}
+
+	private spawnFloatingLabel(emoji: string): void {
+		const label = this.createEmojiPlane(`float-${Date.now()}`, emoji, 0.6);
+		label.position = new Vector3((Math.random() - 0.5) * 0.5, 1.6, 3);
+		this.floatingLabels.push({ mesh: label, life: 0.8, vy: 0.6 });
+	}
+
+	private updateParticles(dt: number): void {
+		for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
+			const p = this.smokeParticles[i];
+			p.life -= dt;
+			p.mesh.position.x += p.vx * dt;
+			p.mesh.position.y += p.vy * dt;
+			p.mesh.position.z += p.vz * dt;
+			p.mesh.scaling.setAll(Math.max(0.2, p.life));
+			if (p.life <= 0) {
+				p.mesh.dispose();
+				this.smokeParticles.splice(i, 1);
+			}
+		}
+
+		for (let i = this.floatingLabels.length - 1; i >= 0; i--) {
+			const l = this.floatingLabels[i];
+			l.life -= dt;
+			l.mesh.position.y += l.vy * dt;
+			l.mesh.scaling.setAll(Math.max(0.1, l.life));
+			if (l.life <= 0) {
+				l.mesh.dispose();
+				this.floatingLabels.splice(i, 1);
+			}
+		}
+	}
+
+	private syncScene(): void {
+		const state = this.logic.getState();
+		this.syncGuest(state);
+		this.syncHighlights(state);
+	}
+
+	private syncGuest(state: MajlisHostState): void {
+		if (!this.guestMesh) return;
+
+		if (!state.activeGuest) {
+			this.guestMesh.root.setEnabled(false);
+			return;
+		}
+
+		const guest = state.activeGuest;
+		if (guest.id !== this.lastGuestId) {
+			this.lastGuestId = guest.id;
+			this.updateGuestAppearance(guest.type);
+		}
+
+		this.guestMesh.root.setEnabled(true);
+
+		// Gentle idle bounce.
+		const bounce = guest.state === 'waiting' ? Math.sin(this.time * 2) * 0.03 : 0;
+		this.guestMesh.root.position.y = 0.35 + bounce;
+
+		// Scale patience bar.
+		const ratio = clamp(guest.patience / guest.maxPatience, 0, 1);
+		this.guestMesh.patienceBar.scaling.x = ratio;
+		const barMat = this.guestMesh.patienceBar.material as StandardMaterial;
+		if (ratio > 0.5) {
+			barMat.diffuseColor = new Color3(0.2, 0.75, 0.3);
+			barMat.emissiveColor = new Color3(0.1, 0.4, 0.15);
+		} else if (ratio > 0.25) {
+			barMat.diffuseColor = new Color3(0.95, 0.7, 0.1);
+			barMat.emissiveColor = new Color3(0.5, 0.35, 0.05);
+		} else {
+			barMat.diffuseColor = new Color3(0.85, 0.2, 0.15);
+			barMat.emissiveColor = new Color3(0.4, 0.1, 0.08);
+		}
+
+		// Fade out when leaving.
+		if (guest.state === 'leaving-happy' || guest.state === 'leaving-angry') {
+			this.guestMesh.root.scaling.scaleInPlace(0.92);
+			if (this.guestMesh.root.scaling.x < 0.05) {
+				this.guestMesh.root.setEnabled(false);
+				this.guestMesh.root.scaling.setAll(1);
+			}
+		} else {
+			this.guestMesh.root.scaling.setAll(1);
+		}
+	}
+
+	private updateGuestAppearance(type: GuestType): void {
+		if (!this.guestMesh) return;
+		const icon = GUEST_ICONS[type];
+		this.guestMesh.icon.dispose();
+		this.guestMesh.icon = this.createEmojiPlane('guestIcon', icon, 1.2);
+		this.guestMesh.icon.position.set(0, 1.1, 0);
+		this.guestMesh.icon.parent = this.guestMesh.root;
+
+		const colors: Record<GuestType, Color3> = {
+			camel: new Color3(0.72, 0.55, 0.35),
+			falcon: new Color3(0.35, 0.32, 0.28),
+			oryx: new Color3(0.85, 0.78, 0.65),
+			fox: new Color3(0.8, 0.45, 0.2),
+			goat: new Color3(0.55, 0.5, 0.45),
+			sheep: new Color3(0.9, 0.88, 0.82)
+		};
+		const bodyMat = this.guestMesh.body.material as StandardMaterial;
+		bodyMat.diffuseColor = colors[type];
+	}
+
+	private syncHighlights(state: MajlisHostState): void {
+		const expected = state.activeGuest?.sequence[state.activeGuest.progress];
+		for (const item of this.servingItems) {
+			const isHint = expected && item.item === expected;
+			item.highlight.setEnabled(!!isHint);
+			const mat = item.highlight.material as StandardMaterial;
+			mat.alpha = isHint ? 0.25 + Math.sin(this.time * 4) * 0.1 : 0;
+		}
+	}
+
+	private flatShade(mesh: Mesh): Mesh {
+		return mesh;
+	}
+
+	dispose(): void {
+		this.disposed = true;
+		this.cleanupParticles();
+		this.audio.stopMusic();
+		window.removeEventListener('resize', this.handleResize);
+		window.removeEventListener('keydown', this.handleKeydown);
+		this.engine.dispose();
+	}
+}
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.max(min, Math.min(max, value));
+}

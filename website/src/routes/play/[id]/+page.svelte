@@ -11,6 +11,8 @@
 	let souqManagerRef: import('$lib/components/games/SouqManager.svelte').default | null = $state(null);
 	let FalconFlight = $state<typeof import('$lib/components/games/FalconFlight.svelte').default | null>(null);
 	let falconFlightRef: import('$lib/components/games/FalconFlight.svelte').default | null = $state(null);
+	let MajlisHost = $state<typeof import('$lib/components/games/MajlisHost.svelte').default | null>(null);
+	let majlisHostRef: import('$lib/components/games/MajlisHost.svelte').default | null = $state(null);
 	let muted = $state(false);
 
 	onMount(async () => {
@@ -22,6 +24,9 @@
 		}
 		if (game.id === 'falcon') {
 			FalconFlight = (await import('$lib/components/games/FalconFlight.svelte')).default;
+		}
+		if (game.id === 'majlis-host') {
+			MajlisHost = (await import('$lib/components/games/MajlisHost.svelte')).default;
 		}
 	});
 
@@ -35,6 +40,9 @@
 		} else if (game.id === 'falcon') {
 			falconFlightRef?.toggleMute();
 			muted = falconFlightRef?.isMuted() ?? false;
+		} else if (game.id === 'majlis-host') {
+			majlisHostRef?.toggleMute();
+			muted = majlisHostRef?.isMuted() ?? false;
 		}
 	}
 </script>
@@ -83,6 +91,8 @@
 			<SouqManager bind:this={souqManagerRef} />
 		{:else if game.id === 'falcon' && FalconFlight}
 			<FalconFlight bind:this={falconFlightRef} />
+		{:else if game.id === 'majlis-host' && MajlisHost}
+			<MajlisHost bind:this={majlisHostRef} />
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
 				<div>
