@@ -13,6 +13,11 @@
   --color-charcoal: #2f2f2f;
   --color-cream: #fffdf8;
 
+  /* Kid-friendly accents */
+  --color-poppy: #ff6b6b;
+  --color-lime: #a8e063;
+  --color-sky: #7dd3fc;
+
   /* Typography */
   --font-sans: 'Cairo', 'Tajawal', system-ui, sans-serif;
   --font-display: 'Tajawal', 'Cairo', system-ui, sans-serif;
@@ -49,6 +54,45 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-sea-dark);
+}
+
+/* Playful button interaction */
+.btn-bounce {
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+}
+.btn-bounce:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.2);
+}
+.btn-bounce:active {
+  transform: scale(0.95);
+}
+
+/* Gentle floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Sparkle for CTAs */
+@keyframes sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+.animate-sparkle {
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+
+/* Card lift on hover */
+.card-lift {
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgb(0 0 0 / 0.18);
 }
 
 /* Reduced motion */

@@ -31,12 +31,13 @@
 					{#if isReady}
 						<a
 							href="/play/{game.id}"
-							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-3 px-8 rounded-xl transition-colors text-center"
+							class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-4 px-10 rounded-2xl text-lg btn-bounce text-center inline-flex items-center justify-center gap-2"
 						>
-							🎮 العب الآن
+							<span class="animate-sparkle">🎮</span>
+							العب الآن
 						</a>
 					{:else}
-						<span class="bg-charcoal/50 text-cream font-bold py-3 px-8 rounded-xl text-center cursor-not-allowed">
+						<span class="bg-charcoal/50 text-cream font-bold py-4 px-10 rounded-2xl text-lg text-center cursor-not-allowed inline-flex items-center justify-center gap-2">
 							⏳ قريباً
 						</span>
 					{/if}
@@ -54,51 +55,82 @@
 
 <!-- Details -->
 <section class="py-12 bg-sand">
-	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-		<div class="bg-cream rounded-2xl shadow-lg p-6 md:p-10 mb-8">
+	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+		<!-- Quick description -->
+		<div class="bg-cream rounded-2xl shadow-lg p-6 md:p-8">
 			<h2 class="font-display font-bold text-2xl text-charcoal mb-4">عن اللعبة</h2>
-			<p class="text-charcoal/80 leading-relaxed text-lg mb-6">{game.descriptionAr}</p>
-
-			<h3 class="font-bold text-xl text-charcoal mb-3">طريقة اللعب</h3>
-			<ol class="list-decimal list-inside space-y-2 text-charcoal/80 mb-6">
-				{#each game.howToPlayAr as step}
-					<li>{step}</li>
-				{/each}
-			</ol>
-
-			<h3 class="font-bold text-xl text-charcoal mb-3">الثقافة الخليجية</h3>
-			<p class="text-charcoal/80 leading-relaxed bg-sand/50 p-4 rounded-xl">{game.culturalNoteAr}</p>
+			<p class="text-charcoal/80 leading-relaxed text-lg">{game.descriptionAr}</p>
 		</div>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<div class="bg-cream rounded-2xl shadow-lg p-6">
-				<h3 class="font-bold text-xl text-charcoal mb-4">أوضاع اللعب</h3>
-				<div class="flex flex-wrap gap-2">
-					{#each modeLabels as label}
-						<span class="bg-sea/10 text-sea-dark px-3 py-1 rounded-full text-sm font-medium">{label}</span>
-					{/each}
-				</div>
+		<!-- How to play -->
+		<div class="bg-cream rounded-2xl shadow-lg p-6 md:p-8">
+			<h2 class="font-display font-bold text-2xl text-charcoal mb-6">كيف ألعب؟ 🎮</h2>
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+				{#each game.howToPlayAr as step, i}
+					<div class="bg-sand/40 rounded-xl p-4 text-center card-lift">
+						<div class="w-10 h-10 bg-sun text-charcoal font-bold rounded-full flex items-center justify-center mx-auto mb-3 text-lg">
+							{i + 1}
+						</div>
+						<p class="text-charcoal/90 font-medium text-sm leading-relaxed">{step}</p>
+					</div>
+				{/each}
 			</div>
+		</div>
 
-			<div class="bg-cream rounded-2xl shadow-lg p-6">
-				<h3 class="font-bold text-xl text-charcoal mb-4">الدول المرتبطة</h3>
-				<div class="flex flex-wrap gap-2">
-					{#each game.countries as code}
-						<span class="bg-sand text-charcoal px-3 py-1 rounded-full text-sm font-medium">
-							{COUNTRY_LABELS[code].flag} {COUNTRY_LABELS[code].ar}
-						</span>
-					{/each}
+		<!-- Cultural note -->
+		<div class="bg-gradient-to-br from-sea to-sea-dark rounded-2xl shadow-lg p-6 md:p-8 text-cream">
+			<h2 class="font-display font-bold text-2xl mb-4">لماذا هذا مهم؟ 🌟</h2>
+			<p class="leading-relaxed text-lg opacity-95">{game.culturalNoteAr}</p>
+		</div>
+
+		<!-- Quick info grid -->
+		<div class="bg-cream rounded-2xl shadow-lg p-6 md:p-8">
+			<h2 class="font-display font-bold text-xl text-charcoal mb-4">معلومات سريعة</h2>
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+				<div class="bg-sand/40 rounded-xl p-4">
+					<h3 class="font-bold text-charcoal mb-2 text-sm">🎮 أوضاع اللعب</h3>
+					<div class="flex flex-wrap gap-2">
+						{#each modeLabels as label}
+							<span class="bg-sea/10 text-sea-dark px-2 py-1 rounded-full text-xs font-medium">{label}</span>
+						{/each}
+					</div>
 				</div>
-			</div>
 
-			<div class="bg-cream rounded-2xl shadow-lg p-6">
-				<h3 class="font-bold text-xl text-charcoal mb-4">الأجهزة المدعومة</h3>
-				<div class="flex flex-wrap gap-2">
-					{#each platformLabels as platform}
-						<span class="bg-sand text-charcoal px-3 py-1 rounded-full text-sm font-medium">
-							{platform.icon} {platform.ar}
-						</span>
-					{/each}
+				<div class="bg-sand/40 rounded-xl p-4">
+					<h3 class="font-bold text-charcoal mb-2 text-sm">🌍 الدول</h3>
+					<div class="flex flex-wrap gap-2">
+						{#each game.countries as code}
+							<span class="bg-sand text-charcoal px-2 py-1 rounded-full text-xs font-medium">
+								{COUNTRY_LABELS[code].flag} {COUNTRY_LABELS[code].ar}
+							</span>
+						{/each}
+					</div>
+				</div>
+
+				<div class="bg-sand/40 rounded-xl p-4">
+					<h3 class="font-bold text-charcoal mb-2 text-sm">📱 الأجهزة</h3>
+					<div class="flex flex-wrap gap-2">
+						{#each platformLabels as platform}
+							<span class="bg-sand text-charcoal px-2 py-1 rounded-full text-xs font-medium">
+								{platform.icon} {platform.ar}
+							</span>
+						{/each}
+					</div>
+				</div>
+
+				<div class="bg-sand/40 rounded-xl p-4">
+					<h3 class="font-bold text-charcoal mb-2 text-sm">🎂 العمر</h3>
+					<p class="text-charcoal/80 text-sm">{game.ageRange} سنوات</p>
+				</div>
+
+				<div class="bg-sand/40 rounded-xl p-4">
+					<h3 class="font-bold text-charcoal mb-2 text-sm">⏱️ مدة الجولة</h3>
+					<p class="text-charcoal/80 text-sm">{game.sessionLength}</p>
+				</div>
+
+				<div class="bg-sand/40 rounded-xl p-4">
+					<h3 class="font-bold text-charcoal mb-2 text-sm">🏷️ النوع</h3>
+					<p class="text-charcoal/80 text-sm">{game.genreLabelAr}</p>
 				</div>
 			</div>
 		</div>

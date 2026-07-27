@@ -96,12 +96,13 @@
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
 				<div>
-					<div class="text-8xl mb-6">{game.icon}</div>
+					<div class="text-8xl mb-4 animate-bounce">{game.icon}</div>
+					<img src="/images/mascot-fox.svg" alt="" class="w-24 h-24 mx-auto mb-6 animate-float opacity-90" />
 					<h2 class="text-cream font-display font-bold text-2xl md:text-4xl mb-4">
-						جاري تحميل {game.nameAr}
+						{game.nameAr} جاهزة قريباً!
 					</h2>
 					<p class="text-cream/70 text-lg max-w-md mx-auto mb-8">
-						سيتم تشغيل اللعبة هنا قريباً باستخدام Babylon.js.
+						نحن نجهّز اللعبة لك 🎮
 					</p>
 					<div class="flex flex-col sm:flex-row gap-3 justify-center">
 						<a
