@@ -89,7 +89,7 @@ class MajlisHostAudio {
 		if (this.musicTimer || this.muted) return;
 		this.musicTimer = setInterval(() => {
 			if (!this.muted) this.playMusicBar(this.getCtx());
-		}, 5200);
+		}, 6200);
 		if (!this.muted) this.playMusicBar(this.getCtx());
 	}
 
@@ -102,13 +102,18 @@ class MajlisHostAudio {
 
 	private playMusicBar(ctx: AudioContext): void {
 		const now = ctx.currentTime;
-		// Maqam Bayati-ish phrase on D, calm oud-led loop.
-		const scale = [293.66, 311.13, 349.23, 392.0, 440.0, 466.16, 523.25];
-		const phrase = [0, 2, 3, 2, 1, 2, 3, 4, 3, 2, 0, 2];
-		const durations = [0.38, 0.3, 0.42, 0.26, 0.3, 0.38, 0.3, 0.26, 0.34, 0.3, 0.38, 0.65];
+		// Maqam Rast on D (D, E, F#4, G, A, Bb, C5) — warm Gulf/coffee-song feel.
+		// Stylistic nod to "والله تصبوها القهوة وزيدوها هيل" / صبوا القهوة.
+		const scale = [293.66, 329.63, 369.99, 392.0, 440.0, 466.16, 523.25];
+		const phrase = [0, 2, 4, 3, 2, 1, 0, 0, 2, 3, 2, 1, 0];
+		const durations = [0.42, 0.32, 0.52, 0.3, 0.32, 0.38, 0.6, 0.32, 0.36, 0.32, 0.36, 0.42, 0.78];
 		let t = 0;
 		phrase.forEach((noteIdx, i) => {
 			this.playOudNote(ctx, now + t, scale[noteIdx], durations[i]);
+			// Soft frame-drum / tar pulse on the strong beats.
+			if (i === 0 || i === 4 || i === 7 || i === 10) {
+				this.playFrameDrum(ctx, now + t, i === 0 ? 0.045 : 0.028);
+			}
 			t += durations[i] + 0.06;
 		});
 	}
@@ -136,6 +141,33 @@ class MajlisHostAudio {
 		gain.connect(ctx.destination);
 		osc.start(when);
 		osc.stop(when + duration + 0.08);
+	}
+
+	private playFrameDrum(ctx: AudioContext, when: number, volume: number): void {
+		const bufferSize = Math.floor(ctx.sampleRate * 0.12);
+		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+		const data = buffer.getChannelData(0);
+		for (let i = 0; i < bufferSize; i++) {
+			const envelope = Math.max(0, 1 - i / bufferSize) ** 1.8;
+			data[i] = (Math.random() * 2 - 1) * envelope;
+		}
+		const noise = ctx.createBufferSource();
+		noise.buffer = buffer;
+
+		const filter = ctx.createBiquadFilter();
+		filter.type = 'bandpass';
+		filter.frequency.value = 220;
+		filter.Q.value = 0.8;
+
+		const gain = ctx.createGain();
+		gain.gain.setValueAtTime(0, when);
+		gain.gain.linearRampToValueAtTime(volume, when + 0.005);
+		gain.gain.exponentialRampToValueAtTime(0.001, when + 0.12);
+
+		noise.connect(filter);
+		filter.connect(gain);
+		gain.connect(ctx.destination);
+		noise.start(when);
 	}
 
 	playServe(item: ServingItem): void {
