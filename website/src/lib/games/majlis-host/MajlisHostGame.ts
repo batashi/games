@@ -294,6 +294,25 @@ class MajlisHostAudio {
 		osc.stop(now + 0.25);
 	}
 
+	playGuestHappy(): void {
+		const ctx = this.ensureCtx();
+		if (!ctx) return;
+		const now = ctx.currentTime;
+		[523, 659, 784].forEach((freq, i) => {
+			const osc = ctx.createOscillator();
+			osc.type = 'sine';
+			osc.frequency.setValueAtTime(freq, now + i * 0.06);
+			const gain = ctx.createGain();
+			gain.gain.setValueAtTime(0.0001, now + i * 0.06);
+			gain.gain.exponentialRampToValueAtTime(0.1, now + i * 0.06 + 0.02);
+			gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.35);
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.start(now + i * 0.06);
+			osc.stop(now + i * 0.06 + 0.4);
+		});
+	}
+
 	playWin(): void {
 		const ctx = this.ensureCtx();
 		if (!ctx) return;
@@ -363,6 +382,17 @@ export class MajlisHostGame {
 	private time = 0;
 	private lastGuestId = -1;
 	private lastState: MajlisHostState | null = null;
+	private guestEntranceTimer = 0;
+	private leavingGuest: {
+		root: TransformNode;
+		body: Mesh;
+		icon: Mesh;
+		type: GuestType;
+		happy: boolean;
+		timer: number;
+		startPos: Vector3;
+		phase: 'react' | 'fly';
+	} | null = null;
 
 	private handleResize: () => void;
 	private handleKeydown: (e: KeyboardEvent) => void;
@@ -403,8 +433,9 @@ export class MajlisHostGame {
 						this.spawnFloatingLabel('❌');
 					}
 				},
-				onGuestComplete: (happy) => {
+				onGuestComplete: (happy, type) => {
 					this.spawnFloatingLabel(happy ? '😊' : '😞');
+					this.startGuestLeave(happy, type);
 				},
 				onLevelComplete: () => this.audio.playWin(),
 				onLevelFailed: () => this.audio.playMistake()
@@ -437,6 +468,7 @@ export class MajlisHostGame {
 			this.syncScene();
 			this.updateHover(dt);
 			this.updateSteam(dt);
+			this.updateLeavingGuest(dt);
 			this.updateParticles(dt);
 			this.scene.render();
 		});
@@ -1330,9 +1362,25 @@ export class MajlisHostGame {
 		if (guest.id !== this.lastGuestId) {
 			this.lastGuestId = guest.id;
 			this.updateGuestAppearance(guest.type);
+			// Pop-in entrance.
+			this.guestEntranceTimer = 0.5;
+			this.guestMesh.root.position.set(0, 0.35, 3);
+			this.guestMesh.root.scaling.setAll(0);
+			this.guestMesh.root.rotation.set(0, 0, 0);
 		}
 
 		this.guestMesh.root.setEnabled(true);
+
+		// Entrance pop-in.
+		if (this.guestEntranceTimer > 0) {
+			this.guestEntranceTimer = Math.max(0, this.guestEntranceTimer - this.engine.getDeltaTime() / 1000);
+			const t = 1 - this.guestEntranceTimer / 0.5;
+			const elastic = t === 0 ? 0 : 1 - Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * ((2 * Math.PI) / 3));
+			const scale = Math.max(0, elastic);
+			this.guestMesh.root.scaling.setAll(scale);
+			this.guestMesh.root.position.y = 0.35 + (1 - elastic) * 0.8;
+			return;
+		}
 
 		// Gentle idle bounce.
 		const bounce = guest.state === 'waiting' ? Math.sin(this.time * 2) * 0.03 : 0;
@@ -1353,16 +1401,7 @@ export class MajlisHostGame {
 			barMat.emissiveColor = new Color3(0.4, 0.1, 0.08);
 		}
 
-		// Fade out when leaving.
-		if (guest.state === 'leaving-happy' || guest.state === 'leaving-angry') {
-			this.guestMesh.root.scaling.scaleInPlace(0.92);
-			if (this.guestMesh.root.scaling.x < 0.05) {
-				this.guestMesh.root.setEnabled(false);
-				this.guestMesh.root.scaling.setAll(1);
-			}
-		} else {
-			this.guestMesh.root.scaling.setAll(1);
-		}
+		this.guestMesh.root.scaling.setAll(1);
 	}
 
 	private updateGuestAppearance(type: GuestType): void {
@@ -1383,6 +1422,133 @@ export class MajlisHostGame {
 		};
 		const bodyMat = this.guestMesh.body.material as StandardMaterial;
 		bodyMat.diffuseColor = colors[type];
+	}
+
+	private startGuestLeave(happy: boolean, type: GuestType): void {
+		if (!this.guestMesh) return;
+
+		// Hand the current guest mesh off to a leaving clone so the next guest can arrive immediately.
+		const startPos = this.guestMesh.root.position.clone();
+		const clone = this.cloneGuestRoot(this.guestMesh, happy ? '😊' : '😠');
+		clone.root.position.copyFrom(startPos);
+		clone.root.scaling.setAll(1);
+
+		if (!happy) {
+			// Fiery red angry body.
+			const bodyMat = clone.body.material as StandardMaterial;
+			bodyMat.diffuseColor = new Color3(0.85, 0.15, 0.1);
+			bodyMat.emissiveColor = new Color3(0.35, 0.05, 0.02);
+			this.audio.playMistake();
+		} else {
+			this.audio.playGuestHappy();
+		}
+
+		this.leavingGuest = {
+			root: clone.root,
+			body: clone.body,
+			icon: clone.icon,
+			type,
+			happy,
+			timer: happy ? 1.2 : 1.8,
+			startPos: startPos.clone(),
+			phase: 'react'
+		};
+
+		// Hide the active guest mesh; it will be replaced by the next guest.
+		this.guestMesh.root.setEnabled(false);
+	}
+
+	private cloneGuestRoot(source: GuestMesh, iconEmoji: string): { root: TransformNode; body: Mesh; icon: Mesh } {
+		const root = new TransformNode('leavingGuestRoot', this.scene);
+		root.position.copyFrom(source.root.position);
+		root.rotation.copyFrom(source.root.rotation);
+		root.scaling.copyFrom(source.root.scaling);
+
+		const body = source.body.clone('leavingGuestBody') ??
+			MeshBuilder.CreateSphere('leavingGuestBody', { diameter: 1.1, segments: 7 }, this.scene);
+		body.parent = root;
+		body.scaling = new Vector3(1, 0.85, 0.9);
+		const bodyMat = (source.body.material as StandardMaterial).clone('leavingGuestBodyMat') ??
+			new StandardMaterial('leavingGuestBodyMat', this.scene);
+		body.material = bodyMat;
+
+		const icon = this.createEmojiPlane('leavingGuestIcon', iconEmoji, 1.2);
+		icon.position.set(0, 1.1, 0);
+		icon.parent = root;
+
+		return { root, body, icon };
+	}
+
+	private updateLeavingGuest(dt: number): void {
+		if (!this.leavingGuest) return;
+
+		const g = this.leavingGuest;
+		g.timer -= dt;
+
+		if (g.happy) {
+			// Happy bounce, spin and float away.
+			const t = Math.max(0, Math.min(1, 1 - g.timer / 1.2));
+			g.root.position.y = g.startPos.y + Math.sin(t * Math.PI * 2) * 0.6 + t * 1.5;
+			g.root.position.x = Math.sin(t * Math.PI) * 0.5;
+			g.root.rotation.y = t * Math.PI * 4;
+			const scale = 1 + Math.sin(t * Math.PI) * 0.3;
+			g.root.scaling.setAll(scale);
+			// Sparkle trail.
+			if (Math.random() < 0.3) {
+				this.spawnSparkles(g.root.position.add(new Vector3(0, 0.4, 0)));
+			}
+		} else {
+			// Angry reaction phase: shake, flash red, spin, jump.
+			if (g.phase === 'react') {
+				const reactT = Math.max(0, Math.min(1, 1 - g.timer / 1.8));
+				g.root.position.x = g.startPos.x + Math.sin(this.time * 40) * 0.15;
+				g.root.position.z = g.startPos.z + Math.cos(this.time * 35) * 0.1;
+				g.root.position.y = g.startPos.y + Math.abs(Math.sin(this.time * 15)) * 0.4;
+				g.root.rotation.z = Math.sin(this.time * 30) * 0.25;
+				g.root.rotation.y += dt * 8;
+				const scale = 1 + Math.sin(this.time * 20) * 0.1;
+				g.root.scaling.setAll(scale);
+				// Red anger puffs.
+				if (Math.random() < 0.4) {
+					this.spawnAngerPuff(g.root.position.add(new Vector3(0, 0.8, 0)));
+				}
+				if (reactT > 0.55) {
+					g.phase = 'fly';
+					g.timer = 0.8;
+				}
+			} else {
+				// Fly off screen in a crazy arc.
+				const flyT = Math.max(0, Math.min(1, 1 - g.timer / 0.8));
+				const dir = Math.sin(g.type.length * 999) > 0 ? 1 : -1;
+				g.root.position.x = g.startPos.x + dir * flyT * 12;
+				g.root.position.y = g.startPos.y + Math.sin(flyT * Math.PI * 1.5) * 3;
+				g.root.rotation.z = flyT * dir * Math.PI * 6;
+				g.root.rotation.y += dt * 20;
+				g.root.scaling.setAll(1 - flyT * 0.3);
+			}
+		}
+
+		if (g.timer <= 0) {
+			g.root.dispose();
+			this.leavingGuest = null;
+		}
+	}
+
+	private spawnAngerPuff(origin: Vector3): void {
+		const puff = MeshBuilder.CreateSphere(`anger-${Date.now()}`, { diameter: 0.15, segments: 4 }, this.scene);
+		puff.position = origin.clone();
+		const mat = new StandardMaterial(`angerMat-${Date.now()}`, this.scene);
+		mat.emissiveColor = new Color3(1, 0.2, 0.1);
+		mat.diffuseColor = new Color3(0.8, 0.1, 0.05);
+		mat.disableLighting = true;
+		puff.material = mat;
+		this.smokeParticles.push({
+			mesh: puff,
+			life: 0.4,
+			vy: 0.8 + Math.random() * 0.5,
+			vx: (Math.random() - 0.5) * 1.5,
+			vz: (Math.random() - 0.5) * 1.5
+		});
 	}
 
 	private syncHighlights(state: MajlisHostState): void {
