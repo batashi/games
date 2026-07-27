@@ -621,11 +621,12 @@ A single 3D artist using Blender (modeling) and Figma (UI/concepts) can maintain
 
 #### 10.1.7 Visual Experiments
 
-Active experiments are isolated to a single game until they are proven on the target devices and approved as a platform-wide standard.
+Active experiments are isolated to specific games until they are proven on the target devices and approved as a platform-wide standard.
 
 | Game | Experiment | Status | Notes |
 |------|------------|--------|-------|
-| **Falcon Flight** | Low-poly PBR with real-time shadows, ACES tone mapping, FXAA/bloom, confetti particles, squash-and-stretch feedback, Babylon.GUI touch overlay, FPS-based quality fallback. | **In tuning** | Limited to this game only. Evaluate tablet/mobile performance, visual clarity for children, and overall juice before rolling out to other titles. |
+| **Falcon Flight** | Low-poly PBR with real-time shadows, ACES tone mapping, FXAA/bloom, confetti particles, squash-and-stretch feedback, Babylon.GUI touch overlay, FPS-based quality fallback. | **In tuning** | Evaluate tablet/mobile performance, visual clarity for children, and overall juice before rolling out to other titles. |
+| **Souq Al-Fereej** | Same visual treatment as Falcon Flight: no fog, bright flat-shaded PBR, strong ambient + warm directional lighting with soft shadows, ACES/FXAA/subtle bloom, bounded ArcRotateCamera, squash-and-stretch feedback, confetti + floating text, FPS watchdog. | **In tuning** | Second testbed for the treatment; validate that the same approach works for a slower-paced management/trading game with many static stalls and UI interactions. |
 
 Rules for experiments:
 - Keep gameplay logic untouched; visual changes must live in the scene/renderer layer.

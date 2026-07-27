@@ -16,7 +16,7 @@ Seven games are specified in the repository:
 | `tictactoe` | Gulf Tic-Tac-Toe | تحدي إكس-أو الخليجي | Ready (design) |
 | `archery` | Fort Battle | معركة القلاع | Ready (design + playable prototype) |
 | `luban-sorter` | Luban Sorter | فرز اللبان | Ready (design) |
-| `souq-alfereej` | Souq Al-Fereej | سوق الفريج | Ready (design + playable prototype) |
+| `souq-alfereej` | Souq Al-Fereej | سوق الفريج | Ready (design + playable prototype + visual experiment) |
 | `falcon` | Falcon Flight | رحلة الصقر | Ready (design + playable prototype + visual experiment) |
 | `majlis-host` | Majlis Host | ضيافة المجلس | Ready (design + playable prototype) |
 

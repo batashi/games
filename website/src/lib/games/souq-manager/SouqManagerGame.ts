@@ -1,13 +1,26 @@
+/**
+ * Souq Al-Fereej (Souq Manager) — Visual Upgrade Experiment
+ *
+ * This file applies the experimental, high-polish Babylon.js visual treatment
+ * first trialed in Falcon Flight (low-poly PBR, real-time shadows, ACES tone
+ * mapping, bloom/FXAA, particles, squash-and-stretch animations, Babylon.GUI
+ * feedback, and an FPS watchdog) to the Souq Manager gameplay prototype.
+ *
+ * Gameplay logic remains in SouqManagerLogic.ts; this file is responsible for
+ * presentation only. See FRAMEWORK.md §10.1.7 for the experiment record.
+ */
+
 import {
 	Engine,
 	Scene,
 	Vector3,
 	Color3,
+	Color4,
 	HemisphericLight,
 	DirectionalLight,
-	PointLight,
-	UniversalCamera,
+	ArcRotateCamera,
 	MeshBuilder,
+	PBRMaterial,
 	StandardMaterial,
 	Mesh,
 	TransformNode,
@@ -15,8 +28,20 @@ import {
 	HighlightLayer,
 	VertexData,
 	DynamicTexture,
-	VertexBuffer
+	VertexBuffer,
+	CubeTexture,
+	Animation,
+	BackEase,
+	EasingFunction,
+	ParticleSystem,
+	Scalar
 } from '@babylonjs/core';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
+import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline';
+import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
+import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
+import '@babylonjs/loaders/glTF';
+import { AdvancedDynamicTexture, Button, TextBlock, Rectangle, Control } from '@babylonjs/gui';
 import {
 	SouqManagerLogic,
 	type SouqManagerState,
@@ -35,6 +60,49 @@ export interface SouqManagerGameOptions {
 }
 
 type AnimalType = 'camel' | 'falcon' | 'oryx' | 'fox' | 'goat' | 'sheep';
+
+// Bright, high-contrast pastel palette tuned for children.
+const PALETTE = {
+	ground: '#f4e4bc',
+	sandLight: '#fff5d7',
+	sandShadow: '#e6d2a0',
+	wood: '#d4a373',
+	woodDark: '#a97142',
+	awning: '#f4978e',
+	awningStripe: '#f8ad9d',
+	lantern: '#ffd166',
+	lanternGlass: '#fff3b0',
+	stone: '#bcaaa4',
+	fence: '#b08968',
+	cashierAwning: '#ef476f',
+	cashierStripe: '#ffccd5',
+	palmTrunk: '#8d5b4c',
+	palmLeaf: '#70e000',
+	date: '#ffb703',
+	coffeeBean: '#6a994e',
+	coffeeRoast: '#bc4749',
+	coffeeGround: '#6f4e37',
+	luban: '#ffd166',
+	resin: '#fff3b0',
+	brass: '#ffb703',
+	glass: '#caf0f8',
+	charcoal: '#4a4e69',
+	mortar: '#9a8c98',
+	merchantRobe: '#f8f9fa',
+	merchantSkin: '#fae1dd',
+	camel: '#f4a261',
+	falcon: '#e76f51',
+	oryx: '#f8edeb',
+	fox: '#f3722c',
+	goat: '#e9edc9',
+	sheep: '#fefae0',
+	coin: '#ffd60a',
+	sparkle: '#ff9f1c',
+	success: '#06d6a0',
+	danger: '#ef476f',
+	sun: '#ffd60a',
+	sky: '#a0d8ef'
+};
 
 export class SouqManagerAudio {
 	private ctx: AudioContext | null = null;
@@ -178,10 +246,18 @@ export class SouqManagerGame {
 	private canvas: HTMLCanvasElement;
 	private engine: Engine;
 	private scene: Scene;
-	private camera!: UniversalCamera;
+	private camera!: ArcRotateCamera;
 	private logic: SouqManagerLogic;
 	private audio: SouqManagerAudio;
 	private onStateChange?: (state: SouqManagerState) => void;
+
+	private shadowGenerator!: ShadowGenerator;
+	private pipeline!: DefaultRenderingPipeline;
+	private gui!: AdvancedDynamicTexture;
+	private confettiTexture: DynamicTexture | null = null;
+
+	private lowFpsAccumulator = 0;
+	private performanceReduced = false;
 
 	private playerMesh: EntityMesh | null = null;
 	private customerMeshes = new Map<number, EntityMesh>();
@@ -220,7 +296,9 @@ export class SouqManagerGame {
 		this.onStateChange = onStateChange;
 		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 		this.scene = new Scene(this.engine);
-		this.scene.clearColor = new Color3(0.96, 0.88, 0.72).toColor4(1);
+		// Crisp, warm sky tone. Fog is disabled so the whole souq stays readable.
+		this.scene.clearColor = Color4.FromHexString('#a0d8efff');
+		this.scene.fogMode = Scene.FOGMODE_NONE;
 		this.audio = new SouqManagerAudio();
 		this.highlight = new HighlightLayer('hl', this.scene);
 
@@ -231,15 +309,29 @@ export class SouqManagerGame {
 			},
 			options.config,
 			{
-				onCoinCollected: () => this.audio.playCoin(),
-				onCustomerServed: () => this.audio.playProcess(),
-				onLevelComplete: () => this.audio.playWin()
+				onCoinCollected: (amount) => {
+					this.audio.playCoin();
+					const state = this.logic.getState();
+					this.spawnConfetti(state.player.position.x, 0.5, state.player.position.y, new Color3(1, 0.84, 0), 16);
+					this.showFloatingText(state.player.position.x, 1.2, state.player.position.y, `+${amount}`, PALETTE.coin);
+				},
+				onCustomerServed: () => {
+					this.audio.playProcess();
+					this.spawnConfetti(0, 0.5, -4, Color3.FromHexString(PALETTE.success), 20);
+				},
+				onLevelComplete: () => {
+					this.audio.playWin();
+					this.spawnConfetti(0, 1, -4, Color3.FromHexString(PALETTE.success), 48);
+				}
 			}
 		);
 
+		this.setupEnvironmentTexture();
 		this.setupLights();
 		this.setupCamera();
 		this.setupEnvironment();
+		this.setupPostProcess();
+		this.setupGui();
 		this.setupInput();
 		this.setupDecorativeCamel();
 
@@ -266,6 +358,7 @@ export class SouqManagerGame {
 			this.syncScene();
 			this.updateCoinLabels(dt);
 			this.updateSmoke(dt);
+			this.checkPerformance(dt);
 			this.scene.render();
 		});
 
@@ -275,30 +368,106 @@ export class SouqManagerGame {
 
 	private setupLights(): void {
 		const hemi = new HemisphericLight('hemi', new Vector3(0, 1, 0), this.scene);
-		hemi.intensity = 0.45;
-		hemi.groundColor = new Color3(0.65, 0.5, 0.38);
-		hemi.diffuse = new Color3(1, 0.9, 0.78);
+		// Strong ambient fill so shadows stay bright and shapes remain readable.
+		hemi.intensity = 0.95;
+		hemi.diffuse = new Color3(1, 0.96, 0.88);
+		hemi.groundColor = new Color3(0.96, 0.86, 0.68);
 
 		const dir = new DirectionalLight('dir', new Vector3(-0.5, -1, -0.7), this.scene);
-		dir.intensity = 0.9;
-		dir.diffuse = new Color3(1, 0.82, 0.6);
+		dir.intensity = 1.15;
+		dir.diffuse = new Color3(1, 0.88, 0.62);
+		dir.position = new Vector3(-20, 30, -10);
+		dir.shadowMinZ = 1;
+		dir.shadowMaxZ = 60;
+		(dir as DirectionalLight & { shadowFrustumSize?: number }).shadowFrustumSize = 32;
 
-		// Warm lantern glow near the front selling area.
-		const point = new PointLight('lantern', new Vector3(0, 3.5, -4), this.scene);
-		point.intensity = 0.5;
-		point.diffuse = new Color3(1, 0.7, 0.35);
-		point.range = 12;
+		this.shadowGenerator = new ShadowGenerator(2048, dir);
+		this.shadowGenerator.useBlurExponentialShadowMap = true;
+		this.shadowGenerator.useKernelBlur = true;
+		this.shadowGenerator.blurKernel = 24;
+		this.shadowGenerator.bias = 0.0005;
+		// Lighten shadows so nothing turns pitch-black.
+		this.shadowGenerator.setDarkness(0.35);
 	}
 
 	private setupCamera(): void {
-		this.camera = new UniversalCamera('cam', new Vector3(0, 14, 16), this.scene);
-		this.camera.setTarget(new Vector3(0, 0, -1));
-		this.camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
-		this.camera.orthoLeft = -12;
-		this.camera.orthoRight = 12;
-		this.camera.orthoTop = 10;
-		this.camera.orthoBottom = -10;
+		const alpha = -Math.PI / 2;
+		// Slightly angled top-down view: wide, stable, and easy to read.
+		const beta = 1.1;
+		const radius = 22;
+		this.camera = new ArcRotateCamera('cam', alpha, beta, radius, new Vector3(0, 0, -1), this.scene);
+		this.camera.fov = 0.95;
+		this.camera.lowerAlphaLimit = alpha;
+		this.camera.upperAlphaLimit = alpha;
+		this.camera.lowerBetaLimit = 0.85;
+		this.camera.upperBetaLimit = 1.35;
+		this.camera.lowerRadiusLimit = 16;
+		this.camera.upperRadiusLimit = 30;
+		this.camera.wheelPrecision = 0;
+		this.camera.minZ = 0.5;
+		this.camera.maxZ = 200;
 		this.camera.inputs.clear();
+		this.camera.attachControl(false);
+	}
+
+	private setupEnvironmentTexture(): void {
+		// Procedural environment map so the scene always has warm reflection
+		// without depending on an external HDR asset.
+		const faces = ['#a0d8ef', '#b8e2f2', '#c8eaf5', '#a0d8ef', '#dff4f7', '#ffffff'];
+		const urls = faces.map((color) => {
+			const canvas = document.createElement('canvas');
+			canvas.width = 64;
+			canvas.height = 64;
+			const ctx = canvas.getContext('2d');
+			if (ctx) {
+				ctx.fillStyle = color;
+				ctx.fillRect(0, 0, 64, 64);
+			}
+			return canvas.toDataURL('image/png');
+		});
+		this.scene.environmentTexture = new CubeTexture('', this.scene, null, false, urls);
+	}
+
+	private setupPostProcess(): void {
+		this.pipeline = new DefaultRenderingPipeline('souqPipeline', true, this.scene, [this.camera]);
+		this.pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
+		this.pipeline.imageProcessing.toneMappingEnabled = true;
+		this.pipeline.imageProcessing.exposure = 1.15;
+		this.pipeline.imageProcessing.contrast = 1.15;
+		this.pipeline.fxaaEnabled = true;
+		// Very subtle bloom so the scene stays crisp and readable.
+		this.pipeline.bloomEnabled = true;
+		this.pipeline.bloomThreshold = 0.88;
+		this.pipeline.bloomWeight = 0.06;
+		this.pipeline.bloomKernel = 32;
+		this.pipeline.bloomScale = 0.25;
+		this.pipeline.glowLayerEnabled = true;
+		if (this.pipeline.glowLayer) {
+			this.pipeline.glowLayer.intensity = 0.25;
+		}
+	}
+
+	private createPbrMaterial(
+		name: string,
+		color: string,
+		options: { emissive?: string; alpha?: number; unlit?: boolean; roughness?: number } = {}
+	): PBRMaterial {
+		const mat = new PBRMaterial(name, this.scene);
+		mat.albedoColor = Color3.FromHexString(color);
+		mat.metallic = 0.0;
+		mat.roughness = options.roughness ?? 0.85;
+		if (options.emissive) {
+			mat.emissiveColor = Color3.FromHexString(options.emissive);
+		}
+		if (options.unlit) {
+			mat.disableLighting = true;
+		}
+		if (options.alpha !== undefined && options.alpha < 1) {
+			mat.alpha = options.alpha;
+			mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
+			mat.backFaceCulling = false;
+		}
+		return mat;
 	}
 
 	private setupEnvironment(): void {
@@ -322,12 +491,11 @@ export class SouqManagerGame {
 			ground.refreshBoundingInfo();
 		}
 		this.flatShade(ground);
-		const groundMat = new StandardMaterial('groundMat', this.scene);
-		groundMat.diffuseColor = new Color3(0.86, 0.765, 0.576);
-		groundMat.specularColor = new Color3(0.08, 0.08, 0.08);
-		ground.material = groundMat;
+		ground.material = this.createPbrMaterial('groundMat', PALETTE.ground, { roughness: 1 });
 		ground.position.y = -0.08;
 		ground.isPickable = false;
+		ground.receiveShadows = true;
+		ground.freezeWorldMatrix();
 
 		// Invisible, low-poly pick plane for ground clicks. Raycasting the detailed terrain was slow.
 		const pickPlane = MeshBuilder.CreateGround('groundPickPlane', { width: 30, height: 26, subdivisions: 1 }, this.scene);
@@ -336,11 +504,10 @@ export class SouqManagerGame {
 		pickMat.alpha = 0;
 		pickPlane.material = pickMat;
 		pickPlane.isPickable = true;
+		pickPlane.freezeWorldMatrix();
 
 		// Scatter a few small stones around the edges for detail.
-		const stoneMat = new StandardMaterial('stoneMat', this.scene);
-		stoneMat.diffuseColor = new Color3(0.55, 0.5, 0.45);
-		stoneMat.specularColor = new Color3(0.05, 0.05, 0.05);
+		const stoneMat = this.createPbrMaterial('stoneMat', PALETTE.stone, { roughness: 0.95 });
 		const stonePositions = [
 			{ x: -11, z: -7.5, s: 0.22 },
 			{ x: -12.5, z: 5, s: 0.18 },
@@ -361,27 +528,28 @@ export class SouqManagerGame {
 			stone.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 			stone.material = stoneMat;
 			stone.isPickable = false;
+			this.freezeAndShadow(stone);
 		}
 
 		// Stall awning over the front selling area.
-		const woodMat = new StandardMaterial('woodMat', this.scene);
-		woodMat.diffuseColor = new Color3(0.58, 0.38, 0.22);
-		const awningMat = new StandardMaterial('awningMat', this.scene);
-		awningMat.diffuseColor = new Color3(0.82, 0.28, 0.28);
+		const woodMat = this.createPbrMaterial('woodMat', PALETTE.wood, { roughness: 0.9 });
+		const awningMat = this.createPbrMaterial('awningMat', PALETTE.awning);
 
 		// Two support posts.
 		for (const x of [-5, 5]) {
-			const post = MeshBuilder.CreateCylinder(`post-${x}`, { height: 4, diameter: 0.25 }, this.scene);
+			const post = this.flatShade(MeshBuilder.CreateCylinder(`post-${x}`, { height: 4, diameter: 0.25, tessellation: 8 }, this.scene));
 			post.position.set(x, 2, -5.5);
 			post.material = woodMat;
 			post.isPickable = false;
+			this.freezeAndShadow(post);
 		}
 
-		// Awning roof with striped feel (one box for now).
-		const awning = MeshBuilder.CreateBox('awning', { width: 11, height: 0.15, depth: 3 }, this.scene);
+		// Awning roof with bright pastel awning fabric.
+		const awning = this.flatShade(MeshBuilder.CreateBox('awning', { width: 11, height: 0.15, depth: 3 }, this.scene));
 		awning.position = new Vector3(0, 4, -5.2);
 		awning.material = awningMat;
 		awning.isPickable = false;
+		this.freezeAndShadow(awning);
 
 		// Hanging brass lantern under the awning.
 		const lanternRoot = new TransformNode('lanternRoot', this.scene);
@@ -391,17 +559,15 @@ export class SouqManagerGame {
 		chain.material = woodMat;
 		chain.parent = lanternRoot;
 		const lanternBody = this.flatShade(MeshBuilder.CreateCylinder('lantern-body', { height: 0.6, diameter: 0.28, tessellation: 8 }, this.scene));
-		const lanternMat = new StandardMaterial('lanternMat', this.scene);
-		lanternMat.diffuseColor = new Color3(0.75, 0.55, 0.15);
-		lanternMat.emissiveColor = new Color3(0.4, 0.25, 0.05);
-		lanternBody.material = lanternMat;
+		lanternBody.material = this.createPbrMaterial('lanternMat', PALETTE.lantern, {
+			emissive: PALETTE.lantern
+		});
 		lanternBody.parent = lanternRoot;
 		const lanternGlass = this.flatShade(MeshBuilder.CreateCylinder('lantern-glass', { height: 0.4, diameter: 0.2, tessellation: 8 }, this.scene));
-		const glassMat = new StandardMaterial('lanternGlassMat', this.scene);
-		glassMat.diffuseColor = new Color3(1, 0.9, 0.5);
-		glassMat.emissiveColor = new Color3(1, 0.7, 0.2);
-		glassMat.alpha = 0.7;
-		lanternGlass.material = glassMat;
+		lanternGlass.material = this.createPbrMaterial('lanternGlassMat', PALETTE.lanternGlass, {
+			emissive: PALETTE.lanternGlass,
+			alpha: 0.7
+		});
 		lanternGlass.parent = lanternRoot;
 
 		this.setupStations();
@@ -411,12 +577,12 @@ export class SouqManagerGame {
 		// Center the tabletop so the table legs rest on the sand.
 		this.cashierMesh.position = new Vector3(8, 0.325, -4);
 
-		this.temporaryDropMat = MeshBuilder.CreateGround('temporaryDropMat', { width: 1.6, height: 1.2 }, this.scene);
+		this.temporaryDropMat = this.flatShade(MeshBuilder.CreateGround('temporaryDropMat', { width: 1.6, height: 1.2 }, this.scene));
 		this.temporaryDropMat.position = new Vector3(0, 0.08, -5);
-		const tempMatMat = new StandardMaterial('temporaryDropMatMat', this.scene);
-		tempMatMat.diffuseColor = new Color3(0.72, 0.52, 0.38);
-		this.temporaryDropMat.material = tempMatMat;
+		this.temporaryDropMat.material = this.createPbrMaterial('temporaryDropMatMat', PALETTE.wood, { roughness: 0.95 });
 		this.temporaryDropMat.isPickable = false;
+		this.temporaryDropMat.receiveShadows = true;
+		this.temporaryDropMat.freezeWorldMatrix();
 
 		this.createShopSign();
 		this.createBoundaryFence();
@@ -429,25 +595,25 @@ export class SouqManagerGame {
 
 		// Carved wooden board backing.
 		const board = this.flatShade(MeshBuilder.CreateBox('shopSignBoard', { width: 4.4, height: 1.3, depth: 0.15 }, this.scene));
-		const boardMat = new StandardMaterial('shopSignBoardMat', this.scene);
-		boardMat.diffuseColor = new Color3(0.5, 0.32, 0.18);
-		board.material = boardMat;
+		board.material = this.createPbrMaterial('shopSignBoardMat', PALETTE.woodDark, { roughness: 0.95 });
 		board.parent = root;
 		board.isPickable = false;
+		this.freezeAndShadow(board);
 
 		// Decorative border frame.
-		const frameMat = new StandardMaterial('shopSignFrameMat', this.scene);
-		frameMat.diffuseColor = new Color3(0.4, 0.24, 0.12);
+		const frameMat = this.createPbrMaterial('shopSignFrameMat', PALETTE.wood, { roughness: 0.95 });
 		const frameTop = this.flatShade(MeshBuilder.CreateBox('shopSignFrameTop', { width: 4.6, height: 0.12, depth: 0.18 }, this.scene));
 		frameTop.position.y = 0.65;
 		frameTop.material = frameMat;
 		frameTop.parent = root;
 		frameTop.isPickable = false;
+		this.freezeAndShadow(frameTop);
 		const frameBottom = this.flatShade(MeshBuilder.CreateBox('shopSignFrameBottom', { width: 4.6, height: 0.12, depth: 0.18 }, this.scene));
 		frameBottom.position.y = -0.65;
 		frameBottom.material = frameMat;
 		frameBottom.parent = root;
 		frameBottom.isPickable = false;
+		this.freezeAndShadow(frameBottom);
 
 		// Arabic name texture.
 		const texture = new DynamicTexture('shopSignTex', { width: 512, height: 128 }, this.scene);
@@ -476,10 +642,8 @@ export class SouqManagerGame {
 	}
 
 	private createBoundaryFence(): void {
-		const postMat = new StandardMaterial('fencePostMat', this.scene);
-		postMat.diffuseColor = new Color3(0.48, 0.3, 0.18);
-		const railMat = new StandardMaterial('fenceRailMat', this.scene);
-		railMat.diffuseColor = new Color3(0.58, 0.38, 0.22);
+		const postMat = this.createPbrMaterial('fencePostMat', PALETTE.fence, { roughness: 0.95 });
+		const railMat = this.createPbrMaterial('fenceRailMat', PALETTE.wood, { roughness: 0.95 });
 
 		// Deterministic "random" offsets so the fence looks hand-built and aged
 		// but stays the same every play session.
@@ -549,6 +713,7 @@ export class SouqManagerGame {
 			post.rotation.x = jitter(p.idx + 3, 0.1);
 			post.material = postMat;
 			post.isPickable = false;
+			this.freezeAndShadow(post);
 		}
 
 		// Connect consecutive posts with uneven double rails.
@@ -579,12 +744,12 @@ export class SouqManagerGame {
 				rail.rotation.z = jitter(i, 0.04);
 				rail.material = railMat;
 				rail.isPickable = false;
+				this.freezeAndShadow(rail);
 			}
 		}
 
 		// Add a small gateway over the front-right entrance.
-		const gateMat = new StandardMaterial('gateMat', this.scene);
-		gateMat.diffuseColor = new Color3(0.55, 0.35, 0.2);
+		const gateMat = this.createPbrMaterial('gateMat', PALETTE.woodDark, { roughness: 0.95 });
 		const leftPost = posts.find((p) => p.x <= gateLeft + 0.2 && p.z < -halfD + 0.5);
 		const rightPost = posts.find((p) => p.x >= gateRight - 0.2 && p.z < -halfD + 0.5);
 		if (leftPost && rightPost) {
@@ -595,18 +760,21 @@ export class SouqManagerGame {
 			lintel.position.set(gx, 1.25, gz);
 			lintel.material = gateMat;
 			lintel.isPickable = false;
+			this.freezeAndShadow(lintel);
 
 			const leftBrace = this.flatShade(MeshBuilder.CreateBox('gateBraceL', { width: 0.18, height: 0.75, depth: 0.18 }, this.scene));
 			leftBrace.position.set(leftPost.x, 0.85, gz);
 			leftBrace.rotation.z = -0.15;
 			leftBrace.material = gateMat;
 			leftBrace.isPickable = false;
+			this.freezeAndShadow(leftBrace);
 
 			const rightBrace = this.flatShade(MeshBuilder.CreateBox('gateBraceR', { width: 0.18, height: 0.75, depth: 0.18 }, this.scene));
 			rightBrace.position.set(rightPost.x, 0.85, gz);
 			rightBrace.rotation.z = 0.15;
 			rightBrace.material = gateMat;
 			rightBrace.isPickable = false;
+			this.freezeAndShadow(rightBrace);
 		}
 	}
 
@@ -628,13 +796,12 @@ export class SouqManagerGame {
 
 	private createStationMesh(type: StationType): Mesh {
 		let mesh: Mesh;
-		const mat = new StandardMaterial(`stationMat-${type}`, this.scene);
 		switch (type) {
 			case 'palmPlot':
 				mesh = this.createPalmTree(`station-${type}`);
 				break;
 			case 'dryingMat':
-				mesh = this.createWovenMat(`station-${type}`, 1.6, 1.2, new Color3(0.78, 0.66, 0.44));
+				mesh = this.createWovenMat(`station-${type}`, 1.6, 1.2, PALETTE.sandLight);
 				break;
 			case 'packagingTable':
 				mesh = this.createPackagingTable(`station-${type}`);
@@ -649,7 +816,7 @@ export class SouqManagerGame {
 				mesh = this.createDallah(`station-${type}`);
 				break;
 			case 'sortingMat':
-				mesh = this.createWovenMat(`station-${type}`, 1.4, 1, new Color3(0.82, 0.72, 0.52));
+				mesh = this.createWovenMat(`station-${type}`, 1.4, 1, PALETTE.sandShadow);
 				break;
 			case 'greenBeans':
 				mesh = this.createCoffeeSack(`station-${type}`);
@@ -662,8 +829,7 @@ export class SouqManagerGame {
 	}
 
 	private createPalmTree(name: string): Mesh {
-		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
-		trunkMat.diffuseColor = new Color3(0.55, 0.38, 0.24);
+		const trunkMat = this.createPbrMaterial(`${name}-trunkMat`, PALETTE.palmTrunk, { roughness: 0.95 });
 
 		// Faceted, smoothly bent trunk built from stacked hexagonal segments.
 		// The bottom segment is returned as the root mesh.
@@ -687,8 +853,7 @@ export class SouqManagerGame {
 		}
 
 		// Diamond low-poly fronds radiating from the crown.
-		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
-		leafMat.diffuseColor = new Color3(0.32, 0.58, 0.22);
+		const leafMat = this.createPbrMaterial(`${name}-leafMat`, PALETTE.palmLeaf, { roughness: 0.8 });
 		leafMat.backFaceCulling = false;
 		const frondCount = 8;
 		for (let i = 0; i < frondCount; i++) {
@@ -703,8 +868,7 @@ export class SouqManagerGame {
 		}
 
 		// Hanging date clusters near the crown (hidden until harvest-ready).
-		const datesMat = new StandardMaterial(`${name}-datesMat`, this.scene);
-		datesMat.diffuseColor = new Color3(0.75, 0.6, 0.15);
+		const datesMat = this.createPbrMaterial(`${name}-datesMat`, PALETTE.date, { emissive: PALETTE.date });
 		const dateMeshes: Mesh[] = [];
 		const clusterPositions = [
 			{ x: 0.18, y: 1.5, z: 0.18 },
@@ -775,11 +939,12 @@ export class SouqManagerGame {
 		return tex;
 	}
 
-	private createWoodMaterial(name: string, tint: Color3): StandardMaterial {
-		const mat = new StandardMaterial(name, this.scene);
-		mat.diffuseTexture = this.getWoodGrainTexture();
-		mat.diffuseColor = tint;
-		mat.specularColor = new Color3(0.08, 0.08, 0.08);
+	private createWoodMaterial(name: string, tint: Color3): PBRMaterial {
+		const mat = new PBRMaterial(name, this.scene);
+		mat.albedoTexture = this.getWoodGrainTexture();
+		mat.albedoColor = tint;
+		mat.metallic = 0;
+		mat.roughness = 0.9;
 		return mat;
 	}
 
@@ -790,7 +955,7 @@ export class SouqManagerGame {
 		height: number,
 		withBowl = true
 	): Mesh {
-		const tint = new Color3(0.55, 0.36, 0.2);
+		const tint = Color3.FromHexString(PALETTE.woodDark);
 		const woodMat = this.createWoodMaterial(`${name}-woodMat`, tint);
 
 		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-top`, { width, height: 0.12, depth }, this.scene));
@@ -839,9 +1004,7 @@ export class SouqManagerGame {
 			// Small brass coin bowl on top.
 			const bowl = this.flatShade(MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.08, diameter: 0.35, tessellation: 8 }, this.scene));
 			bowl.position.y = 0.1;
-			const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
-			bowlMat.diffuseColor = new Color3(0.85, 0.65, 0.2);
-			bowl.material = bowlMat;
+			bowl.material = this.createPbrMaterial(`${name}-bowlMat`, PALETTE.brass, { roughness: 0.4 });
 			bowl.parent = root;
 		}
 
@@ -852,26 +1015,21 @@ export class SouqManagerGame {
 		const root = this.createTraditionalTable(name, 1.6, 1, 0.55);
 
 		// Palm-leaf strips / cloth on top for packing.
-		const clothMat = new StandardMaterial(`${name}-clothMat`, this.scene);
-		clothMat.diffuseColor = new Color3(0.65, 0.5, 0.3);
 		const cloth = this.flatShade(MeshBuilder.CreateBox(`${name}-cloth`, { width: 1.2, height: 0.04, depth: 0.7 }, this.scene));
 		cloth.position.y = 0.08;
-		cloth.material = clothMat;
+		cloth.material = this.createPbrMaterial(`${name}-clothMat`, PALETTE.sandShadow, { roughness: 0.95 });
 		cloth.parent = root;
 
 		// Small rope coil resting on one corner of the cloth.
-		const ropeMat = new StandardMaterial(`${name}-ropeMat`, this.scene);
-		ropeMat.diffuseColor = new Color3(0.8, 0.72, 0.5);
 		const coil = this.flatShade(MeshBuilder.CreateTorus(`${name}-coil`, { diameter: 0.28, thickness: 0.045, tessellation: 10 }, this.scene));
 		coil.position.set(0.45, 0.12, 0.22);
 		coil.rotation.x = Math.PI / 2;
 		coil.scaling.set(1, 0.85, 1);
-		coil.material = ropeMat;
+		coil.material = this.createPbrMaterial(`${name}-ropeMat`, PALETTE.sandLight, { roughness: 0.95 });
 		coil.parent = root;
 
 		// A couple of empty woven sacks behind the table.
-		const sackMat = new StandardMaterial(`${name}-sackMat`, this.scene);
-		sackMat.diffuseColor = new Color3(0.72, 0.6, 0.4);
+		const sackMat = this.createPbrMaterial(`${name}-sackMat`, PALETTE.sandLight, { roughness: 0.95 });
 		for (let i = 0; i < 2; i++) {
 			const sack = this.flatShade(MeshBuilder.CreateSphere(`${name}-sack${i}`, { diameter: 0.32, segments: 6 }, this.scene));
 			sack.position.set(-0.35 + i * 0.3, 0.18, -0.55 - i * 0.12);
@@ -887,9 +1045,7 @@ export class SouqManagerGame {
 		const root = this.createTraditionalTable(name, 2.2, 1.4, 0.65, false);
 
 		// Brass balance scale on the counter.
-		const brassMat = new StandardMaterial(`${name}-brassMat`, this.scene);
-		brassMat.diffuseColor = new Color3(0.8, 0.62, 0.18);
-		brassMat.specularColor = new Color3(0.4, 0.35, 0.15);
+		const brassMat = this.createPbrMaterial(`${name}-brassMat`, PALETTE.brass, { roughness: 0.4 });
 		const scalePillar = this.flatShade(MeshBuilder.CreateCylinder(`${name}-scalePillar`, { height: 0.35, diameter: 0.05, tessellation: 8 }, this.scene));
 		scalePillar.position.set(-0.55, 0.22, -0.25);
 		scalePillar.material = brassMat;
@@ -910,9 +1066,7 @@ export class SouqManagerGame {
 		}
 
 		// Small pile of gold coins.
-		const coinMat = new StandardMaterial(`${name}-coinMat`, this.scene);
-		coinMat.diffuseColor = new Color3(0.95, 0.78, 0.15);
-		coinMat.specularColor = new Color3(0.3, 0.25, 0.1);
+		const coinMat = this.createPbrMaterial(`${name}-coinMat`, PALETTE.coin, { roughness: 0.35 });
 		for (let i = 0; i < 8; i++) {
 			const coin = this.flatShade(MeshBuilder.CreateCylinder(`${name}-coin${i}`, { height: 0.015, diameter: 0.06, tessellation: 8 }, this.scene));
 			coin.position.set(
@@ -926,8 +1080,7 @@ export class SouqManagerGame {
 		}
 
 		// Tiny ledger/scroll.
-		const paperMat = new StandardMaterial(`${name}-paperMat`, this.scene);
-		paperMat.diffuseColor = new Color3(0.92, 0.88, 0.78);
+		const paperMat = this.createPbrMaterial(`${name}-paperMat`, PALETTE.sandLight, { roughness: 0.95 });
 		const ledger = this.flatShade(MeshBuilder.CreateBox(`${name}-ledger`, { width: 0.3, height: 0.03, depth: 0.22 }, this.scene));
 		ledger.position.set(0.55, 0.08, 0.2);
 		ledger.material = paperMat;
@@ -939,8 +1092,7 @@ export class SouqManagerGame {
 		scroll.parent = root;
 
 		// Small striped awning/sign above the cashier to make it stand out.
-		const postMat = new StandardMaterial(`${name}-postMat`, this.scene);
-		postMat.diffuseColor = new Color3(0.45, 0.3, 0.18);
+		const postMat = this.createPbrMaterial(`${name}-postMat`, PALETTE.woodDark, { roughness: 0.95 });
 		for (const sx of [-1, 1]) {
 			const post = this.flatShade(MeshBuilder.CreateCylinder(`${name}-post${sx}`, { height: 1.4, diameter: 0.08, tessellation: 6 }, this.scene));
 			post.position.set(sx * 0.9, 0.9, -0.5);
@@ -948,15 +1100,13 @@ export class SouqManagerGame {
 			post.parent = root;
 		}
 
-		const awningMat = new StandardMaterial(`${name}-awningMat`, this.scene);
-		awningMat.diffuseColor = new Color3(0.85, 0.25, 0.25);
+		const awningMat = this.createPbrMaterial(`${name}-awningMat`, PALETTE.cashierAwning);
 		const awning = this.flatShade(MeshBuilder.CreateBox(`${name}-awning`, { width: 2.4, height: 0.1, depth: 0.9 }, this.scene));
 		awning.position.set(0, 1.55, -0.25);
 		awning.material = awningMat;
 		awning.parent = root;
 
-		const stripeMat = new StandardMaterial(`${name}-stripeMat`, this.scene);
-		stripeMat.diffuseColor = new Color3(0.95, 0.9, 0.75);
+		const stripeMat = this.createPbrMaterial(`${name}-stripeMat`, PALETTE.cashierStripe);
 		const stripeCount = 6;
 		const stripeSpacing = 2.5 / stripeCount;
 		for (let i = 0; i < stripeCount; i++) {
@@ -969,15 +1119,14 @@ export class SouqManagerGame {
 		return root;
 	}
 
-	private createWovenMat(name: string, width: number, depth: number, color: Color3): Mesh {
+	private createWovenMat(name: string, width: number, depth: number, color: string): Mesh {
 		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-base`, { width, height: 0.04, depth }, this.scene));
-		const mat = new StandardMaterial(`${name}-mat`, this.scene);
-		mat.diffuseColor = color;
+		const mat = this.createPbrMaterial(`${name}-mat`, color, { roughness: 0.95 });
 		root.material = mat;
 
 		// Woven border strips.
-		const borderMat = new StandardMaterial(`${name}-borderMat`, this.scene);
-		borderMat.diffuseColor = new Color3(color.r * 0.85, color.g * 0.85, color.b * 0.85);
+		const borderColor = Color3.FromHexString(color).scale(0.85);
+		const borderMat = this.createPbrMaterial(`${name}-borderMat`, borderColor.toHexString(), { roughness: 0.95 });
 		const stripW = 0.08;
 		const longStrip = this.flatShade(MeshBuilder.CreateBox(`${name}-borderLong`, { width, height: 0.05, depth: stripW }, this.scene));
 		longStrip.position.z = -depth / 2 + stripW / 2;
@@ -999,17 +1148,16 @@ export class SouqManagerGame {
 		return root;
 	}
 
-	private createDisplayTray(name: string, width: number, depth: number, color: Color3): Mesh {
+	private createDisplayTray(name: string, width: number, depth: number, color: string): Mesh {
 		const root = this.flatShade(MeshBuilder.CreateBox(`${name}-base`, { width, height: 0.03, depth }, this.scene));
-		const mat = new StandardMaterial(`${name}-mat`, this.scene);
-		mat.diffuseColor = color;
+		const mat = this.createPbrMaterial(`${name}-mat`, color, { roughness: 0.95 });
 		root.material = mat;
 
 		// Low basket-like rim around the display area.
 		const rimH = 0.08;
 		const rimThick = 0.06;
-		const rimMat = new StandardMaterial(`${name}-rimMat`, this.scene);
-		rimMat.diffuseColor = new Color3(color.r * 0.8, color.g * 0.8, color.b * 0.8);
+		const rimColor = Color3.FromHexString(color).scale(0.8);
+		const rimMat = this.createPbrMaterial(`${name}-rimMat`, rimColor.toHexString(), { roughness: 0.95 });
 
 		for (const z of [-1, 1]) {
 			const rim = this.flatShade(
@@ -1031,7 +1179,7 @@ export class SouqManagerGame {
 		return root;
 	}
 
-	private createDiamondFrond(name: string, length: number, width: number, material: StandardMaterial): Mesh {
+	private createDiamondFrond(name: string, length: number, width: number, material: import('@babylonjs/core').Material): Mesh {
 		const mesh = new Mesh(name, this.scene);
 		const halfBack = length * 0.25;
 		const positions = [
@@ -1062,12 +1210,9 @@ export class SouqManagerGame {
 	private createFrankincenseTree(name: string): Mesh {
 		const root = this.flatShade(MeshBuilder.CreateCylinder(`${name}-trunk`, { height: 1.1, diameterTop: 0.1, diameterBottom: 0.18, tessellation: 8 }, this.scene));
 		root.position.y = 0.55;
-		const trunkMat = new StandardMaterial(`${name}-trunkMat`, this.scene);
-		trunkMat.diffuseColor = new Color3(0.45, 0.35, 0.25);
-		root.material = trunkMat;
+		root.material = this.createPbrMaterial(`${name}-trunkMat`, PALETTE.palmTrunk, { roughness: 0.95 });
 
-		const leafMat = new StandardMaterial(`${name}-leafMat`, this.scene);
-		leafMat.diffuseColor = new Color3(0.35, 0.5, 0.25);
+		const leafMat = this.createPbrMaterial(`${name}-leafMat`, PALETTE.palmLeaf, { roughness: 0.8 });
 		for (let i = 0; i < 5; i++) {
 			const branch = this.flatShade(MeshBuilder.CreateSphere(`${name}-leaf${i}`, { diameter: 0.55, segments: 8 }, this.scene));
 			branch.position.y = 1.05 + Math.random() * 0.25;
@@ -1078,8 +1223,7 @@ export class SouqManagerGame {
 			branch.parent = root;
 		}
 
-		const resinMat = new StandardMaterial(`${name}-resinMat`, this.scene);
-		resinMat.diffuseColor = new Color3(0.95, 0.85, 0.45);
+		const resinMat = this.createPbrMaterial(`${name}-resinMat`, PALETTE.resin, { emissive: PALETTE.resin });
 		for (let i = 0; i < 4; i++) {
 			const lump = this.flatShade(MeshBuilder.CreateSphere(`${name}-resin${i}`, { diameter: 0.14, segments: 8 }, this.scene));
 			lump.position.y = 0.08;
@@ -1096,19 +1240,14 @@ export class SouqManagerGame {
 		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-sack`, { diameter: 0.8, segments: 8 }, this.scene));
 		root.position.y = 0.35;
 		root.scaling.y = 0.85;
-		const sackMat = new StandardMaterial(`${name}-sackMat`, this.scene);
-		sackMat.diffuseColor = new Color3(0.65, 0.55, 0.35);
-		root.material = sackMat;
+		root.material = this.createPbrMaterial(`${name}-sackMat`, PALETTE.sandLight, { roughness: 0.95 });
 
 		const top = this.flatShade(MeshBuilder.CreateCylinder(`${name}-top`, { height: 0.08, diameterTop: 0.35, diameterBottom: 0.5, tessellation: 8 }, this.scene));
 		top.position.y = 0.55;
-		const topMat = new StandardMaterial(`${name}-topMat`, this.scene);
-		topMat.diffuseColor = new Color3(0.55, 0.45, 0.3);
-		top.material = topMat;
+		top.material = this.createPbrMaterial(`${name}-topMat`, PALETTE.wood, { roughness: 0.95 });
 		top.parent = root;
 
-		const beanMat = new StandardMaterial(`${name}-beanMat`, this.scene);
-		beanMat.diffuseColor = new Color3(0.4, 0.6, 0.3);
+		const beanMat = this.createPbrMaterial(`${name}-beanMat`, PALETTE.coffeeBean, { roughness: 0.8 });
 		for (let i = 0; i < 5; i++) {
 			const bean = this.flatShade(MeshBuilder.CreateSphere(`${name}-bean${i}`, { diameter: 0.1, segments: 8 }, this.scene));
 			bean.position.y = 0.5;
@@ -1124,16 +1263,12 @@ export class SouqManagerGame {
 	private createBrazier(name: string): Mesh {
 		const root = this.flatShade(MeshBuilder.CreateCylinder(`${name}-bowl`, { height: 0.35, diameter: 0.85, tessellation: 8 }, this.scene));
 		root.position.y = 0.2;
-		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
-		bowlMat.diffuseColor = new Color3(0.25, 0.2, 0.2);
-		root.material = bowlMat;
+		root.material = this.createPbrMaterial(`${name}-bowlMat`, PALETTE.charcoal, { roughness: 0.7 });
 
 		const coal = this.flatShade(MeshBuilder.CreateSphere(`${name}-coal`, { diameter: 0.5, segments: 8 }, this.scene));
 		coal.position.y = 0.18;
 		coal.scaling.y = 0.4;
-		const coalMat = new StandardMaterial(`${name}-coalMat`, this.scene);
-		coalMat.diffuseColor = new Color3(0.15, 0.12, 0.1);
-		coal.material = coalMat;
+		coal.material = this.createPbrMaterial(`${name}-coalMat`, '#2a2d3e', { emissive: '#3d3142' });
 		coal.parent = root;
 
 		return root;
@@ -1143,16 +1278,12 @@ export class SouqManagerGame {
 		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-bowl`, { diameter: 0.6, segments: 8 }, this.scene));
 		root.position.y = 0.3;
 		root.scaling.y = 0.65;
-		const bowlMat = new StandardMaterial(`${name}-bowlMat`, this.scene);
-		bowlMat.diffuseColor = new Color3(0.5, 0.5, 0.5);
-		root.material = bowlMat;
+		root.material = this.createPbrMaterial(`${name}-bowlMat`, PALETTE.mortar, { roughness: 0.85 });
 
 		const pestle = this.flatShade(MeshBuilder.CreateCylinder(`${name}-pestle`, { height: 0.5, diameter: 0.1, tessellation: 8 }, this.scene));
 		pestle.position.y = 0.55;
 		pestle.rotation.z = 0.3;
-		const pestleMat = new StandardMaterial(`${name}-pestleMat`, this.scene);
-		pestleMat.diffuseColor = new Color3(0.4, 0.35, 0.3);
-		pestle.material = pestleMat;
+		pestle.material = this.createPbrMaterial(`${name}-pestleMat`, PALETTE.woodDark, { roughness: 0.95 });
 		pestle.parent = root;
 
 		return root;
@@ -1162,8 +1293,7 @@ export class SouqManagerGame {
 		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-body`, { diameter: 0.65, segments: 8 }, this.scene));
 		root.position.y = 0.45;
 		root.scaling.y = 1.1;
-		const bodyMat = new StandardMaterial(`${name}-bodyMat`, this.scene);
-		bodyMat.diffuseColor = new Color3(0.85, 0.7, 0.2);
+		const bodyMat = this.createPbrMaterial(`${name}-bodyMat`, PALETTE.brass, { roughness: 0.4 });
 		root.material = bodyMat;
 
 		const neck = this.flatShade(MeshBuilder.CreateCylinder(`${name}-neck`, { height: 0.45, diameter: 0.22, tessellation: 8 }, this.scene));
@@ -1184,7 +1314,7 @@ export class SouqManagerGame {
 	private setupShelves(): void {
 		const state = this.logic.getState();
 		for (const shelf of state.shelves) {
-			const mesh = this.createDisplayTray(`shelf${shelf.id}`, 1.6, 1, new Color3(0.72, 0.6, 0.42));
+			const mesh = this.createDisplayTray(`shelf${shelf.id}`, 1.6, 1, PALETTE.wood);
 			mesh.position.x = shelf.position.x;
 			mesh.position.z = shelf.position.y;
 			mesh.position.y = 0.08;
@@ -1327,35 +1457,33 @@ export class SouqManagerGame {
 			return this.createDateBag(`item-${item.type}-${item.stage}`);
 		}
 		const color = this.itemColor(item);
-		const mesh = MeshBuilder.CreateSphere(`item-${item.type}-${item.stage}`, { diameter: 0.35, segments: 8 }, this.scene);
-		const mat = new StandardMaterial(`itemMat-${item.type}-${item.stage}`, this.scene);
-		mat.diffuseColor = color;
-		mesh.material = mat;
-		return this.flatShade(mesh);
+		const mesh = this.flatShade(
+			MeshBuilder.CreateSphere(`item-${item.type}-${item.stage}`, { diameter: 0.35, segments: 8 }, this.scene)
+		);
+		mesh.material = this.createPbrMaterial(
+			`itemMat-${item.type}-${item.stage}`,
+			color.toHexString(),
+			{ roughness: 0.75 }
+		);
+		return mesh;
 	}
 
 	private createDateBag(name: string): Mesh {
 		const root = this.flatShade(MeshBuilder.CreateSphere(`${name}-body`, { diameter: 0.32, segments: 8 }, this.scene));
 		root.scaling.set(0.9, 1.1, 0.75);
-		const bagMat = new StandardMaterial(`${name}-bagMat`, this.scene);
-		bagMat.diffuseColor = new Color3(0.72, 0.55, 0.32);
-		root.material = bagMat;
+		root.material = this.createPbrMaterial(`${name}-bagMat`, PALETTE.sandLight, { roughness: 0.95 });
 
 		// Neck cinched at the top.
 		const neck = this.flatShade(MeshBuilder.CreateCylinder(`${name}-neck`, { height: 0.12, diameterTop: 0.14, diameterBottom: 0.2, tessellation: 8 }, this.scene));
 		neck.position.y = 0.16;
-		const neckMat = new StandardMaterial(`${name}-neckMat`, this.scene);
-		neckMat.diffuseColor = new Color3(0.65, 0.5, 0.28);
-		neck.material = neckMat;
+		neck.material = this.createPbrMaterial(`${name}-neckMat`, PALETTE.wood, { roughness: 0.95 });
 		neck.parent = root;
 
 		// Rope tie.
 		const rope = this.flatShade(MeshBuilder.CreateTorus(`${name}-rope`, { diameter: 0.18, thickness: 0.025, tessellation: 8 }, this.scene));
 		rope.position.y = 0.12;
 		rope.rotation.x = Math.PI / 2;
-		const ropeMat = new StandardMaterial(`${name}-ropeMat`, this.scene);
-		ropeMat.diffuseColor = new Color3(0.85, 0.75, 0.55);
-		rope.material = ropeMat;
+		rope.material = this.createPbrMaterial(`${name}-ropeMat`, PALETTE.sandShadow, { roughness: 0.95 });
 		rope.parent = root;
 
 		return root;
@@ -1366,25 +1494,37 @@ export class SouqManagerGame {
 		return mesh;
 	}
 
+	private addShadow(mesh: Mesh, cast = true, receive = true): Mesh {
+		if (cast) this.shadowGenerator.addShadowCaster(mesh);
+		if (receive) mesh.receiveShadows = true;
+		return mesh;
+	}
+
+	private freezeAndShadow(mesh: Mesh): Mesh {
+		mesh.freezeWorldMatrix();
+		this.addShadow(mesh);
+		return mesh;
+	}
+
 	private itemColor(item: Item): Color3 {
 		if (item.type === 'dates') {
-			if (item.stage === 'sapling') return new Color3(0.2, 0.6, 0.2);
-			if (item.stage === 'fresh') return new Color3(0.7, 0.6, 0.2);
-			if (item.stage === 'drying' || item.stage === 'dried') return new Color3(0.5, 0.35, 0.15);
-			return new Color3(0.45, 0.3, 0.15);
+			if (item.stage === 'sapling') return Color3.FromHexString('#80b918');
+			if (item.stage === 'fresh') return Color3.FromHexString('#ffb703');
+			if (item.stage === 'drying' || item.stage === 'dried') return Color3.FromHexString('#d4a373');
+			return Color3.FromHexString('#bc8a5f');
 		}
 		if (item.type === 'qahwa') {
-			if (item.stage === 'beans') return new Color3(0.4, 0.6, 0.3);
-			if (item.stage === 'roasting' || item.stage === 'roasted') return new Color3(0.35, 0.2, 0.1);
-			if (item.stage === 'ground') return new Color3(0.25, 0.15, 0.1);
-			return new Color3(0.2, 0.1, 0.05);
+			if (item.stage === 'beans') return Color3.FromHexString('#70e000');
+			if (item.stage === 'roasting' || item.stage === 'roasted') return Color3.FromHexString('#bc4749');
+			if (item.stage === 'ground') return Color3.FromHexString('#6f4e37');
+			return Color3.FromHexString('#3d2b1f');
 		}
 		if (item.type === 'luban') {
-			if (item.stage === 'rawResin') return new Color3(0.95, 0.85, 0.5);
-			if (item.stage === 'sorted') return new Color3(0.9, 0.8, 0.45);
-			return new Color3(0.85, 0.75, 0.4);
+			if (item.stage === 'rawResin') return Color3.FromHexString('#fff3b0');
+			if (item.stage === 'sorted') return Color3.FromHexString('#ffd166');
+			return Color3.FromHexString('#ffb703');
 		}
-		return new Color3(0.8, 0.8, 0.8);
+		return new Color3(0.85, 0.85, 0.85);
 	}
 
 	private syncShelves(shelves: { id: number; position: { x: number; y: number }; items: Item[] }[]): void {
@@ -1425,10 +1565,11 @@ export class SouqManagerGame {
 			this.temporaryDropItemMesh.rotation.y = this.time;
 
 			if (!this.temporaryDropRing) {
-				this.temporaryDropRing = MeshBuilder.CreateCylinder('temporaryDropRing', { height: 0.02, diameter: 1 }, this.scene);
-				const ringMat = new StandardMaterial('temporaryDropRingMat', this.scene);
-				ringMat.diffuseColor = new Color3(1, 0.85, 0.2);
-				this.temporaryDropRing.material = ringMat;
+				this.temporaryDropRing = this.flatShade(MeshBuilder.CreateCylinder('temporaryDropRing', { height: 0.02, diameter: 1, tessellation: 24 }, this.scene));
+				this.temporaryDropRing.material = this.createPbrMaterial('temporaryDropRingMat', PALETTE.coin, {
+					emissive: PALETTE.coin,
+					unlit: true
+				});
 			}
 			this.temporaryDropRing.setEnabled(true);
 			this.temporaryDropRing.position.x = drop.position.x;
@@ -1578,24 +1719,21 @@ export class SouqManagerGame {
 		const body = this.flatShade(MeshBuilder.CreateSphere('body', { diameter: scale * 1.1, segments: 8 }, this.scene));
 		body.position.y = 0.42;
 		body.scaling.set(1, 1.15, 0.9);
-		const robeMat = new StandardMaterial('robeMat', this.scene);
-		robeMat.diffuseColor = robeColor;
-		body.material = robeMat;
+		body.material = this.createPbrMaterial('robeMat', robeColor.toHexString(), { roughness: 0.9 });
 		body.parent = root;
 
 		// Cream cat head.
 		const head = this.flatShade(MeshBuilder.CreateSphere('head', { diameter: scale * 0.72, segments: 8 }, this.scene));
 		head.position.y = 0.95;
-		const furMat = new StandardMaterial('furMat', this.scene);
-		furMat.diffuseColor = new Color3(0.98, 0.88, 0.72);
+		const furMat = this.createPbrMaterial('furMat', PALETTE.merchantSkin, { roughness: 0.9 });
 		head.material = furMat;
 		head.parent = root;
 
 		// Cat ears.
-		const earMat = new StandardMaterial('earMat', this.scene);
-		earMat.diffuseColor = new Color3(0.92, 0.78, 0.62);
+		const earColor = Color3.FromHexString(PALETTE.merchantSkin).scale(0.92);
+		const earMat = this.createPbrMaterial('earMat', earColor.toHexString(), { roughness: 0.9 });
 		for (const side of [-1, 1]) {
-			const ear = MeshBuilder.CreateBox(`ear${side}`, { width: 0.1, height: 0.14, depth: 0.1 }, this.scene);
+			const ear = this.flatShade(MeshBuilder.CreateBox(`ear${side}`, { width: 0.1, height: 0.14, depth: 0.1 }, this.scene));
 			ear.position.set(side * 0.2, 1.22, 0);
 			ear.rotation.z = side * -0.25;
 			ear.material = earMat;
@@ -1607,16 +1745,12 @@ export class SouqManagerGame {
 		cover.position.y = 1.02;
 		cover.position.z = -0.04;
 		cover.scaling.set(1, 0.45, 0.95);
-		const coverMat = new StandardMaterial('coverMat', this.scene);
-		coverMat.diffuseColor = new Color3(0.96, 0.96, 0.94);
-		cover.material = coverMat;
+		cover.material = this.createPbrMaterial('coverMat', PALETTE.merchantRobe, { roughness: 0.95 });
 		cover.parent = root;
 
 		// Eyes.
-		const eyeWhiteMat = new StandardMaterial('eyeWhiteMat', this.scene);
-		eyeWhiteMat.diffuseColor = new Color3(1, 1, 1);
-		const pupilMat = new StandardMaterial('pupilMat', this.scene);
-		pupilMat.diffuseColor = new Color3(0.1, 0.1, 0.1);
+		const eyeWhiteMat = this.createPbrMaterial('eyeWhiteMat', '#ffffff');
+		const pupilMat = this.createPbrMaterial('pupilMat', '#2b2d42');
 		for (const side of [-1, 1]) {
 			const eye = this.flatShade(MeshBuilder.CreateSphere(`eye${side}`, { diameter: 0.12, segments: 6 }, this.scene));
 			eye.position.set(side * 0.14, 0.98, 0.3);
@@ -1637,8 +1771,7 @@ export class SouqManagerGame {
 		tail.parent = root;
 
 		// Small paws peeking from robe.
-		const pawMat = new StandardMaterial('pawMat', this.scene);
-		pawMat.diffuseColor = new Color3(0.98, 0.88, 0.72);
+		const pawMat = this.createPbrMaterial('pawMat', PALETTE.merchantSkin, { roughness: 0.9 });
 		for (const side of [-1, 1]) {
 			const paw = this.flatShade(MeshBuilder.CreateSphere(`paw${side}`, { diameter: 0.12, segments: 6 }, this.scene));
 			paw.position.set(side * 0.22, 0.06, 0.18);
@@ -1653,12 +1786,10 @@ export class SouqManagerGame {
 	private createAnimalMesh(type: AnimalType, scale: number): EntityMesh {
 		const root = new TransformNode(`${type}-customer`, this.scene);
 		let body: Mesh;
-		const mat = new StandardMaterial(`${type}Mat`, this.scene);
+		const mat = this.createPbrMaterial(`${type}Mat`, PALETTE[type], { roughness: 0.85 });
 
-		const eyeWhiteMat = new StandardMaterial('eyeWhiteMat', this.scene);
-		eyeWhiteMat.diffuseColor = new Color3(1, 1, 1);
-		const pupilMat = new StandardMaterial('pupilMat', this.scene);
-		pupilMat.diffuseColor = new Color3(0.1, 0.1, 0.1);
+		const eyeWhiteMat = this.createPbrMaterial('eyeWhiteMat', '#ffffff');
+		const pupilMat = this.createPbrMaterial('pupilMat', '#2b2d42');
 
 		const addEyes = (x: number, y: number, z: number, size = 0.045) => {
 			for (const side of [-1, 1]) {
@@ -1690,9 +1821,7 @@ export class SouqManagerGame {
 
 		switch (type) {
 			case 'camel': {
-				const camelColor = new Color3(0.9, 0.68, 0.42);
 				const darkCamelColor = new Color3(0.82, 0.58, 0.34);
-				mat.diffuseColor = camelColor;
 
 				// Body: rounded, slightly elongated.
 				body = this.flatShade(MeshBuilder.CreateSphere('camel-body', { diameter: scale * 1.25, segments: 8 }, this.scene));
@@ -1785,14 +1914,12 @@ export class SouqManagerGame {
 			}
 			case 'falcon': {
 				const parts: (Mesh | TransformNode)[] = [];
-				const falconBrown = new Color3(0.72, 0.48, 0.26);
 				const falconCream = new Color3(0.95, 0.86, 0.68);
 
 				// Sleek teardrop body.
 				body = this.flatShade(MeshBuilder.CreateSphere('falcon-body', { diameter: scale * 1.1, segments: 8 }, this.scene));
 				body.scaling.set(0.85, 0.9, 1.35);
 				body.position.set(0, 0.58, 0);
-				mat.diffuseColor = falconBrown;
 				body.material = mat;
 				body.parent = root;
 
@@ -1877,14 +2004,12 @@ export class SouqManagerGame {
 			}
 			case 'oryx': {
 				const parts: (Mesh | TransformNode)[] = [];
-				const oryxWhite = new Color3(0.97, 0.94, 0.86);
 				const oryxDark = new Color3(0.3, 0.22, 0.18);
 
 				// Elegant slender body.
 				body = this.flatShade(MeshBuilder.CreateSphere('oryx-body', { diameter: scale * 1.15, segments: 8 }, this.scene));
 				body.scaling.set(0.85, 0.9, 1.45);
 				body.position.set(0, 0.62, 0);
-				mat.diffuseColor = oryxWhite;
 				body.material = mat;
 				body.parent = root;
 
@@ -1937,10 +2062,8 @@ export class SouqManagerGame {
 				}
 
 				// Slender legs with dark lower legs.
-				const legMat = new StandardMaterial('oryxLegMat', this.scene);
-				legMat.diffuseColor = oryxWhite;
-				const lowerLegMat = new StandardMaterial('oryxLowerLegMat', this.scene);
-				lowerLegMat.diffuseColor = oryxDark;
+				const legMat = this.createPbrMaterial('oryxLegMat', PALETTE.oryx);
+				const lowerLegMat = this.createPbrMaterial('oryxLowerLegMat', oryxDark.toHexString());
 				const legPositions = [
 					{ x: -0.24, z: 0.3 },
 					{ x: 0.24, z: 0.3 },
@@ -1973,7 +2096,6 @@ export class SouqManagerGame {
 			}
 			case 'fox': {
 				const parts: (Mesh | TransformNode)[] = [];
-				const foxOrange = new Color3(0.95, 0.52, 0.18);
 				const foxWhite = new Color3(0.98, 0.94, 0.88);
 				const foxBlack = new Color3(0.15, 0.12, 0.1);
 
@@ -1981,7 +2103,6 @@ export class SouqManagerGame {
 				body = this.flatShade(MeshBuilder.CreateSphere('fox-body', { diameter: scale, segments: 8 }, this.scene));
 				body.scaling.set(0.95, 0.9, 1.35);
 				body.position.set(0, 0.48, 0);
-				mat.diffuseColor = foxOrange;
 				body.material = mat;
 				body.parent = root;
 
@@ -2016,17 +2137,14 @@ export class SouqManagerGame {
 
 				const nose = this.flatShade(MeshBuilder.CreateSphere('fox-nose', { diameter: 0.08, segments: 8 }, this.scene));
 				nose.position.set(0, -0.05, 0.44);
-				nose.material = new StandardMaterial('foxNoseMat', this.scene);
-				(nose.material as StandardMaterial).diffuseColor = foxBlack;
+				nose.material = this.createPbrMaterial('foxNoseMat', foxBlack.toHexString());
 				nose.parent = headGroup;
 
 				addEyes(0.12, 0.06, 0.22, 0.05);
 
 				// Big triangular ears with black tips.
-				const earMat = new StandardMaterial('foxEarMat', this.scene);
-				earMat.diffuseColor = foxOrange;
-				const earTipMat = new StandardMaterial('foxEarTipMat', this.scene);
-				earTipMat.diffuseColor = foxBlack;
+				const earMat = this.createPbrMaterial('foxEarMat', PALETTE.fox);
+				const earTipMat = this.createPbrMaterial('foxEarTipMat', foxBlack.toHexString());
 				for (const side of [-1, 1]) {
 					const ear = this.flatShade(MeshBuilder.CreateCylinder(`fox-ear${side}`, { height: 0.28, diameterTop: 0, diameterBottom: 0.16, tessellation: 8 }, this.scene));
 					ear.position.set(side * 0.18, 0.28, 0.05);
@@ -2053,8 +2171,7 @@ export class SouqManagerGame {
 
 				const tailTip = this.flatShade(MeshBuilder.CreateSphere('fox-tailTip', { diameter: 0.16, segments: 8 }, this.scene));
 				tailTip.position.set(0, 0.78, -0.78);
-				tailTip.material = new StandardMaterial('foxTailTipMat', this.scene);
-				(tailTip.material as StandardMaterial).diffuseColor = foxWhite;
+				tailTip.material = this.createPbrMaterial('foxTailTipMat', foxWhite.toHexString());
 				tailTip.parent = root;
 
 				addFeet(0.14, -0.14, 0.16, new Color3(0.85, 0.42, 0.18), 0.07);
@@ -2062,14 +2179,12 @@ export class SouqManagerGame {
 			}
 			case 'goat': {
 				const parts: (Mesh | TransformNode)[] = [];
-				const goatCream = new Color3(0.93, 0.9, 0.82);
 				const goatHorn = new Color3(0.45, 0.4, 0.36);
 
 				// Sturdy compact body.
 				body = this.flatShade(MeshBuilder.CreateSphere('goat-body', { diameter: scale * 1.1, segments: 8 }, this.scene));
 				body.scaling.set(0.95, 0.95, 1.25);
 				body.position.set(0, 0.5, 0);
-				mat.diffuseColor = goatCream;
 				body.material = mat;
 				body.parent = root;
 
@@ -2136,13 +2251,11 @@ export class SouqManagerGame {
 			}
 			case 'sheep': {
 				const parts: (Mesh | TransformNode)[] = [];
-				const sheepWool = new Color3(0.98, 0.97, 0.94);
 				const sheepSkin = new Color3(0.25, 0.2, 0.18);
 
 				// Fluffy wool body built from overlapping spheres.
 				body = this.flatShade(MeshBuilder.CreateSphere('sheep-body', { diameter: scale * 1.15, segments: 8 }, this.scene));
 				body.position.set(0, 0.55, 0);
-				mat.diffuseColor = sheepWool;
 				body.material = mat;
 				body.parent = root;
 
@@ -2238,9 +2351,10 @@ export class SouqManagerGame {
 		mesh.position = position.clone();
 		mesh.position.x += (Math.random() - 0.5) * 0.15;
 		mesh.position.z += (Math.random() - 0.5) * 0.15;
-		const mat = new StandardMaterial(`smokeMat-${this.smokePuffs.length}`, this.scene);
-		mat.diffuseColor = color;
-		mat.alpha = 0.5;
+		const mat = this.createPbrMaterial(`smokeMat-${this.smokePuffs.length}`, color.toHexString(), {
+			alpha: 0.5,
+			roughness: 1
+		});
 		mesh.material = mat;
 		this.smokePuffs.push({ mesh, life: 1.2, maxLife: 1.2, vy: 0.25 + Math.random() * 0.15 });
 	}
@@ -2306,12 +2420,224 @@ export class SouqManagerGame {
 		const mesh = MeshBuilder.CreatePlane('coin', { size: 0.8 }, this.scene);
 		mesh.billboardMode = Mesh.BILLBOARDMODE_ALL;
 		mesh.position = position.clone();
-		const mat = new StandardMaterial('coinMat', this.scene);
-		mat.diffuseColor = new Color3(1, 0.85, 0);
+		const mat = this.createPbrMaterial('coinMat', PALETTE.coin, { emissive: PALETTE.coin, unlit: true });
 		mat.backFaceCulling = false;
-		mat.alpha = 1;
 		mesh.material = mat;
 		this.coinLabels.push({ mesh, life: 1.2 });
+	}
+
+	private setupGui(): void {
+		this.gui = AdvancedDynamicTexture.CreateFullscreenUI('souqUI');
+
+		// Large, high-contrast, rounded touch button for unload/temporary-drop.
+		const actionButton = Button.CreateSimpleButton('actionBtn', 'تفاعل');
+		actionButton.width = '112px';
+		actionButton.height = '112px';
+		actionButton.cornerRadius = 56;
+		actionButton.background = PALETTE.success;
+		actionButton.fontSize = 24;
+		actionButton.fontWeight = 'bold';
+		actionButton.thickness = 0;
+		actionButton.color = '#2b2d42';
+		actionButton.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+		actionButton.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+		actionButton.left = '-24px';
+		actionButton.top = '-24px';
+		actionButton.alpha = 0.95;
+		actionButton.shadowColor = '#2b2d42';
+		actionButton.shadowBlur = 12;
+		actionButton.shadowOffsetY = 4;
+		actionButton.onPointerDownObservable.add(() => {
+			const state = this.logic.getState();
+			if (state.canUnloadHere) this.unload();
+			else if (state.canTemporaryDrop) this.dropTemporarily();
+		});
+		this.gui.addControl(actionButton);
+	}
+
+	/**
+	 * Reusable squish-and-stretch bounce for collectibles and interactive objects.
+	 * Scales in/out horizontally while stretching vertically, then settles back.
+	 */
+	private squishStretchBounce(target: TransformNode | Mesh, intensity = 0.4, frames = 20): void {
+		const ease = new BackEase();
+		ease.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
+
+		const squash = Math.max(0.4, 1 - intensity * 0.55);
+		const stretch = 1 + intensity;
+		const mid = Math.floor(frames * 0.35);
+
+		const createAnim = (property: string) => {
+			const anim = new Animation(
+				`squish-${property}`,
+				property,
+				60,
+				Animation.ANIMATIONTYPE_FLOAT,
+				Animation.ANIMATIONLOOPMODE_CONSTANT
+			);
+			const isY = property.endsWith('y');
+			anim.setKeys([
+				{ frame: 0, value: 1 },
+				{ frame: mid, value: isY ? stretch : squash },
+				{ frame: frames, value: 1 }
+			]);
+			anim.setEasingFunction(ease);
+			return anim;
+		};
+
+		target.animations = [createAnim('scaling.x'), createAnim('scaling.y'), createAnim('scaling.z')];
+		this.scene.beginAnimation(target, 0, frames, false);
+	}
+
+	private createConfettiTexture(): DynamicTexture {
+		const tex = new DynamicTexture('confettiTex', 64, this.scene);
+		const ctx = tex.getContext();
+		ctx.clearRect(0, 0, 64, 64);
+		ctx.fillStyle = 'white';
+		ctx.beginPath();
+		ctx.moveTo(32, 8);
+		ctx.lineTo(56, 32);
+		ctx.lineTo(32, 56);
+		ctx.lineTo(8, 32);
+		ctx.closePath();
+		ctx.fill();
+		tex.update();
+		return tex;
+	}
+
+	private spawnConfetti(x: number, y: number, z: number, color: Color3, count = 24, darker = false): void {
+		if (!this.confettiTexture) {
+			this.confettiTexture = this.createConfettiTexture();
+		}
+		const ps = new ParticleSystem('confetti', count, this.scene);
+		ps.particleTexture = this.confettiTexture;
+		ps.emitter = new Vector3(x, y, z);
+		ps.minEmitBox = new Vector3(-0.2, -0.2, -0.2);
+		ps.maxEmitBox = new Vector3(0.2, 0.2, 0.2);
+		ps.color1 = new Color4(color.r, color.g, color.b, 1);
+		ps.color2 = new Color4(Math.min(1, color.r * 1.2), Math.min(1, color.g * 1.2), Math.min(1, color.b * 1.2), 1);
+		ps.colorDead = darker
+			? new Color4(0.25, 0.05, 0.05, 0)
+			: new Color4(0.8, 0.65, 0.3, 0);
+		ps.minSize = 0.08;
+		ps.maxSize = 0.18;
+		ps.minLifeTime = 0.4;
+		ps.maxLifeTime = 0.9;
+		ps.emitRate = 0;
+		ps.manualEmitCount = count;
+		ps.minEmitPower = 1.6;
+		ps.maxEmitPower = 4;
+		ps.direction1 = new Vector3(-0.6, 0.4, -0.6);
+		ps.direction2 = new Vector3(0.6, 1.2, 0.6);
+		ps.gravity = new Vector3(0, -3.5, 0);
+		ps.targetStopDuration = 0.9;
+		ps.disposeOnStop = true;
+		ps.start();
+	}
+
+	private showFloatingText(x: number, y: number, z: number, text: string, color: string): void {
+		const rect = new Rectangle();
+		rect.width = '140px';
+		rect.height = '46px';
+		rect.thickness = 0;
+		rect.linkOffsetY = -60;
+		rect.alpha = 1;
+
+		const tb = new TextBlock();
+		tb.text = text;
+		tb.color = color;
+		tb.fontSize = 26;
+		tb.fontWeight = 'bold';
+		tb.outlineWidth = 3;
+		tb.outlineColor = 'black';
+		rect.addControl(tb);
+
+		this.gui.addControl(rect);
+
+		const anchor = new TransformNode('floatAnchor', this.scene);
+		anchor.position = new Vector3(x, y, z);
+
+		const dummy = MeshBuilder.CreateBox('floatDummy', { size: 0.01 }, this.scene);
+		dummy.position = anchor.position.clone();
+		dummy.isVisible = false;
+		dummy.parent = anchor;
+		rect.linkWithMesh(dummy);
+
+		const animY = new Animation(
+			'floatY',
+			'position.y',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		animY.setKeys([
+			{ frame: 0, value: y },
+			{ frame: 60, value: y + 1.2 }
+		]);
+
+		const animA = new Animation(
+			'floatA',
+			'alpha',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		animA.setKeys([
+			{ frame: 0, value: 1 },
+			{ frame: 60, value: 0 }
+		]);
+
+		anchor.animations = [animY];
+		rect.animations = [animA];
+		this.scene.beginAnimation(anchor, 0, 60, false);
+		this.scene.beginAnimation(rect, 0, 60, false, 1, () => {
+			rect.dispose();
+			anchor.dispose();
+			dummy.dispose();
+		});
+	}
+
+	private checkPerformance(dt: number): void {
+		if (this.performanceReduced) return;
+		const fps = this.engine.getFps();
+		if (fps < 30) {
+			this.lowFpsAccumulator += dt;
+			if (this.lowFpsAccumulator > 3) {
+				this.reducePerformance();
+			}
+		} else {
+			this.lowFpsAccumulator = Math.max(0, this.lowFpsAccumulator - dt);
+		}
+	}
+
+	private reducePerformance(): void {
+		this.performanceReduced = true;
+		this.shadowGenerator?.getShadowMap()?.resize(1024);
+		this.pipeline.bloomEnabled = false;
+		this.engine.setHardwareScalingLevel(1.25);
+		// eslint-disable-next-line no-console
+		console.warn('SouqManager: reduced visual quality for performance.');
+	}
+
+	static async loadModel(path: string, scene: Scene): Promise<TransformNode | null> {
+		try {
+			const result = await SceneLoader.ImportMeshAsync('', path, '', scene);
+			if (!result.meshes.length) return null;
+			const root = new TransformNode('model-root', scene);
+			for (const mesh of result.meshes) {
+				if (mesh.parent) continue;
+				mesh.parent = root;
+				if (mesh instanceof Mesh) {
+					mesh.convertToFlatShadedMesh();
+					mesh.freezeWorldMatrix();
+				}
+			}
+			return root;
+		} catch (err) {
+			// eslint-disable-next-line no-console
+			console.warn('SouqManager: failed to load model', path, err);
+			return null;
+		}
 	}
 
 	dispose(): void {
@@ -2324,6 +2650,9 @@ export class SouqManagerGame {
 		this.temporaryDropMat?.dispose();
 		this.temporaryDropItemMesh?.dispose();
 		this.temporaryDropRing?.dispose();
+		this.confettiTexture?.dispose();
+		this.gui?.dispose();
+		this.pipeline?.dispose();
 		this.engine.dispose();
 	}
 }
