@@ -6,14 +6,26 @@ import {
 	Color4,
 	HemisphericLight,
 	DirectionalLight,
-	UniversalCamera,
+	ArcRotateCamera,
 	MeshBuilder,
-	StandardMaterial,
+	PBRMaterial,
 	Mesh,
 	TransformNode,
 	PointerEventTypes,
-	VertexBuffer
+	VertexBuffer,
+	CubeTexture,
+	DynamicTexture,
+	Animation,
+	BounceEase,
+	EasingFunction,
+	ParticleSystem
 } from '@babylonjs/core';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
+import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline';
+import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
+import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
+import '@babylonjs/loaders/glTF';
+import { AdvancedDynamicTexture, Button, TextBlock, Rectangle, Control } from '@babylonjs/gui';
 import {
 	FalconFlightLogic,
 	DEFAULT_FALCON_FLIGHT_CONFIG,
@@ -33,6 +45,33 @@ export interface FalconFlightGameOptions {
 }
 
 const FALCON_WORLD_X = -6;
+
+const PALETTE = {
+	falconBody: '#a65e2e',
+	falconHood: '#5c3a21',
+	falconWing: '#8b5a2b',
+	falconTail: '#8b5a2b',
+	falconBeak: '#2a1f15',
+	falconLegBand: '#2a9d8f',
+	ground: '#f4c98f',
+	sun: '#ffd54f',
+	ceilingWarning: '#ff4d4d',
+	dune: '#e6b88a',
+	rock: '#a67c52',
+	trunk: '#8b5a2b',
+	frond: '#6ba85c',
+	fort: '#c9a689',
+	cloud: '#fff5e6',
+	hare: '#d4a373',
+	houbara: '#e6b8a2',
+	quail: '#9c6644',
+	cliff: '#bc6c25',
+	dustDevil: '#e9c46a',
+	vulture: '#3d2b1f',
+	tailwind: '#ffd60a',
+	sharperEyes: '#4cc9f0',
+	secondWind: '#80ed99'
+};
 
 class FalconFlightAudio {
 	private ctx: AudioContext | null = null;
@@ -250,7 +289,7 @@ export class FalconFlightGame {
 	private canvas: HTMLCanvasElement;
 	private engine: Engine;
 	private scene: Scene;
-	private camera: UniversalCamera;
+	private camera: ArcRotateCamera;
 	private logic: FalconFlightLogic;
 	private audio: FalconFlightAudio;
 	private onChange: (state: FalconFlightState) => void;
@@ -271,12 +310,23 @@ export class FalconFlightGame {
 	private objectMeshes: ObjectMesh[] = [];
 	private particles: { mesh: Mesh; life: number; vy: number; vx: number }[] = [];
 
+	private shadowGenerator!: ShadowGenerator;
+	private pipeline!: DefaultRenderingPipeline;
+	private gui!: AdvancedDynamicTexture;
+	private confettiTexture: DynamicTexture | null = null;
+
 	private inputActive = false;
 	private flapTimer = 0;
 	private disposed = false;
 	private handleResize: () => void;
 	private handleKeydown: (e: KeyboardEvent) => void;
 	private handleKeyup: (e: KeyboardEvent) => void;
+
+	private displayedScore = 0;
+	private displayedEnergy = 100;
+
+	private lowFpsAccumulator = 0;
+	private performanceReduced = false;
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -291,27 +341,46 @@ export class FalconFlightGame {
 		this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 		this.scene = this.createScene();
 		this.camera = this.createCamera();
-		this.setupLights();
+		this.setupLightsAndShadows();
 		this.setupEnvironment();
+		this.setupPostProcess();
 		this.createFalcon();
+		this.setupGui();
 		this.setupInput();
 
 		this.logic = new FalconFlightLogic(
 			(state) => {
+				this.displayedScore = state.score;
+				this.displayedEnergy = state.energy;
 				this.onChange(state);
 			},
 			options.config,
 			{
-				onPreyCollected: () => this.audio.playPreyCatch(),
-				onPowerUpCollected: () => this.audio.playPowerUp(),
-				onHazardHit: () => this.audio.playCollision(),
+				onPreyCollected: (kind, _pos) => {
+					this.audio.playPreyCatch();
+					this.squashBounce(this.falconRoot);
+					const state = this.logic.getState();
+					const delta = state.score - this.displayedScore;
+					this.spawnConfetti(0, state.falcon.y, this.preyColor(kind));
+					this.showFloatingText(0, state.falcon.y + 0.5, `+${delta}`, '#ffd54f');
+				},
+				onPowerUpCollected: (kind, _pos) => {
+					this.audio.playPowerUp();
+					this.squashBounce(this.falconRoot);
+					const state = this.logic.getState();
+					this.spawnConfetti(0, state.falcon.y, this.powerupColor(kind));
+					this.showFloatingText(0, state.falcon.y + 0.5, this.powerupLabel(kind), this.powerupHex(kind));
+				},
+				onHazardHit: (kind, pos) => {
+					this.audio.playCollision();
+					this.spawnConfetti(pos.x, pos.y, new Color3(0.7, 0.1, 0.1), 32, true);
+				},
 				onGameOver: () => this.audio.playFanfare()
 			}
 		);
 
 		this.handleResize = () => this.engine.resize();
 		window.addEventListener('resize', this.handleResize);
-		// Ensure the canvas matches its container on first load.
 		this.engine.resize();
 
 		this.handleKeydown = (e: KeyboardEvent) => {
@@ -339,39 +408,57 @@ export class FalconFlightGame {
 
 	private createScene(): Scene {
 		const scene = new Scene(this.engine);
-		// Warm sunset sky: soft orange/purple gradient simulated by a clear color.
-		scene.clearColor = new Color4(0.91, 0.62, 0.42, 1);
+		scene.clearColor = Color4.FromHexString('#ffddb0ff');
+		scene.fogMode = Scene.FOGMODE_EXP2;
+		scene.fogColor = Color3.FromHexString('#ffddb0');
+		scene.fogDensity = 0.012;
 		return scene;
 	}
 
-	private createCamera(): UniversalCamera {
-		const camera = new UniversalCamera('camera', new Vector3(0, 7, -18), this.scene);
-		camera.setTarget(new Vector3(0, 7, 0));
-		camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
-		camera.orthoLeft = -12;
-		camera.orthoRight = 12;
-		camera.orthoTop = 13;
-		camera.orthoBottom = -6;
+	private createCamera(): ArcRotateCamera {
+		const alpha = -Math.PI / 2;
+		const beta = Math.PI / 2;
+		const radius = 28;
+		const camera = new ArcRotateCamera('camera', alpha, beta, radius, new Vector3(0, 5, 0), this.scene);
+		camera.lowerAlphaLimit = alpha;
+		camera.upperAlphaLimit = alpha;
+		camera.lowerBetaLimit = beta;
+		camera.upperBetaLimit = beta;
 		camera.inputs.clear();
+		camera.attachControl(false);
 		return camera;
 	}
 
-	private setupLights(): void {
+	private setupLightsAndShadows(): void {
 		const hemi = new HemisphericLight('hemi', new Vector3(0, 1, 0), this.scene);
-		hemi.intensity = 0.6;
-		hemi.diffuse = new Color3(1, 0.85, 0.65);
-		hemi.groundColor = new Color3(0.55, 0.4, 0.32);
+		hemi.intensity = 0.65;
+		hemi.diffuse = new Color3(1, 0.9, 0.75);
+		hemi.groundColor = new Color3(0.65, 0.55, 0.45);
 
 		const dir = new DirectionalLight('dir', new Vector3(-0.6, -1, 0.4), this.scene);
-		dir.intensity = 0.75;
-		dir.diffuse = new Color3(1, 0.78, 0.5);
+		dir.intensity = 1.15;
+		dir.diffuse = new Color3(1, 0.85, 0.6);
+		dir.position = new Vector3(-20, 30, -10);
+		dir.shadowMinZ = 1;
+		dir.shadowMaxZ = 80;
+		(dir as DirectionalLight & { shadowFrustumSize?: number }).shadowFrustumSize = 45;
+
+		this.shadowGenerator = new ShadowGenerator(2048, dir);
+		this.shadowGenerator.useBlurExponentialShadowMap = true;
+		this.shadowGenerator.blurKernel = 32;
+		this.shadowGenerator.bias = 0.0005;
+		this.shadowGenerator.useKernelBlur = true;
 	}
 
 	private setupEnvironment(): void {
+		// Procedural environment map so the scene always has warm reflections
+		// without depending on an external HDR asset.
+		this.scene.environmentTexture = this.createProceduralEnvTexture(this.scene);
+
 		// Ground plane.
 		this.ground = MeshBuilder.CreateGround(
 			'ground',
-			{ width: 80, height: 30, subdivisions: 24 },
+			{ width: 120, height: 40, subdivisions: 32 },
 			this.scene
 		);
 		this.ground.position.z = 4;
@@ -381,63 +468,122 @@ export class FalconFlightGame {
 				const x = positions[i];
 				const z = positions[i + 2];
 				positions[i + 1] =
-					Math.sin(x * 0.25) * 0.35 +
-					Math.cos(z * 0.2) * 0.25 +
-					Math.sin((x + z) * 0.1) * 0.15;
+					Math.sin(x * 0.18) * 0.55 +
+					Math.cos(z * 0.15) * 0.35 +
+					Math.sin((x + z) * 0.08) * 0.2;
 			}
 			this.ground.updateVerticesData(VertexBuffer.PositionKind, positions);
 			this.ground.refreshBoundingInfo();
 		}
 		this.flatShade(this.ground);
-		const groundMat = new StandardMaterial('groundMat', this.scene);
-		groundMat.diffuseColor = new Color3(0.86, 0.6, 0.3);
-		groundMat.specularColor = new Color3(0.05, 0.05, 0.05);
-		this.ground.material = groundMat;
+		this.ground.material = this.createPbrMaterial('groundMat', PALETTE.ground, { roughness: 1 });
 		this.ground.isPickable = false;
+		this.ground.receiveShadows = true;
+		this.ground.freezeWorldMatrix();
 
-		// Warm sun disk low on the horizon.
-		this.sun = MeshBuilder.CreateDisc('sun', { radius: 2.5 }, this.scene);
-		this.sun.position = new Vector3(8, 5.5, 12);
-		const sunMat = new StandardMaterial('sunMat', this.scene);
-		sunMat.emissiveColor = new Color3(1, 0.75, 0.35);
-		sunMat.diffuseColor = new Color3(1, 0.75, 0.35);
-		sunMat.disableLighting = true;
-		this.sun.material = sunMat;
+		// Warm sun disc low on the horizon.
+		this.sun = MeshBuilder.CreateDisc('sun', { radius: 3.2 }, this.scene);
+		this.sun.position = new Vector3(10, 6, 16);
+		this.flatShade(this.sun);
+		this.sun.material = this.createPbrMaterial('sunMat', PALETTE.sun, {
+			emissive: PALETTE.sun,
+			unlit: true
+		});
 		this.sun.isPickable = false;
+		this.sun.freezeWorldMatrix();
 
-		// Ceiling warning zone: a translucent band that tells the player the sky has a limit.
+		// Ceiling warning zone.
 		const ceilingY = this.config.ceilingY;
 		this.ceilingWarning = MeshBuilder.CreateBox(
 			'ceilingWarning',
-			{ width: 80, height: 2.5, depth: 4 },
+			{ width: 120, height: 2.5, depth: 4 },
 			this.scene
 		);
 		this.ceilingWarning.position = new Vector3(0, ceilingY - 1.25, 0);
-		const warningMat = new StandardMaterial('ceilingWarningMat', this.scene);
-		warningMat.diffuseColor = new Color3(0.95, 0.25, 0.2);
-		warningMat.emissiveColor = new Color3(0.6, 0.1, 0.1);
-		warningMat.alpha = 0.18;
-		warningMat.disableLighting = true;
-		this.ceilingWarning.material = warningMat;
+		this.flatShade(this.ceilingWarning);
+		this.ceilingWarning.material = this.createPbrMaterial('ceilingWarningMat', PALETTE.ceilingWarning, {
+			emissive: PALETTE.ceilingWarning,
+			alpha: 0.18,
+			unlit: true
+		});
 		this.ceilingWarning.isPickable = false;
+		this.ceilingWarning.freezeWorldMatrix();
 
 		// Solid ceiling line at the very top.
 		this.ceilingLine = MeshBuilder.CreateBox(
 			'ceilingLine',
-			{ width: 80, height: 0.25, depth: 0.5 },
+			{ width: 120, height: 0.25, depth: 0.5 },
 			this.scene
 		);
 		this.ceilingLine.position = new Vector3(0, ceilingY - 0.15, 0);
-		const lineMat = new StandardMaterial('ceilingLineMat', this.scene);
-		lineMat.emissiveColor = new Color3(1, 0.2, 0.15);
-		lineMat.diffuseColor = new Color3(1, 0.2, 0.15);
-		lineMat.disableLighting = true;
-		this.ceilingLine.material = lineMat;
+		this.flatShade(this.ceilingLine);
+		this.ceilingLine.material = this.createPbrMaterial('ceilingLineMat', PALETTE.ceilingWarning, {
+			emissive: PALETTE.ceilingWarning,
+			unlit: true
+		});
 		this.ceilingLine.isPickable = false;
+		this.ceilingLine.freezeWorldMatrix();
+	}
+
+	private createProceduralEnvTexture(scene: Scene): CubeTexture {
+		const faces = ['#ffddb0', '#ffcc80', '#ffe0b2', '#e6cbb0', '#ffab91', '#ffe082'];
+		const urls = faces.map((color) => {
+			const canvas = document.createElement('canvas');
+			canvas.width = 64;
+			canvas.height = 64;
+			const ctx = canvas.getContext('2d');
+			if (ctx) {
+				ctx.fillStyle = color;
+				ctx.fillRect(0, 0, 64, 64);
+			}
+			return canvas.toDataURL('image/png');
+		});
+		return new CubeTexture('', scene, null, false, urls);
+	}
+
+	private setupPostProcess(): void {
+		this.pipeline = new DefaultRenderingPipeline('falconPipeline', true, this.scene, [this.camera]);
+		this.pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
+		this.pipeline.imageProcessing.toneMappingEnabled = true;
+		this.pipeline.imageProcessing.exposure = 1.1;
+		this.pipeline.imageProcessing.contrast = 1.1;
+		this.pipeline.fxaaEnabled = true;
+		this.pipeline.bloomEnabled = true;
+		this.pipeline.bloomThreshold = 0.78;
+		this.pipeline.bloomWeight = 0.25;
+		this.pipeline.bloomKernel = 64;
+		this.pipeline.bloomScale = 0.5;
+		this.pipeline.glowLayerEnabled = true;
+		if (this.pipeline.glowLayer) {
+			this.pipeline.glowLayer.intensity = 0.5;
+		}
+	}
+
+	private createPbrMaterial(
+		name: string,
+		color: string,
+		options: { emissive?: string; alpha?: number; unlit?: boolean; roughness?: number } = {}
+	): PBRMaterial {
+		const mat = new PBRMaterial(name, this.scene);
+		mat.albedoColor = Color3.FromHexString(color);
+		mat.metallic = 0.0;
+		mat.roughness = options.roughness ?? 0.85;
+		if (options.emissive) {
+			mat.emissiveColor = Color3.FromHexString(options.emissive);
+		}
+		if (options.unlit) {
+			mat.disableLighting = true;
+		}
+		if (options.alpha !== undefined && options.alpha < 1) {
+			mat.alpha = options.alpha;
+			mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
+			mat.backFaceCulling = false;
+		}
+		return mat;
 	}
 
 	private flatShade(mesh: Mesh): Mesh {
-		// Flat shading is achieved with low segment counts and no smoothing.
+		mesh.convertToFlatShadedMesh();
 		return mesh;
 	}
 
@@ -446,22 +592,16 @@ export class FalconFlightGame {
 		this.falconRoot.position.x = FALCON_WORLD_X;
 		this.falconRoot.position.y = 5;
 
-		const bodyMat = new StandardMaterial('bodyMat', this.scene);
-		bodyMat.diffuseColor = new Color3(0.62, 0.42, 0.22);
-		bodyMat.specularColor = new Color3(0.1, 0.1, 0.1);
+		// Optional GLB hook: replace the primitive falcon with an imported model.
+		// const falconModel = await FalconFlightGame.loadModel('/models/falcon.glb', this.scene);
+		// if (falconModel) falconModel.parent = this.falconRoot;
 
-		const wingMat = new StandardMaterial('wingMat', this.scene);
-		wingMat.diffuseColor = new Color3(0.55, 0.38, 0.2);
-
-		const tailMat = new StandardMaterial('tailMat', this.scene);
-		tailMat.diffuseColor = new Color3(0.5, 0.35, 0.18);
-
-		const hoodMat = new StandardMaterial('hoodMat', this.scene);
-		hoodMat.diffuseColor = new Color3(0.35, 0.22, 0.12);
-
-		const bandMat = new StandardMaterial('bandMat', this.scene);
-		bandMat.diffuseColor = new Color3(0.2, 0.55, 0.45);
-		bandMat.emissiveColor = new Color3(0.1, 0.25, 0.2);
+		const bodyMat = this.createPbrMaterial('bodyMat', PALETTE.falconBody, { roughness: 0.75 });
+		const wingMat = this.createPbrMaterial('wingMat', PALETTE.falconWing);
+		const tailMat = this.createPbrMaterial('tailMat', PALETTE.falconTail);
+		const hoodMat = this.createPbrMaterial('hoodMat', PALETTE.falconHood);
+		const bandMat = this.createPbrMaterial('bandMat', PALETTE.falconLegBand);
+		const beakMat = this.createPbrMaterial('beakMat', PALETTE.falconBeak);
 
 		// Body.
 		this.falconBody = this.flatShade(
@@ -470,23 +610,30 @@ export class FalconFlightGame {
 		this.falconBody.scaling = new Vector3(1.3, 0.85, 0.85);
 		this.falconBody.material = bodyMat;
 		this.falconBody.parent = this.falconRoot;
+		this.shadowGenerator.addShadowCaster(this.falconBody);
 
 		// Head.
-		const head = this.flatShade(MeshBuilder.CreateSphere('falconHead', { diameter: 0.5, segments: 6 }, this.scene));
+		const head = this.flatShade(
+			MeshBuilder.CreateSphere('falconHead', { diameter: 0.5, segments: 6 }, this.scene)
+		);
 		head.position = new Vector3(0.55, 0.15, 0);
 		head.material = bodyMat;
 		head.parent = this.falconRoot;
+		this.shadowGenerator.addShadowCaster(head);
 
 		// Beak.
 		const beak = this.flatShade(
-			MeshBuilder.CreateCylinder('falconBeak', { height: 0.28, diameterTop: 0, diameterBottom: 0.16, tessellation: 6 }, this.scene)
+			MeshBuilder.CreateCylinder(
+				'falconBeak',
+				{ height: 0.28, diameterTop: 0, diameterBottom: 0.16, tessellation: 6 },
+				this.scene
+			)
 		);
 		beak.rotation.z = -Math.PI / 2;
 		beak.position = new Vector3(0.85, 0.1, 0);
-		const beakMat = new StandardMaterial('beakMat', this.scene);
-		beakMat.diffuseColor = new Color3(0.2, 0.15, 0.1);
 		beak.material = beakMat;
 		beak.parent = this.falconRoot;
+		this.shadowGenerator.addShadowCaster(beak);
 
 		// Hood hint over the head.
 		this.falconHood = this.flatShade(
@@ -496,6 +643,7 @@ export class FalconFlightGame {
 		this.falconHood.scaling = new Vector3(1, 0.85, 0.95);
 		this.falconHood.material = hoodMat;
 		this.falconHood.parent = this.falconRoot;
+		this.shadowGenerator.addShadowCaster(this.falconHood);
 
 		// Wings.
 		for (let side = -1; side <= 1; side += 2) {
@@ -507,14 +655,18 @@ export class FalconFlightGame {
 			wing.material = wingMat;
 			wing.parent = this.falconRoot;
 			this.falconWings.push(wing);
+			this.shadowGenerator.addShadowCaster(wing);
 		}
 
 		// Fan tail.
-		this.falconTail = this.flatShade(MeshBuilder.CreateBox('falconTail', { width: 0.7, height: 0.06, depth: 0.7 }, this.scene));
+		this.falconTail = this.flatShade(
+			MeshBuilder.CreateBox('falconTail', { width: 0.7, height: 0.06, depth: 0.7 }, this.scene)
+		);
 		this.falconTail.position = new Vector3(-0.7, 0, 0);
 		this.falconTail.rotation.y = 0.15;
 		this.falconTail.material = tailMat;
 		this.falconTail.parent = this.falconRoot;
+		this.shadowGenerator.addShadowCaster(this.falconTail);
 
 		// Leg band.
 		this.falconLegBand = this.flatShade(
@@ -524,6 +676,34 @@ export class FalconFlightGame {
 		this.falconLegBand.rotation.y = Math.PI / 2;
 		this.falconLegBand.material = bandMat;
 		this.falconLegBand.parent = this.falconRoot;
+		this.shadowGenerator.addShadowCaster(this.falconLegBand);
+	}
+
+	private setupGui(): void {
+		this.gui = AdvancedDynamicTexture.CreateFullscreenUI('falconUI');
+
+		const flapButton = Button.CreateSimpleButton('flapBtn', '🪶');
+		flapButton.width = '104px';
+		flapButton.height = '104px';
+		flapButton.cornerRadius = 52;
+		flapButton.color = 'white';
+		flapButton.background = 'rgba(0,0,0,0.28)';
+		flapButton.fontSize = 48;
+		flapButton.thickness = 0;
+		flapButton.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+		flapButton.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+		flapButton.top = '-28px';
+		flapButton.alpha = 0.72;
+		flapButton.onPointerDownObservable.add(() => {
+			this.inputActive = true;
+		});
+		flapButton.onPointerUpObservable.add(() => {
+			this.inputActive = false;
+		});
+		flapButton.onPointerOutObservable.add(() => {
+			this.inputActive = false;
+		});
+		this.gui.addControl(flapButton);
 	}
 
 	private setupInput(): void {
@@ -589,6 +769,7 @@ export class FalconFlightGame {
 		this.syncObjects(state);
 		this.updateCamera(state, dt);
 		this.updateParticles(dt);
+		this.checkPerformance(dt);
 	}
 
 	private syncFalcon(state: FalconFlightState, dt: number): void {
@@ -615,10 +796,8 @@ export class FalconFlightGame {
 	}
 
 	private updateCamera(state: FalconFlightState, dt: number): void {
-		// Keep the falcon vertically centered so ceiling/ground warnings remain visible.
-		const targetY = state.falcon.y * 0.85 + 2;
-		this.camera.position.y += (targetY - this.camera.position.y) * Math.min(1, dt * 3);
-		this.camera.setTarget(new Vector3(0, this.camera.position.y, 0));
+		const target = new Vector3(0, state.falcon.y, 0);
+		this.camera.target = Vector3.Lerp(this.camera.target, target, Math.min(1, dt * 4));
 	}
 
 	private syncChunks(state: FalconFlightState): void {
@@ -657,26 +836,17 @@ export class FalconFlightGame {
 		root.position.y = chunk.y;
 
 		const meshes: Mesh[] = [];
-		const sandMat = new StandardMaterial('sandMat', this.scene);
-		sandMat.diffuseColor = new Color3(0.88, 0.58, 0.28);
-		sandMat.specularColor = new Color3(0.05, 0.05, 0.05);
 
-		const rockMat = new StandardMaterial('rockMat', this.scene);
-		rockMat.diffuseColor = new Color3(0.55, 0.35, 0.25);
+		const sandMat = this.createPbrMaterial('sandMat', PALETTE.dune, { roughness: 1 });
+		const rockMat = this.createPbrMaterial('rockMat', PALETTE.rock);
+		const trunkMat = this.createPbrMaterial('trunkMat', PALETTE.trunk);
+		const frondMat = this.createPbrMaterial('frondMat', PALETTE.frond);
+		const fortMat = this.createPbrMaterial('fortMat', PALETTE.fort);
+		const cloudMat = this.createPbrMaterial('cloudMat', PALETTE.cloud, { alpha: 0.8 });
 
-		const trunkMat = new StandardMaterial('trunkMat', this.scene);
-		trunkMat.diffuseColor = new Color3(0.45, 0.3, 0.18);
-
-		const frondMat = new StandardMaterial('frondMat', this.scene);
-		frondMat.diffuseColor = new Color3(0.28, 0.5, 0.18);
-		frondMat.backFaceCulling = false;
-
-		const fortMat = new StandardMaterial('fortMat', this.scene);
-		fortMat.diffuseColor = new Color3(0.42, 0.28, 0.22);
-
-		const cloudMat = new StandardMaterial('cloudMat', this.scene);
-		cloudMat.diffuseColor = new Color3(0.95, 0.82, 0.72);
-		cloudMat.alpha = 0.8;
+		// Optional GLB hook: load a model for this chunk type and parent it to root.
+		// const model = await FalconFlightGame.loadModel(`/models/${chunk.type}.glb`, this.scene);
+		// if (model) { model.parent = root; return; }
 
 		switch (chunk.type) {
 			case 'dune': {
@@ -687,6 +857,7 @@ export class FalconFlightGame {
 				dune.position.y = -chunk.height * 0.25;
 				dune.material = sandMat;
 				dune.parent = root;
+				dune.receiveShadows = true;
 				meshes.push(dune);
 				break;
 			}
@@ -698,6 +869,8 @@ export class FalconFlightGame {
 				rock.position.y = chunk.height * 0.25;
 				rock.material = rockMat;
 				rock.parent = root;
+				rock.receiveShadows = true;
+				this.shadowGenerator.addShadowCaster(rock);
 				meshes.push(rock);
 				break;
 			}
@@ -708,47 +881,74 @@ export class FalconFlightGame {
 					palm.parent = root;
 
 					const trunk = this.flatShade(
-						MeshBuilder.CreateCylinder(`palmTrunk-${chunk.id}-${i}`, { height: chunk.height, diameterTop: 0.12, diameterBottom: 0.18, tessellation: 6 }, this.scene)
+						MeshBuilder.CreateCylinder(
+							`palmTrunk-${chunk.id}-${i}`,
+							{ height: chunk.height, diameterTop: 0.12, diameterBottom: 0.18, tessellation: 6 },
+							this.scene
+						)
 					);
 					trunk.position.y = chunk.height / 2;
 					trunk.material = trunkMat;
 					trunk.parent = palm;
+					trunk.receiveShadows = true;
+					this.shadowGenerator.addShadowCaster(trunk);
 
 					for (let f = 0; f < 6; f++) {
 						const frond = this.flatShade(
-							MeshBuilder.CreatePlane(`palmFrond-${chunk.id}-${i}-${f}`, { width: 0.35, height: 1.6 }, this.scene)
+							MeshBuilder.CreatePlane(
+								`palmFrond-${chunk.id}-${i}-${f}`,
+								{ width: 0.35, height: 1.6 },
+								this.scene
+							)
 						);
 						frond.position.y = chunk.height;
 						frond.rotation.y = (f / 6) * Math.PI * 2;
 						frond.rotation.x = -0.4;
 						frond.material = frondMat;
 						frond.parent = palm;
+						frond.receiveShadows = true;
 					}
 				}
 				break;
 			}
 			case 'fort': {
 				const body = this.flatShade(
-					MeshBuilder.CreateBox(`fort-${chunk.id}`, { width: chunk.width * 0.5, height: chunk.height, depth: chunk.width * 0.35 }, this.scene)
+					MeshBuilder.CreateBox(
+						`fort-${chunk.id}`,
+						{ width: chunk.width * 0.5, height: chunk.height, depth: chunk.width * 0.35 },
+						this.scene
+					)
 				);
 				body.position.y = chunk.height / 2;
 				body.material = fortMat;
 				body.parent = root;
+				body.receiveShadows = true;
+				this.shadowGenerator.addShadowCaster(body);
 				meshes.push(body);
 
 				const tower = this.flatShade(
-					MeshBuilder.CreateCylinder(`fortTower-${chunk.id}`, { height: chunk.height * 1.2, diameter: chunk.width * 0.25, tessellation: 6 }, this.scene)
+					MeshBuilder.CreateCylinder(
+						`fortTower-${chunk.id}`,
+						{ height: chunk.height * 1.2, diameter: chunk.width * 0.25, tessellation: 6 },
+						this.scene
+					)
 				);
 				tower.position = new Vector3(chunk.width * 0.15, chunk.height * 0.6, 0);
 				tower.material = fortMat;
 				tower.parent = root;
+				tower.receiveShadows = true;
+				this.shadowGenerator.addShadowCaster(tower);
 				meshes.push(tower);
 				break;
 			}
 			case 'cloud': {
 				for (let i = 0; i < 3; i++) {
 					const puff = this.flatShade(
-						MeshBuilder.CreateSphere(`cloud-${chunk.id}-${i}`, { diameter: 1 + Math.random(), segments: 5 }, this.scene)
+						MeshBuilder.CreateSphere(
+							`cloud-${chunk.id}-${i}`,
+							{ diameter: 1 + Math.random(), segments: 5 },
+							this.scene
+						)
 					);
 					puff.position = new Vector3((i - 1) * 1.2, (Math.random() - 0.5) * 0.5, 0);
 					puff.material = cloudMat;
@@ -813,30 +1013,31 @@ export class FalconFlightGame {
 
 		const meshes: Mesh[] = [];
 
+		// Optional GLB hook: load a model for this object kind and parent it to root.
+		// const model = await FalconFlightGame.loadModel(`/models/${object.kind}.glb`, this.scene);
+		// if (model) { model.parent = root; return; }
+
 		if (object.category === 'prey') {
 			const kind = object.kind as PreyType;
-			const color =
-				kind === 'hare'
-					? new Color3(0.7, 0.55, 0.35)
-					: kind === 'houbara'
-						? new Color3(0.65, 0.5, 0.3)
-						: new Color3(0.55, 0.45, 0.25);
-			const mat = new StandardMaterial(`preyMat-${object.id}`, this.scene);
-			mat.diffuseColor = color;
+			const mat = this.createPbrMaterial(`preyMat-${object.id}`, PALETTE[kind]);
 
-			const body = this.flatShade(MeshBuilder.CreateSphere(`preyBody-${object.id}`, { diameter: 0.7, segments: 5 }, this.scene));
+			const body = this.flatShade(
+				MeshBuilder.CreateSphere(`preyBody-${object.id}`, { diameter: 0.7, segments: 5 }, this.scene)
+			);
 			body.scaling = new Vector3(1.1, 0.75, 0.8);
 			body.material = mat;
 			body.parent = root;
+			body.receiveShadows = true;
+			this.shadowGenerator.addShadowCaster(body);
 			meshes.push(body);
 
 			// Glow ring for Sharper Eyes.
 			const glow = MeshBuilder.CreateSphere(`preyGlow-${object.id}`, { diameter: 1.3, segments: 8 }, this.scene);
-			const glowMat = new StandardMaterial(`preyGlowMat-${object.id}`, this.scene);
-			glowMat.emissiveColor = new Color3(1, 0.9, 0.4);
-			glowMat.alpha = 0.25;
-			glowMat.disableLighting = true;
-			glow.material = glowMat;
+			glow.material = this.createPbrMaterial(`preyGlowMat-${object.id}`, PALETTE.sun, {
+				emissive: PALETTE.sun,
+				alpha: 0.25,
+				unlit: true
+			});
 			glow.parent = root;
 			glow.setEnabled(false);
 
@@ -846,40 +1047,55 @@ export class FalconFlightGame {
 
 		if (object.category === 'hazard') {
 			const kind = object.kind as HazardType;
-			const mat = new StandardMaterial(`hazardMat-${object.id}`, this.scene);
 			if (kind === 'cliff') {
-				mat.diffuseColor = new Color3(0.45, 0.3, 0.22);
-				const cliff = this.flatShade(MeshBuilder.CreateBox(`hazard-${object.id}`, { width: 1.2, height: 2.4, depth: 0.8 }, this.scene));
-				cliff.material = mat;
+				const cliff = this.flatShade(
+					MeshBuilder.CreateBox(`hazard-${object.id}`, { width: 1.2, height: 2.4, depth: 0.8 }, this.scene)
+				);
+				cliff.material = this.createPbrMaterial(`hazardMat-${object.id}`, PALETTE.cliff);
 				cliff.parent = root;
+				cliff.receiveShadows = true;
+				this.shadowGenerator.addShadowCaster(cliff);
 				meshes.push(cliff);
 			} else if (kind === 'dustDevil') {
-				mat.diffuseColor = new Color3(0.75, 0.6, 0.35);
-				mat.alpha = 0.7;
-				const swirl = this.flatShade(MeshBuilder.CreateCylinder(`hazard-${object.id}`, { height: 2.2, diameterTop: 0.3, diameterBottom: 1.2, tessellation: 8 }, this.scene));
-				swirl.material = mat;
+				const swirl = this.flatShade(
+					MeshBuilder.CreateCylinder(
+						`hazard-${object.id}`,
+						{ height: 2.2, diameterTop: 0.3, diameterBottom: 1.2, tessellation: 8 },
+						this.scene
+					)
+				);
+				swirl.material = this.createPbrMaterial(`hazardMat-${object.id}`, PALETTE.dustDevil, { alpha: 0.55 });
 				swirl.parent = root;
 				meshes.push(swirl);
 			} else if (kind === 'vulture') {
-				mat.diffuseColor = new Color3(0.25, 0.2, 0.15);
-				const body = this.flatShade(MeshBuilder.CreateSphere(`hazard-${object.id}`, { diameter: 0.6, segments: 5 }, this.scene));
+				const body = this.flatShade(
+					MeshBuilder.CreateSphere(`hazard-${object.id}`, { diameter: 0.6, segments: 5 }, this.scene)
+				);
 				body.scaling = new Vector3(1.2, 0.7, 0.6);
-				body.material = mat;
+				body.material = this.createPbrMaterial(`hazardMat-${object.id}`, PALETTE.vulture);
 				body.parent = root;
+				body.receiveShadows = true;
+				this.shadowGenerator.addShadowCaster(body);
 				meshes.push(body);
 				for (let s = -1; s <= 1; s += 2) {
-					const wing = this.flatShade(MeshBuilder.CreateBox(`vultureWing-${object.id}-${s}`, { width: 0.8, height: 0.04, depth: 0.35 }, this.scene));
+					const wing = this.flatShade(
+						MeshBuilder.CreateBox(`vultureWing-${object.id}-${s}`, { width: 0.8, height: 0.04, depth: 0.35 }, this.scene)
+					);
 					wing.position.z = s * 0.5;
 					wing.rotation.x = s * 0.3;
-					wing.material = mat;
+					wing.material = this.createPbrMaterial(`vultureWingMat-${object.id}-${s}`, PALETTE.vulture);
 					wing.parent = root;
 					meshes.push(wing);
 				}
 			} else {
-				mat.diffuseColor = new Color3(0.65, 0.75, 0.85);
-				mat.alpha = 0.6;
-				const draft = this.flatShade(MeshBuilder.CreateCylinder(`hazard-${object.id}`, { height: 2.4, diameterTop: 1.2, diameterBottom: 0.3, tessellation: 8 }, this.scene));
-				draft.material = mat;
+				const draft = this.flatShade(
+					MeshBuilder.CreateCylinder(
+						`hazard-${object.id}`,
+						{ height: 2.4, diameterTop: 1.2, diameterBottom: 0.3, tessellation: 8 },
+						this.scene
+					)
+				);
+				draft.material = this.createPbrMaterial(`hazardMat-${object.id}`, PALETTE.dustDevil, { alpha: 0.55 });
 				draft.parent = root;
 				meshes.push(draft);
 			}
@@ -889,16 +1105,13 @@ export class FalconFlightGame {
 
 		if (object.category === 'powerup') {
 			const kind = object.kind as PowerUpType;
-			const color =
-				kind === 'tailwind'
-					? new Color3(0.9, 0.95, 0.4)
-					: kind === 'sharperEyes'
-						? new Color3(0.4, 0.9, 0.95)
-						: new Color3(0.5, 0.95, 0.4);
-			const mat = new StandardMaterial(`powerupMat-${object.id}`, this.scene);
-			mat.diffuseColor = color;
-			mat.emissiveColor = color.scale(0.5);
-			const orb = this.flatShade(MeshBuilder.CreateSphere(`powerup-${object.id}`, { diameter: 0.8, segments: 6 }, this.scene));
+			const color = PALETTE[kind];
+			const mat = this.createPbrMaterial(`powerupMat-${object.id}`, color, {
+				emissive: color
+			});
+			const orb = this.flatShade(
+				MeshBuilder.CreateSphere(`powerup-${object.id}`, { diameter: 0.8, segments: 6 }, this.scene)
+			);
 			orb.material = mat;
 			orb.parent = root;
 			meshes.push(orb);
@@ -910,10 +1123,10 @@ export class FalconFlightGame {
 		for (let i = 0; i < 6; i++) {
 			const spark = MeshBuilder.CreateSphere(`spark-${Date.now()}-${i}`, { diameter: 0.12, segments: 4 }, this.scene);
 			spark.position = new Vector3(FALCON_WORLD_X + x, y, 0);
-			const mat = new StandardMaterial(`sparkMat-${Date.now()}-${i}`, this.scene);
-			mat.emissiveColor = new Color3(1, 0.85, 0.3);
-			mat.disableLighting = true;
-			spark.material = mat;
+			spark.material = this.createPbrMaterial(`sparkMat-${Date.now()}-${i}`, PALETTE.sun, {
+				emissive: PALETTE.sun,
+				unlit: true
+			});
 			const angle = (i / 6) * Math.PI * 2;
 			this.particles.push({
 				mesh: spark,
@@ -938,10 +1151,211 @@ export class FalconFlightGame {
 		}
 	}
 
+	private squashBounce(target: TransformNode | Mesh, scale = 1.2): void {
+		const squash = Math.max(0.5, 0.6 / scale);
+		const bounce = 1.0 + 0.1 * scale;
+		const anim = new Animation(
+			'squash',
+			'scaling.y',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		anim.setKeys([
+			{ frame: 0, value: 1 },
+			{ frame: 7, value: squash },
+			{ frame: 14, value: bounce },
+			{ frame: 21, value: 1 }
+		]);
+		const easing = new BounceEase();
+		easing.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
+		anim.setEasingFunction(easing);
+		target.animations = [anim];
+		this.scene.beginAnimation(target, 0, 21, false);
+	}
+
+	private createConfettiTexture(): DynamicTexture {
+		const tex = new DynamicTexture('confettiTex', 64, this.scene);
+		const ctx = tex.getContext();
+		ctx.clearRect(0, 0, 64, 64);
+		ctx.fillStyle = 'white';
+		ctx.beginPath();
+		ctx.moveTo(32, 8);
+		ctx.lineTo(56, 32);
+		ctx.lineTo(32, 56);
+		ctx.lineTo(8, 32);
+		ctx.closePath();
+		ctx.fill();
+		tex.update();
+		return tex;
+	}
+
+	private spawnConfetti(x: number, y: number, color: Color3, count = 24, darker = false): void {
+		if (!this.confettiTexture) {
+			this.confettiTexture = this.createConfettiTexture();
+		}
+		const ps = new ParticleSystem('confetti', count, this.scene);
+		ps.particleTexture = this.confettiTexture;
+		ps.emitter = new Vector3(FALCON_WORLD_X + x, y, 0);
+		ps.minEmitBox = new Vector3(-0.2, -0.2, -0.2);
+		ps.maxEmitBox = new Vector3(0.2, 0.2, 0.2);
+		ps.color1 = new Color4(color.r, color.g, color.b, 1);
+		ps.color2 = new Color4(Math.min(1, color.r * 1.2), Math.min(1, color.g * 1.2), Math.min(1, color.b * 1.2), 1);
+		ps.colorDead = darker
+			? new Color4(0.25, 0.05, 0.05, 0)
+			: new Color4(0.8, 0.65, 0.3, 0);
+		ps.minSize = 0.08;
+		ps.maxSize = 0.18;
+		ps.minLifeTime = 0.4;
+		ps.maxLifeTime = 0.9;
+		ps.emitRate = 0;
+		ps.manualEmitCount = count;
+		ps.minEmitPower = 1.6;
+		ps.maxEmitPower = 4;
+		ps.direction1 = new Vector3(-0.6, 0.4, -0.6);
+		ps.direction2 = new Vector3(0.6, 1.2, 0.6);
+		ps.gravity = new Vector3(0, -3.5, 0);
+		ps.targetStopDuration = 0.9;
+		ps.disposeOnStop = true;
+		ps.start();
+	}
+
+	private showFloatingText(x: number, y: number, text: string, color: string): void {
+		const rect = new Rectangle();
+		rect.width = '140px';
+		rect.height = '46px';
+		rect.thickness = 0;
+		rect.linkOffsetY = -60;
+		rect.alpha = 1;
+
+		const tb = new TextBlock();
+		tb.text = text;
+		tb.color = color;
+		tb.fontSize = 26;
+		tb.fontWeight = 'bold';
+		tb.outlineWidth = 3;
+		tb.outlineColor = 'black';
+		rect.addControl(tb);
+
+		this.gui.addControl(rect);
+
+		const anchor = new TransformNode('floatAnchor', this.scene);
+		anchor.position = new Vector3(FALCON_WORLD_X + x, y, 0);
+
+		const dummy = MeshBuilder.CreateBox('floatDummy', { size: 0.01 }, this.scene);
+		dummy.position = anchor.position.clone();
+		dummy.isVisible = false;
+		dummy.parent = anchor;
+		rect.linkWithMesh(dummy);
+
+		const animY = new Animation(
+			'floatY',
+			'position.y',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		animY.setKeys([
+			{ frame: 0, value: y },
+			{ frame: 60, value: y + 2 }
+		]);
+
+		const animA = new Animation(
+			'floatA',
+			'alpha',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		animA.setKeys([
+			{ frame: 0, value: 1 },
+			{ frame: 60, value: 0 }
+		]);
+
+		anchor.animations = [animY];
+		rect.animations = [animA];
+		this.scene.beginAnimation(anchor, 0, 60, false);
+		this.scene.beginAnimation(rect, 0, 60, false, 1, () => {
+			rect.dispose();
+			anchor.dispose();
+			dummy.dispose();
+		});
+	}
+
+	private preyColor(kind: PreyType): Color3 {
+		return Color3.FromHexString(PALETTE[kind]);
+	}
+
+	private powerupColor(kind: PowerUpType): Color3 {
+		return Color3.FromHexString(PALETTE[kind]);
+	}
+
+	private powerupHex(kind: PowerUpType): string {
+		return PALETTE[kind];
+	}
+
+	private powerupLabel(kind: PowerUpType): string {
+		switch (kind) {
+			case 'tailwind':
+				return 'رياح مواتية';
+			case 'sharperEyes':
+				return 'عين حادة';
+			case 'secondWind':
+				return 'نسيم ثانٍ';
+		}
+	}
+
+	private checkPerformance(dt: number): void {
+		if (this.performanceReduced) return;
+		const fps = this.engine.getFps();
+		if (fps < 30) {
+			this.lowFpsAccumulator += dt;
+			if (this.lowFpsAccumulator > 3) {
+				this.reducePerformance();
+			}
+		} else {
+			this.lowFpsAccumulator = Math.max(0, this.lowFpsAccumulator - dt);
+		}
+	}
+
+	private reducePerformance(): void {
+		this.performanceReduced = true;
+		this.shadowGenerator?.getShadowMap()?.resize(1024);
+		this.pipeline.bloomEnabled = false;
+		this.engine.setHardwareScalingLevel(1.25);
+		// eslint-disable-next-line no-console
+		console.warn('FalconFlight: reduced visual quality for performance.');
+	}
+
+	static async loadModel(path: string, scene: Scene): Promise<TransformNode | null> {
+		try {
+			const result = await SceneLoader.ImportMeshAsync('', path, '', scene);
+			if (!result.meshes.length) return null;
+			const root = new TransformNode('model-root', scene);
+			for (const mesh of result.meshes) {
+				if (mesh.parent) continue;
+				mesh.parent = root;
+				if (mesh instanceof Mesh) {
+					mesh.convertToFlatShadedMesh();
+					mesh.freezeWorldMatrix();
+				}
+			}
+			return root;
+		} catch (err) {
+			// eslint-disable-next-line no-console
+			console.warn('FalconFlight: failed to load model', path, err);
+			return null;
+		}
+	}
+
 	dispose(): void {
 		this.disposed = true;
 		this.cleanupMeshes();
 		this.audio.stopMusic();
+		this.confettiTexture?.dispose();
+		this.gui?.dispose();
+		this.pipeline?.dispose();
+		this.falconRoot?.dispose();
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('keydown', this.handleKeydown);
 		window.removeEventListener('keyup', this.handleKeyup);

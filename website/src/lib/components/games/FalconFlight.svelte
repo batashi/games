@@ -53,7 +53,7 @@
 	}
 </script>
 
-<div class="absolute inset-0 bg-gradient-to-b from-orange-300 via-amber-200 to-purple-200 overflow-hidden">
+<div class="absolute inset-0 bg-[#ffddb0] overflow-hidden" style="touch-action: none;">
 	<canvas bind:this={canvas} class="block w-full h-full outline-none" tabindex="0"></canvas>
 
 	{#if phase === 'menu'}
