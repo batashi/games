@@ -29,9 +29,10 @@ import {
 	CubeTexture,
 	DynamicTexture,
 	Animation,
-	BounceEase,
+	BackEase,
 	EasingFunction,
-	ParticleSystem
+	ParticleSystem,
+	Scalar
 } from '@babylonjs/core';
 import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline';
@@ -59,28 +60,29 @@ export interface FalconFlightGameOptions {
 
 const FALCON_WORLD_X = -6;
 
+// Bright, high-contrast pastel palette tuned for children.
 const PALETTE = {
-	falconBody: '#a65e2e',
-	falconHood: '#5c3a21',
-	falconWing: '#8b5a2b',
-	falconTail: '#8b5a2b',
-	falconBeak: '#2a1f15',
-	falconLegBand: '#2a9d8f',
-	ground: '#f4c98f',
-	sun: '#ffd54f',
-	ceilingWarning: '#ff4d4d',
-	dune: '#e6b88a',
-	rock: '#a67c52',
-	trunk: '#8b5a2b',
-	frond: '#6ba85c',
-	fort: '#c9a689',
-	cloud: '#fff5e6',
-	hare: '#d4a373',
-	houbara: '#e6b8a2',
-	quail: '#9c6644',
-	cliff: '#bc6c25',
-	dustDevil: '#e9c46a',
-	vulture: '#3d2b1f',
+	falconBody: '#f3722c',
+	falconHood: '#9d4edd',
+	falconWing: '#f8961e',
+	falconTail: '#f8961e',
+	falconBeak: '#ffd166',
+	falconLegBand: '#06d6a0',
+	ground: '#ffe5b4',
+	sun: '#ffd60a',
+	ceilingWarning: '#ff595e',
+	dune: '#f4a261',
+	rock: '#bc8a5f',
+	trunk: '#8d5b4c',
+	frond: '#70e000',
+	fort: '#f9c74f',
+	cloud: '#ffffff',
+	hare: '#ff9f1c',
+	houbara: '#f7b267',
+	quail: '#a67c52',
+	cliff: '#9d4edd',
+	dustDevil: '#ffd166',
+	vulture: '#5c4d3c',
 	tailwind: '#ffd60a',
 	sharperEyes: '#4cc9f0',
 	secondWind: '#80ed99'
@@ -371,7 +373,7 @@ export class FalconFlightGame {
 			{
 				onPreyCollected: (kind, _pos) => {
 					this.audio.playPreyCatch();
-					this.squashBounce(this.falconRoot);
+					this.squishStretchBounce(this.falconRoot, 0.3);
 					const state = this.logic.getState();
 					const delta = state.score - this.displayedScore;
 					this.spawnConfetti(0, state.falcon.y, this.preyColor(kind));
@@ -379,7 +381,7 @@ export class FalconFlightGame {
 				},
 				onPowerUpCollected: (kind, _pos) => {
 					this.audio.playPowerUp();
-					this.squashBounce(this.falconRoot);
+					this.squishStretchBounce(this.falconRoot, 0.3);
 					const state = this.logic.getState();
 					this.spawnConfetti(0, state.falcon.y, this.powerupColor(kind));
 					this.showFloatingText(0, state.falcon.y + 0.5, this.powerupLabel(kind), this.powerupHex(kind));
@@ -421,22 +423,28 @@ export class FalconFlightGame {
 
 	private createScene(): Scene {
 		const scene = new Scene(this.engine);
-		scene.clearColor = Color4.FromHexString('#ffddb0ff');
-		scene.fogMode = Scene.FOGMODE_EXP2;
-		scene.fogColor = Color3.FromHexString('#ffddb0');
-		scene.fogDensity = 0.012;
+		// Crisp, kid-friendly sky tone. Fog is disabled so the whole play area stays readable.
+		scene.clearColor = Color4.FromHexString('#a0d8efff');
+		scene.fogMode = Scene.FOGMODE_NONE;
 		return scene;
 	}
 
 	private createCamera(): ArcRotateCamera {
 		const alpha = -Math.PI / 2;
-		const beta = Math.PI / 2;
-		const radius = 28;
+		// Slightly angled top-down view: wide, stable, and easy to read.
+		const beta = 1.05;
+		const radius = 26;
 		const camera = new ArcRotateCamera('camera', alpha, beta, radius, new Vector3(0, 5, 0), this.scene);
+		camera.fov = 0.9;
 		camera.lowerAlphaLimit = alpha;
 		camera.upperAlphaLimit = alpha;
-		camera.lowerBetaLimit = beta;
-		camera.upperBetaLimit = beta;
+		camera.lowerBetaLimit = 0.85;
+		camera.upperBetaLimit = 1.35;
+		camera.lowerRadiusLimit = 18;
+		camera.upperRadiusLimit = 34;
+		camera.wheelPrecision = 0;
+		camera.minZ = 0.5;
+		camera.maxZ = 200;
 		camera.inputs.clear();
 		camera.attachControl(false);
 		return camera;
@@ -444,23 +452,26 @@ export class FalconFlightGame {
 
 	private setupLightsAndShadows(): void {
 		const hemi = new HemisphericLight('hemi', new Vector3(0, 1, 0), this.scene);
-		hemi.intensity = 0.65;
-		hemi.diffuse = new Color3(1, 0.9, 0.75);
-		hemi.groundColor = new Color3(0.65, 0.55, 0.45);
+		// Strong ambient fill so shadows stay bright and shapes remain readable.
+		hemi.intensity = 0.95;
+		hemi.diffuse = new Color3(1, 0.96, 0.88);
+		hemi.groundColor = new Color3(0.9, 0.82, 0.72);
 
-		const dir = new DirectionalLight('dir', new Vector3(-0.6, -1, 0.4), this.scene);
-		dir.intensity = 1.15;
-		dir.diffuse = new Color3(1, 0.85, 0.6);
+		const dir = new DirectionalLight('dir', new Vector3(-0.5, -1, 0.35), this.scene);
+		dir.intensity = 1.25;
+		dir.diffuse = new Color3(1, 0.88, 0.62);
 		dir.position = new Vector3(-20, 30, -10);
 		dir.shadowMinZ = 1;
 		dir.shadowMaxZ = 80;
-		(dir as DirectionalLight & { shadowFrustumSize?: number }).shadowFrustumSize = 45;
+		(dir as DirectionalLight & { shadowFrustumSize?: number }).shadowFrustumSize = 42;
 
 		this.shadowGenerator = new ShadowGenerator(2048, dir);
 		this.shadowGenerator.useBlurExponentialShadowMap = true;
-		this.shadowGenerator.blurKernel = 32;
-		this.shadowGenerator.bias = 0.0005;
 		this.shadowGenerator.useKernelBlur = true;
+		this.shadowGenerator.blurKernel = 24;
+		this.shadowGenerator.bias = 0.0005;
+		// Lighten shadows so nothing turns pitch-black.
+		this.shadowGenerator.setDarkness(0.35);
 	}
 
 	private setupEnvironment(): void {
@@ -539,7 +550,7 @@ export class FalconFlightGame {
 	}
 
 	private createProceduralEnvTexture(scene: Scene): CubeTexture {
-		const faces = ['#ffddb0', '#ffcc80', '#ffe0b2', '#e6cbb0', '#ffab91', '#ffe082'];
+		const faces = ['#a0d8ef', '#b8e2f2', '#c8eaf5', '#a0d8ef', '#dff4f7', '#ffffff'];
 		const urls = faces.map((color) => {
 			const canvas = document.createElement('canvas');
 			canvas.width = 64;
@@ -558,17 +569,18 @@ export class FalconFlightGame {
 		this.pipeline = new DefaultRenderingPipeline('falconPipeline', true, this.scene, [this.camera]);
 		this.pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
 		this.pipeline.imageProcessing.toneMappingEnabled = true;
-		this.pipeline.imageProcessing.exposure = 1.1;
-		this.pipeline.imageProcessing.contrast = 1.1;
+		this.pipeline.imageProcessing.exposure = 1.15;
+		this.pipeline.imageProcessing.contrast = 1.15;
 		this.pipeline.fxaaEnabled = true;
+		// Very subtle bloom so the scene stays crisp and readable.
 		this.pipeline.bloomEnabled = true;
-		this.pipeline.bloomThreshold = 0.78;
-		this.pipeline.bloomWeight = 0.25;
-		this.pipeline.bloomKernel = 64;
-		this.pipeline.bloomScale = 0.5;
+		this.pipeline.bloomThreshold = 0.88;
+		this.pipeline.bloomWeight = 0.06;
+		this.pipeline.bloomKernel = 32;
+		this.pipeline.bloomScale = 0.25;
 		this.pipeline.glowLayerEnabled = true;
 		if (this.pipeline.glowLayer) {
-			this.pipeline.glowLayer.intensity = 0.5;
+			this.pipeline.glowLayer.intensity = 0.25;
 		}
 	}
 
@@ -604,10 +616,6 @@ export class FalconFlightGame {
 		this.falconRoot = new TransformNode('falconRoot', this.scene);
 		this.falconRoot.position.x = FALCON_WORLD_X;
 		this.falconRoot.position.y = 5;
-
-		// Optional GLB hook: replace the primitive falcon with an imported model.
-		// const falconModel = await FalconFlightGame.loadModel('/models/falcon.glb', this.scene);
-		// if (falconModel) falconModel.parent = this.falconRoot;
 
 		const bodyMat = this.createPbrMaterial('bodyMat', PALETTE.falconBody, { roughness: 0.75 });
 		const wingMat = this.createPbrMaterial('wingMat', PALETTE.falconWing);
@@ -695,18 +703,23 @@ export class FalconFlightGame {
 	private setupGui(): void {
 		this.gui = AdvancedDynamicTexture.CreateFullscreenUI('falconUI');
 
-		const flapButton = Button.CreateSimpleButton('flapBtn', '🪶');
-		flapButton.width = '104px';
-		flapButton.height = '104px';
-		flapButton.cornerRadius = 52;
-		flapButton.color = 'white';
-		flapButton.background = 'rgba(0,0,0,0.28)';
-		flapButton.fontSize = 48;
+		// Large, high-contrast, rounded touch button for flap/action.
+		const flapButton = Button.CreateSimpleButton('flapBtn', 'رفرف');
+		flapButton.width = '128px';
+		flapButton.height = '128px';
+		flapButton.cornerRadius = 64;
+		flapButton.background = PALETTE.tailwind;
+		flapButton.fontSize = 28;
+		flapButton.fontWeight = 'bold';
 		flapButton.thickness = 0;
+		flapButton.color = '#2b2d42';
 		flapButton.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
 		flapButton.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-		flapButton.top = '-28px';
-		flapButton.alpha = 0.72;
+		flapButton.top = '-24px';
+		flapButton.alpha = 0.95;
+		flapButton.shadowColor = '#2b2d42';
+		flapButton.shadowBlur = 12;
+		flapButton.shadowOffsetY = 4;
 		flapButton.onPointerDownObservable.add(() => {
 			this.inputActive = true;
 		});
@@ -809,7 +822,12 @@ export class FalconFlightGame {
 	}
 
 	private updateCamera(state: FalconFlightState, dt: number): void {
-		const target = new Vector3(0, state.falcon.y, 0);
+		// Clamp the target so the falcon stays clearly visible at both the
+		// ground and the ceiling without the camera ever clipping the world.
+		const minTargetY = this.config.groundY + 1.5;
+		const maxTargetY = this.config.ceilingY - 0.5;
+		const targetY = Scalar.Clamp(state.falcon.y, minTargetY, maxTargetY);
+		const target = new Vector3(0, targetY, 0);
 		this.camera.target = Vector3.Lerp(this.camera.target, target, Math.min(1, dt * 4));
 	}
 
@@ -1055,6 +1073,7 @@ export class FalconFlightGame {
 			glow.setEnabled(false);
 
 			this.objectMeshes.push({ object, root, meshes, glow });
+			this.squishStretchBounce(root, 0.35);
 			return;
 		}
 
@@ -1113,6 +1132,7 @@ export class FalconFlightGame {
 				meshes.push(draft);
 			}
 			this.objectMeshes.push({ object, root, meshes });
+			this.squishStretchBounce(root, 0.3);
 			return;
 		}
 
@@ -1129,6 +1149,7 @@ export class FalconFlightGame {
 			orb.parent = root;
 			meshes.push(orb);
 			this.objectMeshes.push({ object, root, meshes });
+			this.squishStretchBounce(root, 0.4);
 		}
 	}
 
@@ -1164,27 +1185,38 @@ export class FalconFlightGame {
 		}
 	}
 
-	private squashBounce(target: TransformNode | Mesh, scale = 1.2): void {
-		const squash = Math.max(0.5, 0.6 / scale);
-		const bounce = 1.0 + 0.1 * scale;
-		const anim = new Animation(
-			'squash',
-			'scaling.y',
-			60,
-			Animation.ANIMATIONTYPE_FLOAT,
-			Animation.ANIMATIONLOOPMODE_CONSTANT
-		);
-		anim.setKeys([
-			{ frame: 0, value: 1 },
-			{ frame: 7, value: squash },
-			{ frame: 14, value: bounce },
-			{ frame: 21, value: 1 }
-		]);
-		const easing = new BounceEase();
-		easing.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
-		anim.setEasingFunction(easing);
-		target.animations = [anim];
-		this.scene.beginAnimation(target, 0, 21, false);
+	/**
+	 * Reusable squish-and-stretch bounce for collectibles and interactive objects.
+	 * Scales in/out horizontally while stretching vertically, then settles back.
+	 */
+	private squishStretchBounce(target: TransformNode | Mesh, intensity = 0.4, frames = 20): void {
+		const ease = new BackEase();
+		ease.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
+
+		const squash = Math.max(0.4, 1 - intensity * 0.55);
+		const stretch = 1 + intensity;
+		const mid = Math.floor(frames * 0.35);
+
+		const createAnim = (property: string) => {
+			const anim = new Animation(
+				`squish-${property}`,
+				property,
+				60,
+				Animation.ANIMATIONTYPE_FLOAT,
+				Animation.ANIMATIONLOOPMODE_CONSTANT
+			);
+			const isY = property.endsWith('y');
+			anim.setKeys([
+				{ frame: 0, value: 1 },
+				{ frame: mid, value: isY ? stretch : squash },
+				{ frame: frames, value: 1 }
+			]);
+			anim.setEasingFunction(ease);
+			return anim;
+		};
+
+		target.animations = [createAnim('scaling.x'), createAnim('scaling.y'), createAnim('scaling.z')];
+		this.scene.beginAnimation(target, 0, frames, false);
 	}
 
 	private createConfettiTexture(): DynamicTexture {
