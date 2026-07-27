@@ -1,3 +1,16 @@
+/**
+ * Falcon Flight — Visual Upgrade Experiment
+ *
+ * This file contains an experimental, high-polish Babylon.js visual treatment
+ * (low-poly PBR, real-time shadows, ACES tone mapping, bloom/FXAA, particles,
+ * squash-and-stretch animations, Babylon.GUI touch overlay, FPS watchdog).
+ *
+ * It is intentionally limited to Falcon Flight while we tune performance,
+ * readability, and child-friendly feel. Do NOT copy this approach to other
+ * games until the experiment is approved and documented as the platform-wide
+ * visual standard. See FRAMEWORK.md §10.1.7 for the experiment record.
+ */
+
 import {
 	Engine,
 	Scene,

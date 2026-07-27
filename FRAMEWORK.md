@@ -619,6 +619,20 @@ The platform is built on Babylon.js, a 3D engine, and targets tablets first. The
 **Production implication:**
 A single 3D artist using Blender (modeling) and Figma (UI/concepts) can maintain the core asset library. Style consistency comes from polygon density limits, material rules, and the shared Gulf palette rather than from a single complex tool chain.
 
+#### 10.1.7 Visual Experiments
+
+Active experiments are isolated to a single game until they are proven on the target devices and approved as a platform-wide standard.
+
+| Game | Experiment | Status | Notes |
+|------|------------|--------|-------|
+| **Falcon Flight** | Low-poly PBR with real-time shadows, ACES tone mapping, FXAA/bloom, confetti particles, squash-and-stretch feedback, Babylon.GUI touch overlay, FPS-based quality fallback. | **In tuning** | Limited to this game only. Evaluate tablet/mobile performance, visual clarity for children, and overall juice before rolling out to other titles. |
+
+Rules for experiments:
+- Keep gameplay logic untouched; visual changes must live in the scene/renderer layer.
+- Run the full validation gate (`npm run check && npm test && npm run build && npm run e2e`) before each deploy.
+- Document the experiment in this table and in an inline comment at the top of the affected game file.
+- Do not generalize the approach into a shared renderer/util until the experiment is approved.
+
 ---
 
 ### 10.2 Asset Standards
