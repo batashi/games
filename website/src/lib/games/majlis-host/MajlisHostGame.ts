@@ -348,6 +348,9 @@ interface GuestMesh {
 	icon: Mesh;
 	patienceBar: Mesh;
 	patienceBg: Mesh;
+	shadow: Mesh;
+	aura: Mesh;
+	spotlight: PointLight;
 }
 
 export class MajlisHostGame {
@@ -857,13 +860,46 @@ export class MajlisHostGame {
 		body.material = bodyMat;
 		body.parent = root;
 
-		const icon = this.createEmojiPlane('guestIcon', '🐪', 1.2);
-		icon.position.set(0, 1.1, 0);
+		// Soft shadow disc projected under the guest.
+		const shadow = MeshBuilder.CreateDisc('guestShadow', { radius: 0.9 }, this.scene);
+		shadow.position.y = -0.32;
+		shadow.rotation.x = Math.PI / 2;
+		const shadowMat = new StandardMaterial('guestShadowMat', this.scene);
+		shadowMat.diffuseColor = new Color3(0, 0, 0);
+		shadowMat.emissiveColor = new Color3(0, 0, 0);
+		shadowMat.alpha = 0.35;
+		shadowMat.disableLighting = true;
+		shadow.material = shadowMat;
+		shadow.parent = root;
+		shadow.isPickable = false;
+
+		// Warm ground aura to mark the guest as the focal point.
+		const aura = MeshBuilder.CreateTorus('guestAura', { diameter: 2.4, thickness: 0.08, tessellation: 32 }, this.scene);
+		aura.position.y = -0.3;
+		aura.rotation.x = Math.PI / 2;
+		const auraMat = new StandardMaterial('guestAuraMat', this.scene);
+		auraMat.emissiveColor = new Color3(1, 0.75, 0.25);
+		auraMat.disableLighting = true;
+		auraMat.alpha = 0.55;
+		aura.material = auraMat;
+		aura.parent = root;
+		aura.isPickable = false;
+
+		// Spotlight from above highlighting the guest.
+		const spotlight = new PointLight('guestSpotlight', new Vector3(0, 5, 0), this.scene);
+		spotlight.diffuse = new Color3(1, 0.9, 0.65);
+		spotlight.intensity = 0.9;
+		spotlight.range = 8;
+		spotlight.parent = root;
+
+		// Larger emoji icon — the guest is the star of the scene.
+		const icon = this.createEmojiPlane('guestIcon', '🐪', 1.7);
+		icon.position.set(0, 1.25, 0);
 		icon.parent = root;
 
 		// Patience bar background.
-		const patienceBg = MeshBuilder.CreatePlane('patienceBg', { width: 1.4, height: 0.18 }, this.scene);
-		patienceBg.position.set(0, 1.75, 0);
+		const patienceBg = MeshBuilder.CreatePlane('patienceBg', { width: 1.6, height: 0.2 }, this.scene);
+		patienceBg.position.set(0, 1.95, 0);
 		patienceBg.billboardMode = Mesh.BILLBOARDMODE_ALL;
 		const bgMat = new StandardMaterial('patienceBgMat', this.scene);
 		bgMat.diffuseColor = new Color3(0.2, 0.2, 0.2);
@@ -873,8 +909,8 @@ export class MajlisHostGame {
 		patienceBg.parent = root;
 		patienceBg.isPickable = false;
 
-		const patienceBar = MeshBuilder.CreatePlane('patienceBar', { width: 1.4, height: 0.18 }, this.scene);
-		patienceBar.position.set(-0.7, 1.75, -0.01);
+		const patienceBar = MeshBuilder.CreatePlane('patienceBar', { width: 1.6, height: 0.2 }, this.scene);
+		patienceBar.position.set(-0.8, 1.95, -0.01);
 		patienceBar.billboardMode = Mesh.BILLBOARDMODE_ALL;
 		const barMat = new StandardMaterial('patienceBarMat', this.scene);
 		barMat.diffuseColor = new Color3(0.2, 0.75, 0.3);
@@ -884,7 +920,7 @@ export class MajlisHostGame {
 		patienceBar.parent = root;
 		patienceBar.isPickable = false;
 
-		this.guestMesh = { root, body, icon, patienceBar, patienceBg };
+		this.guestMesh = { root, body, icon, patienceBar, patienceBg, shadow, aura, spotlight };
 	}
 
 	private setupDragAndDrop(): void {
@@ -1385,9 +1421,18 @@ export class MajlisHostGame {
 			return;
 		}
 
-		// Gentle idle bounce.
-		const bounce = guest.state === 'waiting' ? Math.sin(this.time * 2) * 0.03 : 0;
+		// Prominent idle bounce — the guest is the star.
+		const bounce = guest.state === 'waiting' ? Math.sin(this.time * 2.5) * 0.08 : 0;
 		this.guestMesh.root.position.y = 0.35 + bounce;
+
+		// Animate aura ring to draw the eye to the guest.
+		const auraPulse = 1 + Math.sin(this.time * 3) * 0.08;
+		this.guestMesh.aura.scaling.setAll(auraPulse);
+		(this.guestMesh.aura.material as StandardMaterial).alpha = 0.4 + Math.sin(this.time * 3) * 0.15;
+
+		// Shadow scales inversely with bounce to ground the guest.
+		this.guestMesh.shadow.scaling.setAll(1 - bounce * 1.5);
+		(this.guestMesh.shadow.material as StandardMaterial).alpha = 0.35 - bounce * 0.5;
 
 		// Scale patience bar.
 		const ratio = clamp(guest.patience / guest.maxPatience, 0, 1);
@@ -1411,8 +1456,8 @@ export class MajlisHostGame {
 		if (!this.guestMesh) return;
 		const icon = GUEST_ICONS[type];
 		this.guestMesh.icon.dispose();
-		this.guestMesh.icon = this.createEmojiPlane('guestIcon', icon, 1.2);
-		this.guestMesh.icon.position.set(0, 1.1, 0);
+		this.guestMesh.icon = this.createEmojiPlane('guestIcon', icon, 1.7);
+		this.guestMesh.icon.position.set(0, 1.25, 0);
 		this.guestMesh.icon.parent = this.guestMesh.root;
 
 		const colors: Record<GuestType, Color3> = {
@@ -1425,6 +1470,7 @@ export class MajlisHostGame {
 		};
 		const bodyMat = this.guestMesh.body.material as StandardMaterial;
 		bodyMat.diffuseColor = colors[type];
+		bodyMat.emissiveColor = Color3.Black();
 	}
 
 	private startGuestLeave(happy: boolean, type: GuestType): void {
