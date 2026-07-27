@@ -323,6 +323,10 @@ export class MajlisHostGame {
 		isOverGuest: boolean;
 	} = { item: null, ghost: null, startRootPos: Vector3.Zero(), targetPos: Vector3.Zero(), isOverGuest: false };
 
+	private hoveredItem: ServingItem | null = null;
+	private steamParticles: { mesh: Mesh; life: number; maxLife: number; vy: number; vx: number; vz: number }[] = [];
+	private steamTimer = 0;
+
 	private disposed = false;
 	private time = 0;
 	private lastGuestId = -1;
@@ -399,6 +403,8 @@ export class MajlisHostGame {
 			this.time += dt;
 			this.logic.update(dt);
 			this.syncScene();
+			this.updateHover(dt);
+			this.updateSteam(dt);
 			this.updateParticles(dt);
 			this.scene.render();
 		});
@@ -568,26 +574,51 @@ export class MajlisHostGame {
 		const root = new TransformNode('bukhoorRoot', this.scene);
 
 		const brassMat = new StandardMaterial('bukhoorBrassMat', this.scene);
-		brassMat.diffuseColor = new Color3(0.75, 0.55, 0.18);
-		brassMat.specularColor = new Color3(0.3, 0.25, 0.1);
+		brassMat.diffuseColor = new Color3(0.8, 0.58, 0.18);
+		brassMat.specularColor = new Color3(0.35, 0.28, 0.12);
+
+		// Taller pedestal base so the burner is clearly an incense holder.
+		const base = this.flatShade(
+			MeshBuilder.CreateCylinder('bukhoorBase', { height: 0.25, diameterTop: 0.45, diameterBottom: 0.55, tessellation: 8 }, this.scene)
+		);
+		base.position.y = 0.125;
+		base.material = brassMat;
+		base.parent = root;
+
+		const stem = this.flatShade(
+			MeshBuilder.CreateCylinder('bukhoorStem', { height: 0.35, diameter: 0.18, tessellation: 8 }, this.scene)
+		);
+		stem.position.y = 0.475;
+		stem.material = brassMat;
+		stem.parent = root;
 
 		const bowl = this.flatShade(
-			MeshBuilder.CreateCylinder('bukhoorBowl', { height: 0.35, diameterTop: 0.7, diameterBottom: 0.5, tessellation: 8 }, this.scene)
+			MeshBuilder.CreateCylinder('bukhoorBowl', { height: 0.35, diameterTop: 0.75, diameterBottom: 0.55, tessellation: 8 }, this.scene)
 		);
-		bowl.position.y = 0.175;
+		bowl.position.y = 0.825;
 		bowl.material = brassMat;
 		bowl.parent = root;
 
-		const coal = this.flatShade(MeshBuilder.CreateSphere('bukhoorCoal', { diameter: 0.35, segments: 5 }, this.scene));
-		coal.position.y = 0.35;
+		// Perforated dome lid hint.
+		const dome = this.flatShade(
+			MeshBuilder.CreateSphere('bukhoorDome', { diameter: 0.55, segments: 8 }, this.scene)
+		);
+		dome.scaling.y = 0.7;
+		dome.position.y = 1.15;
+		dome.material = brassMat;
+		dome.parent = root;
+
+		// Glowing coal peeking from under the dome.
+		const coal = this.flatShade(MeshBuilder.CreateSphere('bukhoorCoal', { diameter: 0.28, segments: 5 }, this.scene));
+		coal.position.y = 0.95;
 		const coalMat = new StandardMaterial('bukhoorCoalMat', this.scene);
 		coalMat.diffuseColor = new Color3(0.25, 0.2, 0.18);
-		coalMat.emissiveColor = new Color3(0.4, 0.2, 0.05);
+		coalMat.emissiveColor = new Color3(0.55, 0.25, 0.05);
 		coal.material = coalMat;
 		coal.parent = root;
 
-		const collider = MeshBuilder.CreateBox('bukhoorCollider', { size: 0.8 }, this.scene);
-		collider.position.y = 0.4;
+		const collider = MeshBuilder.CreateBox('bukhoorCollider', { size: 0.9 }, this.scene);
+		collider.position.y = 0.65;
 		collider.visibility = 0;
 		collider.parent = root;
 		collider.isPickable = true;
@@ -600,42 +631,46 @@ export class MajlisHostGame {
 		const root = new TransformNode('dallahRoot', this.scene);
 
 		const brassMat = new StandardMaterial('dallahBrassMat', this.scene);
-		brassMat.diffuseColor = new Color3(0.8, 0.6, 0.18);
-		brassMat.specularColor = new Color3(0.35, 0.3, 0.12);
+		brassMat.diffuseColor = new Color3(0.85, 0.62, 0.16);
+		brassMat.specularColor = new Color3(0.4, 0.32, 0.12);
 
-		const body = this.flatShade(
-			MeshBuilder.CreateSphere('dallahBody', { diameter: 0.7, segments: 8 }, this.scene)
+		// Saucer.
+		const saucer = this.flatShade(
+			MeshBuilder.CreateCylinder('dallahSaucer', { height: 0.05, diameter: 0.65, tessellation: 12 }, this.scene)
 		);
-		body.scaling = new Vector3(0.8, 1, 0.8);
-		body.position.y = 0.35;
+		saucer.position.y = 0.025;
+		saucer.material = brassMat;
+		saucer.parent = root;
+
+		// Longer, taller finjan body.
+		const body = this.flatShade(
+			MeshBuilder.CreateCylinder('dallahBody', { height: 0.9, diameterTop: 0.35, diameterBottom: 0.42, tessellation: 10 }, this.scene)
+		);
+		body.position.y = 0.5;
 		body.material = brassMat;
 		body.parent = root;
 
-		const neck = this.flatShade(
-			MeshBuilder.CreateCylinder('dallahNeck', { height: 0.5, diameterTop: 0.12, diameterBottom: 0.18, tessellation: 8 }, this.scene)
+		// Coffee surface inside.
+		const coffee = this.flatShade(
+			MeshBuilder.CreateCylinder('dallahCoffee', { height: 0.04, diameter: 0.32, tessellation: 10 }, this.scene)
 		);
-		neck.position.set(0, 0.75, 0);
-		neck.material = brassMat;
-		neck.parent = root;
-
-		const spout = this.flatShade(
-			MeshBuilder.CreateCylinder('dallahSpout', { height: 0.55, diameterTop: 0.08, diameterBottom: 0.14, tessellation: 6 }, this.scene)
-		);
-		spout.position.set(0.35, 0.55, 0);
-		spout.rotation.z = -Math.PI / 4;
-		spout.material = brassMat;
-		spout.parent = root;
+		coffee.position.y = 0.9;
+		const coffeeMat = new StandardMaterial('dallahCoffeeMat', this.scene);
+		coffeeMat.diffuseColor = new Color3(0.28, 0.16, 0.08);
+		coffeeMat.specularColor = new Color3(0.05, 0.05, 0.05);
+		coffee.material = coffeeMat;
+		coffee.parent = root;
 
 		const handle = this.flatShade(
-			MeshBuilder.CreateTorus('dallahHandle', { diameter: 0.45, thickness: 0.05, tessellation: 8 }, this.scene)
+			MeshBuilder.CreateTorus('dallahHandle', { diameter: 0.5, thickness: 0.05, tessellation: 8 }, this.scene)
 		);
-		handle.position.set(-0.35, 0.45, 0);
+		handle.position.set(-0.32, 0.55, 0);
 		handle.rotation.y = Math.PI / 2;
 		handle.material = brassMat;
 		handle.parent = root;
 
 		const collider = MeshBuilder.CreateBox('dallahCollider', { size: 0.9 }, this.scene);
-		collider.position.y = 0.45;
+		collider.position.y = 0.55;
 		collider.visibility = 0;
 		collider.parent = root;
 		collider.isPickable = true;
@@ -684,34 +719,33 @@ export class MajlisHostGame {
 	private createWaterPitcher(): TransformNode {
 		const root = new TransformNode('waterRoot', this.scene);
 
-		const clayMat = new StandardMaterial('waterClayMat', this.scene);
-		clayMat.diffuseColor = new Color3(0.6, 0.42, 0.28);
-		clayMat.specularColor = new Color3(0.1, 0.1, 0.1);
+		const cupMat = new StandardMaterial('waterCupMat', this.scene);
+		cupMat.diffuseColor = new Color3(0.85, 0.82, 0.78);
+		cupMat.specularColor = new Color3(0.15, 0.15, 0.15);
+		cupMat.alpha = 0.9;
 
-		const body = this.flatShade(
-			MeshBuilder.CreateCylinder('waterBody', { height: 0.7, diameterTop: 0.35, diameterBottom: 0.45, tessellation: 8 }, this.scene)
+		// Normal drinking cup.
+		const cup = this.flatShade(
+			MeshBuilder.CreateCylinder('waterCup', { height: 0.55, diameterTop: 0.42, diameterBottom: 0.32, tessellation: 10 }, this.scene)
 		);
-		body.position.y = 0.35;
-		body.material = clayMat;
-		body.parent = root;
+		cup.position.y = 0.3;
+		cup.material = cupMat;
+		cup.parent = root;
 
-		const neck = this.flatShade(
-			MeshBuilder.CreateCylinder('waterNeck', { height: 0.25, diameterTop: 0.15, diameterBottom: 0.25, tessellation: 8 }, this.scene)
+		// Water inside.
+		const water = this.flatShade(
+			MeshBuilder.CreateCylinder('waterLiquid', { height: 0.4, diameterTop: 0.36, diameterBottom: 0.28, tessellation: 10 }, this.scene)
 		);
-		neck.position.y = 0.82;
-		neck.material = clayMat;
-		neck.parent = root;
+		water.position.y = 0.28;
+		const waterMat = new StandardMaterial('waterMat', this.scene);
+		waterMat.diffuseColor = new Color3(0.55, 0.75, 0.9);
+		waterMat.specularColor = new Color3(0.3, 0.3, 0.3);
+		waterMat.alpha = 0.75;
+		water.material = waterMat;
+		water.parent = root;
 
-		const handle = this.flatShade(
-			MeshBuilder.CreateTorus('waterHandle', { diameter: 0.4, thickness: 0.04, tessellation: 8 }, this.scene)
-		);
-		handle.position.set(-0.32, 0.55, 0);
-		handle.rotation.y = Math.PI / 2;
-		handle.material = clayMat;
-		handle.parent = root;
-
-		const collider = MeshBuilder.CreateBox('waterCollider', { size: 0.8 }, this.scene);
-		collider.position.y = 0.45;
+		const collider = MeshBuilder.CreateBox('waterCollider', { size: 0.7 }, this.scene);
+		collider.position.y = 0.3;
 		collider.visibility = 0;
 		collider.parent = root;
 		collider.isPickable = true;
@@ -793,7 +827,7 @@ export class MajlisHostGame {
 		this.dragPlane = MeshBuilder.CreateGround('dragPlane', { width: 30, height: 30, subdivisions: 2 }, this.scene);
 		this.dragPlane.position.y = 1.2;
 		this.dragPlane.isVisible = false;
-		this.dragPlane.isPickable = true;
+		this.dragPlane.isPickable = false;
 
 		// Invisible cylinder above the guest cushion that accepts drops.
 		this.guestDropZone = MeshBuilder.CreateCylinder('guestDropZone', { height: 3, diameter: 3.2, tessellation: 16 }, this.scene);
@@ -853,8 +887,14 @@ export class MajlisHostGame {
 				return;
 			}
 
-			if (type === PointerEventTypes.POINTERMOVE && this.dragState.item) {
-				this.updateDrag(pointerInfo.event.clientX, pointerInfo.event.clientY);
+			if (type === PointerEventTypes.POINTERMOVE) {
+				if (this.dragState.item) {
+					this.updateDrag(pointerInfo.event.clientX, pointerInfo.event.clientY);
+				} else {
+					const mesh = pick?.pickedMesh;
+					const item = mesh?.metadata?.item as ServingItem | undefined;
+					this.hoveredItem = item ?? null;
+				}
 				return;
 			}
 
@@ -1152,6 +1192,66 @@ export class MajlisHostGame {
 		const label = this.createEmojiPlane(`float-${Date.now()}`, emoji, 0.6);
 		label.position = new Vector3((Math.random() - 0.5) * 0.5, 1.6, 3);
 		this.floatingLabels.push({ mesh: label, life: 0.8, vy: 0.6 });
+	}
+
+	private updateHover(dt: number): void {
+		for (const item of this.servingItems) {
+			const isHovered = this.hoveredItem === item.item && !this.dragState.item;
+			const targetScale = isHovered ? 1.12 : 1;
+			const currentScale = item.root.scaling.x;
+			const newScale = currentScale + (targetScale - currentScale) * Math.min(1, dt * 12);
+			item.root.scaling.setAll(newScale);
+			if (isHovered) {
+				// Gentle hover bob.
+				item.root.position.y = item.root.position.y + Math.sin(this.time * 6) * 0.002;
+			}
+		}
+	}
+
+	private updateSteam(dt: number): void {
+		const qahwa = this.servingItems.find((i) => i.item === 'qahwa');
+		if (!qahwa) return;
+
+		this.steamTimer -= dt;
+		if (this.steamTimer <= 0) {
+			this.spawnSteam(qahwa.root.position.clone());
+			this.steamTimer = 0.25 + Math.random() * 0.25;
+		}
+
+		for (let i = this.steamParticles.length - 1; i >= 0; i--) {
+			const p = this.steamParticles[i];
+			p.life -= dt;
+			p.mesh.position.x += p.vx * dt;
+			p.mesh.position.y += p.vy * dt;
+			p.mesh.position.z += p.vz * dt;
+			const lifeRatio = Math.max(0, p.life / p.maxLife);
+			p.mesh.scaling.setAll(0.2 + (1 - lifeRatio) * 0.5);
+			const mat = p.mesh.material as StandardMaterial;
+			mat.alpha = lifeRatio * 0.35;
+			if (p.life <= 0) {
+				p.mesh.dispose();
+				this.steamParticles.splice(i, 1);
+			}
+		}
+	}
+
+	private spawnSteam(origin: Vector3): void {
+		const steam = MeshBuilder.CreateSphere(`steam-${Date.now()}`, { diameter: 0.2, segments: 4 }, this.scene);
+		steam.position = origin.add(new Vector3((Math.random() - 0.5) * 0.1, 0.5, (Math.random() - 0.5) * 0.1));
+		const mat = new StandardMaterial(`steamMat-${Date.now()}`, this.scene);
+		mat.emissiveColor = new Color3(0.95, 0.95, 0.95);
+		mat.diffuseColor = new Color3(1, 1, 1);
+		mat.alpha = 0.35;
+		mat.disableLighting = true;
+		steam.material = mat;
+		this.steamParticles.push({
+			mesh: steam,
+			life: 1.2,
+			maxLife: 1.2,
+			vy: 0.4 + Math.random() * 0.2,
+			vx: (Math.random() - 0.5) * 0.1,
+			vz: (Math.random() - 0.5) * 0.1
+		});
 	}
 
 	private updateParticles(dt: number): void {
