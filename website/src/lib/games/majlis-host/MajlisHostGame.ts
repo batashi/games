@@ -17,7 +17,8 @@ import {
 	Animation,
 	VertexBuffer,
 	Plane,
-	Matrix
+	Matrix,
+	Material
 } from '@babylonjs/core';
 import {
 	MajlisHostLogic,
@@ -922,6 +923,7 @@ export class MajlisHostGame {
 		ctx.textBaseline = 'middle';
 		ctx.fillText(emoji, 64, 68);
 		texture.update();
+		texture.hasAlpha = true;
 
 		const mat = new StandardMaterial(`${name}-mat`, this.scene);
 		mat.diffuseTexture = texture;
@@ -929,7 +931,8 @@ export class MajlisHostGame {
 		mat.specularColor = new Color3(0, 0, 0);
 		mat.disableLighting = true;
 		mat.backFaceCulling = false;
-		mat.alpha = 0.99;
+		mat.useAlphaFromDiffuseTexture = true;
+		mat.transparencyMode = Material.MATERIAL_ALPHABLEND;
 
 		const plane = MeshBuilder.CreatePlane(name, { width: size, height: size }, this.scene);
 		plane.material = mat;
