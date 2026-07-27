@@ -15,7 +15,9 @@ import {
 	PointerEventTypes,
 	DynamicTexture,
 	Animation,
-	VertexBuffer
+	VertexBuffer,
+	Plane,
+	Matrix
 } from '@babylonjs/core';
 import {
 	MajlisHostLogic,
@@ -283,7 +285,8 @@ class MajlisHostAudio {
 interface ServingItemMesh {
 	item: ServingItem;
 	root: TransformNode;
-	mesh: Mesh;
+	itemRoot: TransformNode;
+	collider: Mesh;
 	highlight: Mesh;
 }
 
@@ -309,6 +312,17 @@ export class MajlisHostGame {
 	private smokeParticles: { mesh: Mesh; life: number; vy: number; vx: number; vz: number }[] = [];
 	private floatingLabels: { mesh: Mesh; life: number; vy: number }[] = [];
 
+	private dragPlane: Mesh | null = null;
+	private guestDropZone: Mesh | null = null;
+	private guestHighlight: Mesh | null = null;
+	private dragState: {
+		item: ServingItem | null;
+		ghost: TransformNode | null;
+		startRootPos: Vector3;
+		targetPos: Vector3;
+		isOverGuest: boolean;
+	} = { item: null, ghost: null, startRootPos: Vector3.Zero(), targetPos: Vector3.Zero(), isOverGuest: false };
+
 	private disposed = false;
 	private time = 0;
 	private lastGuestId = -1;
@@ -333,6 +347,7 @@ export class MajlisHostGame {
 		this.setupEnvironment();
 		this.setupServingItems();
 		this.setupGuestArea();
+		this.setupDragAndDrop();
 		this.setupInput();
 
 		this.logic = new MajlisHostLogic(
@@ -507,9 +522,11 @@ export class MajlisHostGame {
 			const root = new TransformNode(`item-${item}`, this.scene);
 			root.position = positions[item].clone();
 
-			const mesh = this.createServingItemMesh(item);
-			mesh.parent = root;
-			mesh.metadata = { item };
+			const itemRoot = this.createServingItemMesh(item);
+			itemRoot.parent = root;
+
+			// Find the invisible collider inside the item hierarchy.
+			const collider = this.findCollider(itemRoot, item);
 
 			// Invisible highlight disc shown on hover / hint.
 			const highlight = MeshBuilder.CreateDisc(`itemHighlight-${item}`, { radius: 0.9 }, this.scene);
@@ -524,11 +541,11 @@ export class MajlisHostGame {
 			highlight.isPickable = false;
 			highlight.setEnabled(false);
 
-			this.servingItems.push({ item, root, mesh, highlight });
+			this.servingItems.push({ item, root, itemRoot, collider, highlight });
 		}
 	}
 
-	private createServingItemMesh(item: ServingItem): Mesh {
+	private createServingItemMesh(item: ServingItem): TransformNode {
 		switch (item) {
 			case 'bukhoor':
 				return this.createBukhoorBurner();
@@ -539,10 +556,15 @@ export class MajlisHostGame {
 			case 'water':
 				return this.createWaterPitcher();
 		}
-		return MeshBuilder.CreateBox(`item-${item}`, { size: 0.5 }, this.scene);
+		const root = new TransformNode(`item-${item}-root`, this.scene);
+		const box = MeshBuilder.CreateBox(`item-${item}`, { size: 0.5 }, this.scene);
+		box.parent = root;
+		box.metadata = { item };
+		box.isPickable = true;
+		return root;
 	}
 
-	private createBukhoorBurner(): Mesh {
+	private createBukhoorBurner(): TransformNode {
 		const root = new TransformNode('bukhoorRoot', this.scene);
 
 		const brassMat = new StandardMaterial('bukhoorBrassMat', this.scene);
@@ -564,17 +586,17 @@ export class MajlisHostGame {
 		coal.material = coalMat;
 		coal.parent = root;
 
-		const mesh = MeshBuilder.CreateBox('bukhoorCollider', { size: 0.8 }, this.scene);
-		mesh.position.y = 0.4;
-		mesh.visibility = 0;
-		mesh.parent = root;
-		mesh.isPickable = true;
-		mesh.metadata = { item: 'bukhoor' };
+		const collider = MeshBuilder.CreateBox('bukhoorCollider', { size: 0.8 }, this.scene);
+		collider.position.y = 0.4;
+		collider.visibility = 0;
+		collider.parent = root;
+		collider.isPickable = true;
+		collider.metadata = { item: 'bukhoor' };
 
-		return mesh;
+		return root;
 	}
 
-	private createDallah(): Mesh {
+	private createDallah(): TransformNode {
 		const root = new TransformNode('dallahRoot', this.scene);
 
 		const brassMat = new StandardMaterial('dallahBrassMat', this.scene);
@@ -612,17 +634,17 @@ export class MajlisHostGame {
 		handle.material = brassMat;
 		handle.parent = root;
 
-		const mesh = MeshBuilder.CreateBox('dallahCollider', { size: 0.9 }, this.scene);
-		mesh.position.y = 0.45;
-		mesh.visibility = 0;
-		mesh.parent = root;
-		mesh.isPickable = true;
-		mesh.metadata = { item: 'qahwa' };
+		const collider = MeshBuilder.CreateBox('dallahCollider', { size: 0.9 }, this.scene);
+		collider.position.y = 0.45;
+		collider.visibility = 0;
+		collider.parent = root;
+		collider.isPickable = true;
+		collider.metadata = { item: 'qahwa' };
 
-		return mesh;
+		return root;
 	}
 
-	private createDateBowl(): Mesh {
+	private createDateBowl(): TransformNode {
 		const root = new TransformNode('datesRoot', this.scene);
 
 		const bowlMat = new StandardMaterial('datesBowlMat', this.scene);
@@ -649,17 +671,17 @@ export class MajlisHostGame {
 			date.parent = root;
 		}
 
-		const mesh = MeshBuilder.CreateBox('datesCollider', { size: 0.8 }, this.scene);
-		mesh.position.y = 0.3;
-		mesh.visibility = 0;
-		mesh.parent = root;
-		mesh.isPickable = true;
-		mesh.metadata = { item: 'dates' };
+		const collider = MeshBuilder.CreateBox('datesCollider', { size: 0.8 }, this.scene);
+		collider.position.y = 0.3;
+		collider.visibility = 0;
+		collider.parent = root;
+		collider.isPickable = true;
+		collider.metadata = { item: 'dates' };
 
-		return mesh;
+		return root;
 	}
 
-	private createWaterPitcher(): Mesh {
+	private createWaterPitcher(): TransformNode {
 		const root = new TransformNode('waterRoot', this.scene);
 
 		const clayMat = new StandardMaterial('waterClayMat', this.scene);
@@ -688,14 +710,30 @@ export class MajlisHostGame {
 		handle.material = clayMat;
 		handle.parent = root;
 
-		const mesh = MeshBuilder.CreateBox('waterCollider', { size: 0.8 }, this.scene);
-		mesh.position.y = 0.45;
-		mesh.visibility = 0;
-		mesh.parent = root;
-		mesh.isPickable = true;
-		mesh.metadata = { item: 'water' };
+		const collider = MeshBuilder.CreateBox('waterCollider', { size: 0.8 }, this.scene);
+		collider.position.y = 0.45;
+		collider.visibility = 0;
+		collider.parent = root;
+		collider.isPickable = true;
+		collider.metadata = { item: 'water' };
 
-		return mesh;
+		return root;
+	}
+
+	private findCollider(root: TransformNode, item: ServingItem): Mesh {
+		const children = root.getChildMeshes(false);
+		for (const child of children) {
+			if (child.metadata?.item === item) {
+				return child as Mesh;
+			}
+		}
+		// Fallback: create a generic collider.
+		const collider = MeshBuilder.CreateBox(`${item}-fallback-collider`, { size: 0.8 }, this.scene);
+		collider.visibility = 0;
+		collider.parent = root;
+		collider.isPickable = true;
+		collider.metadata = { item };
+		return collider;
 	}
 
 	private setupGuestArea(): void {
@@ -750,6 +788,33 @@ export class MajlisHostGame {
 		this.guestMesh = { root, body, icon, patienceBar, patienceBg };
 	}
 
+	private setupDragAndDrop(): void {
+		// Invisible horizontal plane for dragging items at a comfortable height.
+		this.dragPlane = MeshBuilder.CreateGround('dragPlane', { width: 30, height: 30, subdivisions: 2 }, this.scene);
+		this.dragPlane.position.y = 1.2;
+		this.dragPlane.isVisible = false;
+		this.dragPlane.isPickable = true;
+
+		// Invisible cylinder above the guest cushion that accepts drops.
+		this.guestDropZone = MeshBuilder.CreateCylinder('guestDropZone', { height: 3, diameter: 3.2, tessellation: 16 }, this.scene);
+		this.guestDropZone.position.set(0, 1.5, 3);
+		this.guestDropZone.isVisible = false;
+		this.guestDropZone.isPickable = true;
+
+		// Pulsing ring around the guest that appears while dragging.
+		const ring = MeshBuilder.CreateTorus('guestHighlightRing', { diameter: 3.4, thickness: 0.12, tessellation: 32 }, this.scene);
+		ring.position.set(0, 0.05, 3);
+		ring.rotation.x = Math.PI / 2;
+		const ringMat = new StandardMaterial('guestHighlightMat', this.scene);
+		ringMat.emissiveColor = new Color3(1, 0.85, 0.25);
+		ringMat.disableLighting = true;
+		ringMat.alpha = 0.6;
+		ring.material = ringMat;
+		ring.isPickable = false;
+		ring.setEnabled(false);
+		this.guestHighlight = ring;
+	}
+
 	private createEmojiPlane(name: string, emoji: string, size: number): Mesh {
 		const texture = new DynamicTexture(`${name}-tex`, { width: 128, height: 128 }, this.scene);
 		const ctx = texture.getContext() as unknown as CanvasRenderingContext2D;
@@ -776,13 +841,227 @@ export class MajlisHostGame {
 
 	private setupInput(): void {
 		this.scene.onPointerObservable.add((pointerInfo) => {
-			if (pointerInfo.type === PointerEventTypes.POINTERDOWN && pointerInfo.pickInfo?.hit) {
-				const mesh = pointerInfo.pickInfo.pickedMesh;
-				if (mesh?.metadata?.item) {
-					this.logic.serveItem(mesh.metadata.item as ServingItem);
+			const type = pointerInfo.type;
+			const pick = pointerInfo.pickInfo;
+
+			if (type === PointerEventTypes.POINTERDOWN && pick?.hit) {
+				const mesh = pick.pickedMesh;
+				const item = mesh?.metadata?.item as ServingItem | undefined;
+				if (item && mesh && !this.dragState.item) {
+					this.startDrag(item, pick.pickedPoint ?? mesh.getAbsolutePosition());
 				}
+				return;
+			}
+
+			if (type === PointerEventTypes.POINTERMOVE && this.dragState.item) {
+				this.updateDrag(pointerInfo.event.clientX, pointerInfo.event.clientY);
+				return;
+			}
+
+			if (type === PointerEventTypes.POINTERUP && this.dragState.item) {
+				this.endDrag();
 			}
 		});
+	}
+
+	private startDrag(item: ServingItem, worldPos: Vector3): void {
+		const found = this.servingItems.find((i) => i.item === item);
+		if (!found) return;
+
+		// Create a ghost clone of the serving item for visual drag feedback.
+		const ghost = this.cloneItemRoot(found.itemRoot);
+		ghost.position = worldPos.clone();
+		ghost.scaling.setAll(1.25);
+		ghost.rotation.y = Math.PI / 8;
+
+		this.dragState = {
+			item,
+			ghost,
+			startRootPos: found.root.position.clone(),
+			targetPos: worldPos.clone(),
+			isOverGuest: false
+		};
+
+		this.guestHighlight?.setEnabled(true);
+	}
+
+	private cloneItemRoot(source: TransformNode): TransformNode {
+		const clone = source.clone('dragGhost', null, true) ?? new TransformNode('dragGhost', this.scene);
+		clone.scaling.setAll(1);
+		// Disable the collider and make all meshes non-pickable / ghost-like.
+		for (const mesh of clone.getChildMeshes(true)) {
+			mesh.isPickable = false;
+			if (mesh.visibility === 0 || mesh.name.includes('Collider')) {
+				mesh.dispose();
+				continue;
+			}
+			this.makeGhostMaterial(mesh as Mesh);
+		}
+		return clone;
+	}
+
+	private makeGhostMaterial(mesh: Mesh): void {
+		if (!mesh.material) return;
+		const sourceMat = mesh.material as StandardMaterial;
+		const ghostMat = sourceMat.clone(`${sourceMat.name}-ghost`) ?? new StandardMaterial(`${mesh.name}-ghost-mat`, this.scene);
+		ghostMat.alpha = 0.85;
+		if (ghostMat.emissiveColor) {
+			ghostMat.emissiveColor = ghostMat.emissiveColor.add(new Color3(0.15, 0.1, 0));
+		} else {
+			ghostMat.emissiveColor = new Color3(0.15, 0.1, 0);
+		}
+		mesh.material = ghostMat;
+	}
+
+	private updateDrag(screenX: number, screenY: number): void {
+		if (!this.dragState.item || !this.dragState.ghost || !this.dragPlane) return;
+
+		// Raycast against the invisible drag plane to get a world position.
+		const ray = this.scene.createPickingRay(screenX, screenY, Matrix.Identity(), this.camera);
+		const planeHit = ray.intersectsPlane(new Plane(0, 1, 0, -this.dragPlane.position.y));
+		if (!planeHit) return;
+
+		const hitPoint = ray.origin.add(ray.direction.scale(planeHit));
+		// Clamp to keep the ghost within a sensible play area.
+		hitPoint.x = clamp(hitPoint.x, -9, 9);
+		hitPoint.z = clamp(hitPoint.z, -6, 7);
+
+		// Smooth follow with a gentle bob.
+		this.dragState.targetPos.copyFrom(hitPoint);
+		const current = this.dragState.ghost.position;
+		current.x += (hitPoint.x - current.x) * 0.25;
+		current.z += (hitPoint.z - current.z) * 0.25;
+		current.y = hitPoint.y + 0.15 + Math.sin(this.time * 8) * 0.08;
+
+		// Subtle rotation while dragging.
+		this.dragState.ghost.rotation.y = Math.PI / 8 + Math.sin(this.time * 6) * 0.1;
+
+		// Check if pointer is over the guest drop zone.
+		const guestPick = this.scene.pick(screenX, screenY, (mesh) => mesh === this.guestDropZone);
+		this.dragState.isOverGuest = guestPick.hit;
+
+		// Pulse the guest highlight ring and scale it when hovering the guest.
+		if (this.guestHighlight) {
+			const baseScale = this.dragState.isOverGuest ? 1.15 : 1;
+			const pulse = 1 + Math.sin(this.time * 5) * 0.06;
+			this.guestHighlight.scaling.setAll(baseScale * pulse);
+			(this.guestHighlight.material as StandardMaterial).alpha = this.dragState.isOverGuest ? 0.9 : 0.45;
+		}
+	}
+
+	private endDrag(): void {
+		const { item, ghost, isOverGuest, startRootPos } = this.dragState;
+		if (!item || !ghost) return;
+
+		this.guestHighlight?.setEnabled(false);
+
+		if (isOverGuest) {
+			// Fly the item to the guest and then serve it.
+			this.flyItemToGuest(item, ghost.position.clone(), () => {
+				this.logic.serveItem(item);
+			});
+		} else {
+			// Snap back to the tray.
+			this.snapItemBack(item, ghost.position.clone(), startRootPos);
+		}
+
+		ghost.dispose();
+		this.dragState = { item: null, ghost: null, startRootPos: Vector3.Zero(), targetPos: Vector3.Zero(), isOverGuest: false };
+	}
+
+	private flyItemToGuest(item: ServingItem, from: Vector3, onArrive: () => void): void {
+		// Create a temporary flying clone that moves from the release point to the guest.
+		const flyerRoot = this.createFlyingClone(item, from);
+		const to = this.guestMesh?.root.position.clone() ?? new Vector3(0, 1, 3);
+		to.y += 0.6;
+
+		const anim = new Animation(
+			'flyToGuest',
+			'position',
+			60,
+			Animation.ANIMATIONTYPE_VECTOR3,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		const keys = [
+			{ frame: 0, value: from },
+			{ frame: 15, value: new Vector3((from.x + to.x) * 0.5, to.y + 1.2, (from.z + to.z) * 0.5) },
+			{ frame: 30, value: to }
+		];
+		anim.setKeys(keys);
+
+		const scaleAnim = new Animation(
+			'flyScale',
+			'scaling',
+			60,
+			Animation.ANIMATIONTYPE_VECTOR3,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		scaleAnim.setKeys([
+			{ frame: 0, value: new Vector3(1.2, 1.2, 1.2) },
+			{ frame: 30, value: new Vector3(0.5, 0.5, 0.5) }
+		]);
+
+		flyerRoot.animations = [anim, scaleAnim];
+		this.scene.beginAnimation(flyerRoot, 0, 30, false, 1, () => {
+			this.spawnSparkles(to);
+			flyerRoot.dispose();
+			onArrive();
+		});
+	}
+
+	private createFlyingClone(item: ServingItem, position: Vector3): TransformNode {
+		const found = this.servingItems.find((i) => i.item === item);
+		if (found) {
+			const clone = this.cloneItemRoot(found.itemRoot);
+			clone.position = position.clone();
+			return clone;
+		}
+		const fallback = new TransformNode('flyerFallback', this.scene);
+		const box = MeshBuilder.CreateBox('flyerFallbackBox', { size: 0.5 }, this.scene);
+		box.parent = fallback;
+		fallback.position = position.clone();
+		return fallback;
+	}
+
+	private snapItemBack(item: ServingItem, from: Vector3, to: Vector3): void {
+		const flyerRoot = this.createFlyingClone(item, from);
+		const anim = new Animation(
+			'snapBack',
+			'position',
+			60,
+			Animation.ANIMATIONTYPE_VECTOR3,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		anim.setKeys([
+			{ frame: 0, value: from },
+			{ frame: 20, value: to }
+		]);
+		flyerRoot.animations = [anim];
+		this.scene.beginAnimation(flyerRoot, 0, 20, false, 1.5, () => {
+			flyerRoot.dispose();
+			// Restore the original item's position.
+			const found = this.servingItems.find((i) => i.item === item);
+			if (found) found.root.position.copyFrom(to);
+		});
+	}
+
+	private spawnSparkles(origin: Vector3): void {
+		for (let i = 0; i < 8; i++) {
+			const spark = MeshBuilder.CreateSphere(`spark-${Date.now()}-${i}`, { diameter: 0.1, segments: 4 }, this.scene);
+			spark.position = origin.clone();
+			const mat = new StandardMaterial(`sparkMat-${Date.now()}-${i}`, this.scene);
+			mat.emissiveColor = new Color3(1, 0.9, 0.4);
+			mat.disableLighting = true;
+			spark.material = mat;
+			const angle = (i / 8) * Math.PI * 2;
+			this.smokeParticles.push({
+				mesh: spark,
+				life: 0.5,
+				vy: 1 + Math.random() * 0.5,
+				vx: Math.cos(angle) * 1.5,
+				vz: Math.sin(angle) * 1.5
+			});
+		}
 	}
 
 	startLevel(level: number): void {
@@ -827,7 +1106,6 @@ export class MajlisHostGame {
 		const found = this.servingItems.find((i) => i.item === item);
 		if (!found) return;
 
-		const mesh = found.mesh;
 		const startY = found.root.position.y;
 		const anim = new Animation(
 			`anim-${item}`,

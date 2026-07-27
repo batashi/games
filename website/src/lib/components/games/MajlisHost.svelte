@@ -209,15 +209,11 @@
 			</button>
 		</div>
 
-		<!-- Desktop keyboard hint -->
-		<div class="absolute bottom-4 left-4 bg-charcoal/70 text-cream px-3 py-2 rounded-xl text-xs pointer-events-none hidden sm:block">
-			<div class="flex gap-3">
-				{#each ['bukhoor', 'qahwa', 'dates', 'water'] as item, i}
-					<div class="flex items-center gap-1">
-						<span class="bg-cream/20 px-1.5 rounded font-bold">{keyboardLabel(i)}</span>
-						<span>{itemLabel(item as ServingItem)}</span>
-					</div>
-				{/each}
+		<!-- Drag hint -->
+		<div class="absolute bottom-4 left-4 bg-charcoal/70 text-cream px-3 py-2 rounded-xl text-xs pointer-events-none">
+			<div class="flex flex-col gap-1">
+				<div>اسحب البخور أو القهوة أو التمر أو الماء وأفلتها فوق الضيف ✋</div>
+				<div class="opacity-80 hidden sm:block">يمكنك أيضاً استخدام مفاتيح 1-4 على الكمبيوتر</div>
 			</div>
 		</div>
 	{/if}
