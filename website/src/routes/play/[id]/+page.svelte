@@ -3,6 +3,9 @@
 
 	let { data } = $props();
 	let game = $derived(data.game);
+	let gameContainer: HTMLDivElement | null = $state(null);
+	let showHowTo = $state(false);
+	let isFullscreen = $state(false);
 
 	// Lazy-load game components so Babylon.js is only fetched for playable games.
 	let FortBattle = $state<typeof import('$lib/components/games/FortBattle.svelte').default | null>(null);
@@ -15,19 +18,33 @@
 	let majlisHostRef: import('$lib/components/games/MajlisHost.svelte').default | null = $state(null);
 	let muted = $state(false);
 
-	onMount(async () => {
+	onMount(() => {
 		if (game.id === 'archery') {
-			FortBattle = (await import('$lib/components/games/FortBattle.svelte')).default;
+			import('$lib/components/games/FortBattle.svelte').then((m) => {
+				FortBattle = m.default;
+			});
 		}
 		if (game.id === 'souq-alfereej') {
-			SouqManager = (await import('$lib/components/games/SouqManager.svelte')).default;
+			import('$lib/components/games/SouqManager.svelte').then((m) => {
+				SouqManager = m.default;
+			});
 		}
 		if (game.id === 'falcon') {
-			FalconFlight = (await import('$lib/components/games/FalconFlight.svelte')).default;
+			import('$lib/components/games/FalconFlight.svelte').then((m) => {
+				FalconFlight = m.default;
+			});
 		}
 		if (game.id === 'majlis-host') {
-			MajlisHost = (await import('$lib/components/games/MajlisHost.svelte')).default;
+			import('$lib/components/games/MajlisHost.svelte').then((m) => {
+				MajlisHost = m.default;
+			});
 		}
+
+		const handler = () => {
+			isFullscreen = document.fullscreenElement === gameContainer;
+		};
+		document.addEventListener('fullscreenchange', handler);
+		return () => document.removeEventListener('fullscreenchange', handler);
 	});
 
 	function toggleMute() {
@@ -45,6 +62,17 @@
 			muted = majlisHostRef?.isMuted() ?? false;
 		}
 	}
+
+	function toggleFullscreen() {
+		if (!gameContainer) return;
+		if (!document.fullscreenElement) {
+			gameContainer.requestFullscreen().catch(() => {
+				// Fullscreen may be blocked by the browser; ignore silently.
+			});
+		} else {
+			document.exitFullscreen();
+		}
+	}
 </script>
 
 <svelte:head>
@@ -52,11 +80,11 @@
 	<meta name="description" content="العب {game.nameAr} مباشرة في المتصفح." />
 </svelte:head>
 
-<div class="bg-charcoal flex-1 flex flex-col min-h-0">
+<div bind:this={gameContainer} class="bg-charcoal flex-1 flex flex-col min-h-0">
 	<!-- Game header -->
 	<div class="bg-sea-dark text-cream px-4 py-3 flex items-center justify-between">
 		<div class="flex items-center gap-3">
-			<a href="/games/{game.slug}" class="hover:text-sun transition-colors">
+			<a href="/games/{game.slug}" class="hover:text-sun transition-colors p-1" aria-label="العودة لتفاصيل اللعبة">
 				<span class="text-2xl">←</span>
 			</a>
 			<div>
@@ -64,24 +92,49 @@
 				<p class="text-xs opacity-80">{game.taglineAr}</p>
 			</div>
 		</div>
-		<div class="flex items-center gap-3">
+		<div class="flex items-center gap-2">
 			<button
 				type="button"
-				class="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+				class="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
 				aria-label={muted ? 'إلغاء كتم الصوت' : 'كتم الصوت'}
 				onclick={toggleMute}
 			>
-				{muted ? '🔇' : '🔊'}
+				<span class="text-xl">{muted ? '🔇' : '🔊'}</span>
 			</button>
 			<button
 				type="button"
-				class="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-				aria-label="ملء الشاشة"
+				class="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+				aria-label="كيف ألعب؟"
+				aria-pressed={showHowTo}
+				onclick={() => (showHowTo = !showHowTo)}
 			>
-				⛶
+				<span class="text-xl">❓</span>
+			</button>
+			<button
+				type="button"
+				class="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+				aria-label={isFullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}
+				onclick={toggleFullscreen}
+			>
+				<span class="text-xl">{isFullscreen ? '⛶' : '⛶'}</span>
 			</button>
 		</div>
 	</div>
+
+	{#if showHowTo}
+		<div class="bg-cream text-charcoal px-4 py-3 border-b border-sand-dark/20">
+			<div class="max-w-4xl mx-auto">
+				<h2 class="font-bold text-base mb-2 flex items-center gap-2">🎮 كيف ألعب {game.nameAr}؟</h2>
+				<ol class="flex flex-wrap gap-2">
+					{#each game.howToPlayAr as step, i}
+						<li class="bg-sand/40 rounded-xl px-3 py-2 text-sm font-bold">
+							<span class="text-sea-dark">{i + 1}.</span> {step}
+						</li>
+					{/each}
+				</ol>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Game container -->
 	<div class="flex-1 relative min-h-0 bg-gradient-to-br from-charcoal to-sea-dark/50">

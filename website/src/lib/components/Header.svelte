@@ -2,8 +2,8 @@
 	import { page } from '$app/state';
 
 	const mainNavItems = [
-		{ href: '/', labelAr: 'الرئيسية', labelEn: 'Home' },
-		{ href: '/games', labelAr: 'الألعاب', labelEn: 'Games' }
+		{ href: '/', labelAr: 'الرئيسية', labelEn: 'Home', icon: '🏠' },
+		{ href: '/games', labelAr: 'الألعاب', labelEn: 'Games', icon: '🎮' }
 	];
 
 	const grownupsItems = [
@@ -38,9 +38,10 @@
 				{#each mainNavItems as item}
 					<a
 						href={item.href}
-						class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {isActive(item.href) ? 'bg-sea text-cream' : 'hover:bg-sea/50'}"
+						class="px-4 py-3 rounded-xl text-base font-bold transition-colors inline-flex items-center gap-2 {isActive(item.href) ? 'bg-sea text-cream' : 'hover:bg-sea/50'}"
 						aria-current={isActive(item.href) ? 'page' : undefined}
 					>
+						<span aria-hidden="true">{item.icon}</span>
 						{item.labelAr}
 					</a>
 				{/each}
@@ -49,12 +50,13 @@
 				<div class="relative">
 					<button
 						type="button"
-						class="px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-sea/50 flex items-center gap-1"
+						class="px-4 py-3 rounded-xl text-base font-bold transition-colors hover:bg-sea/50 flex items-center gap-2"
 						aria-expanded={grownupsOpen}
 						aria-haspopup="true"
 						onclick={() => grownupsOpen = !grownupsOpen}
 					>
-						قسم الكبار 🧑‍🤝‍🧑
+						<span>🧑‍🤝‍🧑</span>
+						قسم الكبار
 						<svg class="w-4 h-4 transition-transform {grownupsOpen ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 						</svg>
@@ -67,7 +69,7 @@
 							{#each grownupsItems as item}
 								<a
 									href={item.href}
-									class="block px-4 py-2.5 text-sm font-medium transition-colors hover:bg-sand {isActive(item.href) ? 'bg-sand font-bold' : ''}"
+									class="block px-4 py-3 text-base font-bold transition-colors hover:bg-sand {isActive(item.href) ? 'bg-sand font-bold' : ''}"
 									role="menuitem"
 									onclick={() => grownupsOpen = false}
 								>
@@ -104,18 +106,19 @@
 			{#each mainNavItems as item}
 				<a
 					href={item.href}
-					class="block px-3 py-2 rounded-lg text-sm font-medium transition-colors {isActive(item.href) ? 'bg-sea text-cream' : 'hover:bg-sea/50'}"
+					class="block px-4 py-3 rounded-xl text-base font-bold transition-colors inline-flex items-center gap-2 {isActive(item.href) ? 'bg-sea text-cream' : 'hover:bg-sea/50'}"
 					onclick={() => mobileMenuOpen = false}
 				>
+					<span aria-hidden="true">{item.icon}</span>
 					{item.labelAr}
 				</a>
 			{/each}
 			<div class="pt-2 mt-2 border-t border-sea/50">
-				<p class="px-3 py-1 text-xs opacity-70">قسم الكبار</p>
+				<p class="px-3 py-2 text-sm opacity-70 font-bold">🧑‍🤝‍🧑 قسم الكبار</p>
 				{#each grownupsItems as item}
 					<a
 						href={item.href}
-						class="block px-3 py-2 rounded-lg text-sm font-medium transition-colors {isActive(item.href) ? 'bg-sea text-cream' : 'hover:bg-sea/50'}"
+						class="block px-4 py-3 rounded-xl text-base font-bold transition-colors {isActive(item.href) ? 'bg-sea text-cream' : 'hover:bg-sea/50'}"
 						onclick={() => mobileMenuOpen = false}
 					>
 						{item.labelAr}

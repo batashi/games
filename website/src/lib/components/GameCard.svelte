@@ -30,40 +30,50 @@
 		memory: 'from-lime/20 to-sand-dark/30'
 	};
 
+	const genreTag: Record<string, string> = {
+		'endless-runner': 'bg-poppy text-cream',
+		strategy: 'bg-lime text-charcoal',
+		'physics-artillery': 'bg-sky text-charcoal',
+		'shop-simulation': 'bg-sun text-charcoal',
+		'endless-flier': 'bg-sea text-cream',
+		memory: 'bg-sand-dark text-cream'
+	};
+
 	let stars = $derived(difficultyStars(game.ageRange));
 	let thumbGradient = $derived(genreBg[game.genre] ?? 'from-sea/20 to-sand-dark/30');
+	let genreClass = $derived(genreTag[game.genre] ?? 'bg-sand text-charcoal');
 </script>
 
-<article class="group bg-cream rounded-2xl shadow-md overflow-hidden border border-sand-dark/20 flex flex-col h-full card-lift">
+<article class="group bg-cream rounded-3xl shadow-md overflow-hidden border-2 border-sand-dark/20 flex flex-col h-full card-lift">
 	<!-- Thumbnail placeholder -->
 	<div class="relative aspect-video bg-gradient-to-br {thumbGradient} flex items-center justify-center overflow-hidden">
-		<span class="text-7xl group-hover:scale-110 transition-transform duration-300 drop-shadow-sm">{game.icon}</span>
+		<span class="text-8xl group-hover:scale-110 transition-transform duration-300 drop-shadow-md">{game.icon}</span>
 		{#if !isReady}
-			<span class="absolute top-3 right-3 bg-charcoal/80 text-cream text-xs font-bold px-2 py-1 rounded-full">
+			<span class="absolute top-3 right-3 bg-charcoal/80 text-cream text-sm font-bold px-3 py-1.5 rounded-full">
 				قريباً
 			</span>
 		{/if}
 	</div>
 
-	<div class="p-5 flex flex-col flex-1">
-		<div class="flex items-start justify-between gap-2 mb-2">
-			<h3 class="font-display font-bold text-lg text-charcoal group-hover:text-sea transition-colors">
+	<div class="p-6 flex flex-col flex-1">
+		<div class="flex items-start justify-between gap-2 mb-3">
+			<h3 class="font-display font-bold text-xl text-charcoal group-hover:text-sea transition-colors">
 				{game.nameAr}
 			</h3>
 		</div>
 
-		<p class="text-sm text-charcoal/70 mb-3 line-clamp-2">{game.taglineAr}</p>
+		<p class="text-base text-charcoal/70 mb-4 line-clamp-2 leading-relaxed">{game.taglineAr}</p>
 
-		<div class="flex flex-wrap items-center gap-2 mb-4">
-			<span class="text-xs bg-sand text-charcoal px-2 py-1 rounded-full">{game.genreLabelAr}</span>
-			<span class="text-xs bg-sand text-charcoal px-2 py-1 rounded-full" title="العمر">
-				{game.ageRange}
+		<div class="flex flex-wrap items-center gap-2 mb-5">
+			<span class="text-sm {genreClass} px-3 py-1 rounded-full font-bold">{game.genreLabelAr}</span>
+			<span class="text-sm bg-sand text-charcoal px-3 py-1 rounded-full font-bold" title="العمر">
+				🎂 {game.ageRange}
 			</span>
-			<span class="text-xs bg-sun/20 text-charcoal px-2 py-1 rounded-full" title="الصعوبة">
+			<span class="text-sm bg-sun/30 text-charcoal px-3 py-1 rounded-full font-bold" title="الصعوبة">
 				{'⭐'.repeat(stars)}
 			</span>
 			{#each platformLabels as platform}
-				<span class="text-xs bg-sand text-charcoal px-2 py-1 rounded-full" title={platform.ar}>
+				<span class="text-sm bg-sand text-charcoal px-3 py-1 rounded-full font-bold" title={platform.ar}>
 					<span aria-hidden="true">{platform.icon}</span>
 					<span class="sr-only">{platform.ar}</span>
 				</span>
@@ -71,22 +81,22 @@
 		</div>
 
 		<div class="mt-auto space-y-3">
-			<p class="text-xs text-charcoal/60">{modeLabels}</p>
+			<p class="text-sm text-charcoal/60 font-medium">{modeLabels}</p>
 
-			<div class="flex gap-2">
+			<div class="flex gap-3">
 				{#if isReady}
 					<a
 						href="/play/{game.id}"
-						class="flex-1 bg-sun hover:bg-sun-dark text-charcoal text-center font-bold py-2.5 px-4 rounded-xl btn-bounce"
+						class="flex-1 bg-sun hover:bg-sun-dark text-charcoal text-center font-bold py-3 px-4 rounded-2xl btn-bounce text-lg inline-flex items-center justify-center gap-2"
 					>
 						🎮 العب الآن
 					</a>
 				{/if}
 				<a
 					href="/games/{game.slug}"
-					class="{isReady ? 'flex-1' : 'w-full'} bg-sand hover:bg-sand-dark text-charcoal text-center font-bold py-2.5 px-4 rounded-xl transition-colors"
+					class="{isReady ? 'flex-1' : 'w-full'} bg-sand hover:bg-sand-dark text-charcoal text-center font-bold py-3 px-4 rounded-2xl transition-colors text-lg"
 				>
-					{isReady ? 'التفاصيل' : 'اعرف المزيد'}
+					{isReady ? '🔍 التفاصيل' : 'اعرف المزيد'}
 				</a>
 			</div>
 		</div>

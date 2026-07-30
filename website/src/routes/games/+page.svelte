@@ -40,20 +40,20 @@
 <section class="py-8 bg-cream border-b border-sand-dark/20">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-			<div class="flex gap-2 text-sm">
-				<span class="bg-success/10 text-success px-3 py-1 rounded-full font-bold">{readyCount} جاهزة</span>
-				<span class="bg-charcoal/10 text-charcoal px-3 py-1 rounded-full font-bold">{comingSoonCount} قريباً</span>
+			<div class="flex gap-2 text-base">
+				<span class="bg-success/20 text-success px-4 py-2 rounded-full font-bold">✅ {readyCount} جاهزة</span>
+				<span class="bg-sun/20 text-charcoal px-4 py-2 rounded-full font-bold">⏳ {comingSoonCount} قريباً</span>
 			</div>
 
 			<div class="flex flex-wrap gap-2">
 				{#each countries as code}
 					<button
 						type="button"
-						class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors {selectedCountry === code ? 'bg-sea text-cream' : 'bg-sand text-charcoal hover:bg-sand-dark'}"
+						class="px-4 py-2 min-h-[44px] rounded-full text-base font-bold transition-colors inline-flex items-center gap-1.5 {selectedCountry === code ? 'bg-sea text-cream' : 'bg-sand text-charcoal hover:bg-sand-dark'}"
 						onclick={() => selectedCountry = code}
 					>
 						{#if code === 'ALL'}
-							الكل
+							🌍 الكل
 						{:else}
 							{COUNTRY_LABELS[code].flag} {COUNTRY_LABELS[code].ar}
 						{/if}
@@ -65,11 +65,11 @@
 				{#each platforms as platform}
 					<button
 						type="button"
-						class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors {selectedPlatform === platform ? 'bg-sea text-cream' : 'bg-sand text-charcoal hover:bg-sand-dark'}"
+						class="px-4 py-2 min-h-[44px] rounded-full text-base font-bold transition-colors inline-flex items-center gap-1.5 {selectedPlatform === platform ? 'bg-sea text-cream' : 'bg-sand text-charcoal hover:bg-sand-dark'}"
 						onclick={() => selectedPlatform = platform}
 					>
 						{#if platform === 'ALL'}
-							كل الأجهزة
+							📱 كل الأجهزة
 						{:else}
 							{PLATFORM_LABELS[platform].icon} {PLATFORM_LABELS[platform].ar}
 						{/if}

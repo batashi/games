@@ -21,13 +21,21 @@
 	<div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-center">
 		<div class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10">
 			<div class="flex-1 max-w-2xl">
+				<div class="flex items-center justify-center md:justify-start gap-3 mb-4">
+					<span class="bg-sun text-charcoal px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">
+						🎂 لعمر 7-12
+					</span>
+					<span class="bg-white/20 text-cream px-4 py-1.5 rounded-full text-sm font-bold">
+						🌟 مجانية
+					</span>
+				</div>
 				<h1 class="font-display font-extrabold text-4xl md:text-6xl mb-6 leading-tight">
 					العب، اكتشف،<br />وتعلّم عن تراث الخليج!
 				</h1>
-				<p class="text-lg md:text-xl opacity-95 max-w-xl mx-auto mb-8 leading-relaxed">
+				<p class="text-lg md:text-xl opacity-95 max-w-xl mx-auto md:mx-0 mb-8 leading-relaxed">
 					ألعاب مجانية مباشرة في المتصفح. آمنة للأطفال وممتعة للعائلة.
 				</p>
-				<div class="flex flex-col items-center gap-3">
+				<div class="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3">
 					<a
 						href="/games"
 						class="bg-sun hover:bg-sun-dark text-charcoal font-bold py-4 px-10 rounded-2xl text-xl btn-bounce inline-flex items-center gap-2 shadow-lg"
@@ -37,9 +45,10 @@
 					</a>
 					<a
 						href="/parents"
-						class="text-cream/90 hover:text-cream text-sm font-medium underline underline-offset-4 transition-colors"
+						class="bg-white/20 hover:bg-white/30 text-cream font-bold text-base px-5 py-3 rounded-full transition-colors inline-flex items-center gap-2"
 					>
-						معلومات للأهل 👨‍👩‍👧‍👦
+						<span>👨‍👩‍👧‍👦</span>
+						معلومات للأهل
 					</a>
 				</div>
 			</div>
@@ -54,25 +63,25 @@
 <section class="bg-cream border-b border-sand-dark/20">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-			<div class="p-4">
-				<div class="text-3xl mb-2">🛡️</div>
-				<h3 class="font-bold text-charcoal">آمنة للأطفال</h3>
-				<p class="text-sm text-charcoal/70">لا دردشة نصية حرة</p>
+			<div class="p-4 bg-white/40 rounded-2xl card-lift">
+				<div class="text-5xl mb-3">🛡️</div>
+				<h3 class="font-bold text-charcoal text-xl mb-1">آمنة للأطفال</h3>
+				<p class="text-base text-charcoal/70">لا دردشة نصية حرة</p>
 			</div>
-			<div class="p-4">
-				<div class="text-3xl mb-2">🎓</div>
-				<h3 class="font-bold text-charcoal">ثقافية وتعليمية</h3>
-				<p class="text-sm text-charcoal/70">تراث الخليج العربي</p>
+			<div class="p-4 bg-white/40 rounded-2xl card-lift">
+				<div class="text-5xl mb-3">🎓</div>
+				<h3 class="font-bold text-charcoal text-xl mb-1">ثقافية وتعليمية</h3>
+				<p class="text-base text-charcoal/70">تراث الخليج العربي</p>
 			</div>
-			<div class="p-4">
-				<div class="text-3xl mb-2">📱</div>
-				<h3 class="font-bold text-charcoal">تعمل على كل الأجهزة</h3>
-				<p class="text-sm text-charcoal/70">تابلت، موبايل، كمبيوتر</p>
+			<div class="p-4 bg-white/40 rounded-2xl card-lift">
+				<div class="text-5xl mb-3">📱</div>
+				<h3 class="font-bold text-charcoal text-xl mb-1">تعمل على كل الأجهزة</h3>
+				<p class="text-base text-charcoal/70">تابلت، موبايل، كمبيوتر</p>
 			</div>
-			<div class="p-4">
-				<div class="text-3xl mb-2">🌐</div>
-				<h3 class="font-bold text-charcoal">لعب جماعي خاص</h3>
-				<p class="text-sm text-charcoal/70">غرف بدعوة فقط</p>
+			<div class="p-4 bg-white/40 rounded-2xl card-lift">
+				<div class="text-5xl mb-3">🌐</div>
+				<h3 class="font-bold text-charcoal text-xl mb-1">لعب جماعي خاص</h3>
+				<p class="text-base text-charcoal/70">غرف بدعوة فقط</p>
 			</div>
 		</div>
 	</div>
@@ -113,10 +122,13 @@
 		<a href="/games" class="inline-block bg-sun hover:bg-sun-dark text-charcoal font-bold py-4 px-10 rounded-2xl text-lg btn-bounce">
 			🚀 العب الآن
 		</a>
-		<p class="mt-6 text-sm opacity-80">
-			<a href="/parents" class="underline underline-offset-4 hover:text-sun transition-colors">معلومات للأهل</a>
-			•
-			<a href="/teachers" class="underline underline-offset-4 hover:text-sun transition-colors">للمعلمين</a>
-		</p>
+		<div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-base">
+			<a href="/parents" class="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full transition-colors inline-flex items-center gap-2">
+				<span>👨‍👩‍👧‍👦</span> معلومات للأهل
+			</a>
+			<a href="/teachers" class="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full transition-colors inline-flex items-center gap-2">
+				<span>🍎</span> للمعلمين
+			</a>
+		</div>
 	</div>
 </section>
