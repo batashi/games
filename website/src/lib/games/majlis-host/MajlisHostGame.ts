@@ -7,7 +7,7 @@ import {
 	HemisphericLight,
 	DirectionalLight,
 	PointLight,
-	ArcRotateCamera,
+	UniversalCamera,
 	MeshBuilder,
 	PBRMaterial,
 	StandardMaterial,
@@ -352,6 +352,7 @@ interface GuestMesh {
 	root: TransformNode;
 	body: Mesh;
 	icon: Mesh;
+	iconBackdrop: Mesh;
 	patienceBar: Mesh;
 	patienceBg: Mesh;
 	shadow: Mesh;
@@ -363,7 +364,7 @@ export class MajlisHostGame {
 	private canvas: HTMLCanvasElement;
 	private engine: Engine;
 	private scene: Scene;
-	private camera: ArcRotateCamera;
+	private camera: UniversalCamera;
 	private logic: MajlisHostLogic;
 	private audio: MajlisHostAudio;
 	private onChange: (state: MajlisHostState) => void;
@@ -518,29 +519,15 @@ export class MajlisHostGame {
 		// Bright warm sandy interior — no fog, high visibility.
 		scene.clearColor = new Color4(0.96, 0.9, 0.78, 1);
 		scene.fogMode = Scene.FOGMODE_NONE;
-		scene.blockMaterialDirtyMechanism = true;
 		return scene;
 	}
 
-	private createCamera(): ArcRotateCamera {
-		// Bounded arc-rotate camera that frames the whole majlis from a warm angle.
-		const camera = new ArcRotateCamera(
-			'camera',
-			Math.PI / 2,
-			Math.PI / 3.2,
-			14,
-			new Vector3(0, 1, 1),
-			this.scene
-		);
-		camera.lowerRadiusLimit = 9;
-		camera.upperRadiusLimit = 18;
-		camera.lowerBetaLimit = Math.PI / 6;
-		camera.upperBetaLimit = Math.PI / 2.1;
-		camera.lowerAlphaLimit = Math.PI / 2 - 0.6;
-		camera.upperAlphaLimit = Math.PI / 2 + 0.6;
-		camera.wheelPrecision = 80;
-		camera.panningSensibility = 0;
-		// Fixed framing camera: no user rotation so drag-and-drop owns all pointer input.
+	private createCamera(): UniversalCamera {
+		// Fixed perspective camera that frames the whole majlis clearly.
+		const camera = new UniversalCamera('camera', new Vector3(0, 9.5, -12), this.scene);
+		camera.setTarget(new Vector3(0, 0.5, -0.5));
+		camera.fov = 0.55;
+		camera.inputs.clear();
 		return camera;
 	}
 
@@ -671,13 +658,14 @@ export class MajlisHostGame {
 	}
 
 	private setupServingItems(): void {
+		// RTL layout: first served item (bukhoor) on the right, last (water) on the left.
 		const positions: Record<ServingItem, Vector3> = {
-			bukhoor: new Vector3(-2.4, 0.78, -2),
-			qahwa: new Vector3(-0.75, 0.78, -2),
-			dates: new Vector3(0.85, 0.78, -2),
-			water: new Vector3(2.4, 0.78, -2),
+			bukhoor: new Vector3(2.4, 0.78, -2),
+			qahwa: new Vector3(0.85, 0.78, -2),
+			dates: new Vector3(-0.75, 0.78, -2),
+			water: new Vector3(-2.4, 0.78, -2),
 			halwa: new Vector3(0, 0.78, -2),
-			refill: new Vector3(-0.75, 0.78, -2)
+			refill: new Vector3(0.85, 0.78, -2)
 		};
 
 		for (const item of ITEM_ORDER) {
@@ -811,9 +799,9 @@ export class MajlisHostGame {
 
 		// Tall dallah body pouring into a small finjan.
 		const body = this.flatShade(
-			MeshBuilder.CreateCylinder('qahwaBody', { height: 1, diameterTop: 0.32, diameterBottom: 0.48, tessellation: 10 }, this.scene)
+			MeshBuilder.CreateCylinder('qahwaBody', { height: 1.35, diameterTop: 0.32, diameterBottom: 0.52, tessellation: 10 }, this.scene)
 		);
-		body.position.set(-0.18, 0.55, 0);
+		body.position.set(-0.18, 0.72, 0);
 		body.material = brassMat;
 		body.parent = root;
 		this.shadowGenerator?.addShadowCaster(body);
@@ -824,9 +812,9 @@ export class MajlisHostGame {
 				'qahwaSpout',
 				{
 					path: [
-						new Vector3(0.05, 0.75, 0),
-						new Vector3(0.42, 0.55, 0),
-						new Vector3(0.52, 0.25, 0)
+						new Vector3(0.05, 1.3, 0),
+						new Vector3(0.42, 0.9, 0),
+						new Vector3(0.52, 0.28, 0)
 					],
 					radius: 0.055,
 					tessellation: 8
@@ -861,20 +849,20 @@ export class MajlisHostGame {
 		const bodyCoffee = this.flatShade(
 			MeshBuilder.CreateCylinder('qahwaBodyCoffee', { height: 0.05, diameter: 0.3, tessellation: 10 }, this.scene)
 		);
-		bodyCoffee.position.set(-0.18, 1.02, 0);
+		bodyCoffee.position.set(-0.18, 1.35, 0);
 		bodyCoffee.material = coffeeMat;
 		bodyCoffee.parent = root;
 
 		const handle = this.flatShade(
-			MeshBuilder.CreateTorus('qahwaHandle', { diameter: 0.55, thickness: 0.05, tessellation: 8 }, this.scene)
+			MeshBuilder.CreateTorus('qahwaHandle', { diameter: 0.6, thickness: 0.05, tessellation: 8 }, this.scene)
 		);
-		handle.position.set(-0.5, 0.6, 0);
+		handle.position.set(-0.52, 0.85, 0);
 		handle.rotation.y = Math.PI / 2;
 		handle.material = brassMat;
 		handle.parent = root;
 
-		const collider = MeshBuilder.CreateBox('qahwaCollider', { size: 1 }, this.scene);
-		collider.position.y = 0.55;
+		const collider = MeshBuilder.CreateBox('qahwaCollider', { size: 1.2 }, this.scene);
+		collider.position.y = 0.72;
 		collider.visibility = 0;
 		collider.parent = root;
 		collider.isPickable = true;
@@ -1042,8 +1030,21 @@ export class MajlisHostGame {
 		spotlight.range = 8;
 		spotlight.parent = root;
 
+		// Dark circular backdrop so the emoji face pops against any background.
+		const iconBackdrop = MeshBuilder.CreateDisc('guestIconBackdrop', { radius: 1.05 }, this.scene);
+		iconBackdrop.position.set(0, 1.3, -0.02);
+		iconBackdrop.billboardMode = Mesh.BILLBOARDMODE_ALL;
+		const backdropMat = new StandardMaterial('guestIconBackdropMat', this.scene);
+		backdropMat.diffuseColor = new Color3(0.15, 0.12, 0.1);
+		backdropMat.emissiveColor = new Color3(0.08, 0.06, 0.05);
+		backdropMat.alpha = 0.55;
+		backdropMat.disableLighting = true;
+		iconBackdrop.material = backdropMat;
+		iconBackdrop.parent = root;
+		iconBackdrop.isPickable = false;
+
 		// Large emoji icon — the guest is the star of the scene.
-		const icon = this.createEmojiPlane('guestIcon', '🐪', 1.8);
+		const icon = this.createEmojiPlane('guestIcon', '🐪', 2);
 		icon.position.set(0, 1.3, 0);
 		icon.parent = root;
 
@@ -1070,7 +1071,7 @@ export class MajlisHostGame {
 		patienceBar.parent = root;
 		patienceBar.isPickable = false;
 
-		this.guestMesh = { root, body, icon, patienceBar, patienceBg, shadow, aura, spotlight };
+		this.guestMesh = { root, body, icon, iconBackdrop, patienceBar, patienceBg, shadow, aura, spotlight };
 	}
 
 	private setupDragAndDrop(): void {
@@ -1698,16 +1699,19 @@ export class MajlisHostGame {
 	}
 
 	private shakeCamera(intensity: number): void {
-		if (!(this.camera instanceof ArcRotateCamera)) return;
+		if (!(this.camera instanceof UniversalCamera)) return;
+		const basePosition = this.camera.position.clone();
 		const baseTarget = this.camera.target.clone();
 		let t = 0;
 		const interval = setInterval(() => {
 			t += 0.05;
-			this.camera.target.x = baseTarget.x + Math.sin(t * 60) * intensity * (1 - t / 0.3);
-			this.camera.target.y = baseTarget.y + Math.cos(t * 50) * intensity * 0.5 * (1 - t / 0.3);
+			this.camera.position.x = basePosition.x + Math.sin(t * 60) * intensity * (1 - t / 0.3);
+			this.camera.position.y = basePosition.y + Math.cos(t * 50) * intensity * 0.5 * (1 - t / 0.3);
+			this.camera.setTarget(baseTarget);
 			if (t >= 0.3) {
 				clearInterval(interval);
-				this.camera.target.copyFrom(baseTarget);
+				this.camera.position.copyFrom(basePosition);
+				this.camera.setTarget(baseTarget);
 			}
 		}, 50);
 	}
@@ -1786,7 +1790,22 @@ export class MajlisHostGame {
 		if (!this.guestMesh) return;
 		const icon = GUEST_ICONS[type];
 		this.guestMesh.icon.dispose();
-		this.guestMesh.icon = this.createEmojiPlane('guestIcon', icon, 1.8);
+		this.guestMesh.iconBackdrop.dispose();
+
+		const iconBackdrop = MeshBuilder.CreateDisc('guestIconBackdrop', { radius: 1.15 }, this.scene);
+		iconBackdrop.position.set(0, 1.3, -0.02);
+		iconBackdrop.billboardMode = Mesh.BILLBOARDMODE_ALL;
+		const backdropMat = new StandardMaterial('guestIconBackdropMat', this.scene);
+		backdropMat.diffuseColor = new Color3(0.15, 0.12, 0.1);
+		backdropMat.emissiveColor = new Color3(0.08, 0.06, 0.05);
+		backdropMat.alpha = 0.55;
+		backdropMat.disableLighting = true;
+		iconBackdrop.material = backdropMat;
+		iconBackdrop.parent = this.guestMesh.root;
+		iconBackdrop.isPickable = false;
+		this.guestMesh.iconBackdrop = iconBackdrop;
+
+		this.guestMesh.icon = this.createEmojiPlane('guestIcon', icon, 2);
 		this.guestMesh.icon.position.set(0, 1.3, 0);
 		this.guestMesh.icon.parent = this.guestMesh.root;
 
