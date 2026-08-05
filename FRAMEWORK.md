@@ -627,6 +627,7 @@ Active experiments are isolated to specific games until they are proven on the t
 |------|------------|--------|-------|
 | **Falcon Flight** | Low-poly PBR with real-time shadows, ACES tone mapping, FXAA/bloom, confetti particles, squash-and-stretch feedback, Babylon.GUI touch overlay, FPS-based quality fallback. | **In tuning** | Evaluate tablet/mobile performance, visual clarity for children, and overall juice before rolling out to other titles. |
 | **Souq Al-Fereej** | Same visual treatment as Falcon Flight: no fog, bright flat-shaded PBR, strong ambient + warm directional lighting with soft shadows, ACES/FXAA/subtle bloom, bounded ArcRotateCamera, squash-and-stretch feedback, confetti + floating text, FPS watchdog. | **In tuning** | Second testbed for the treatment; validate that the same approach works for a slower-paced management/trading game with many static stalls and UI interactions. |
+| **Fort Battle** | Same visual treatment as Falcon Flight and Souq Al-Fereej applied to the side-view physics game: no fog, bright flat-shaded PBR, strong ambient + warm directional lighting with soft shadows, ACES/FXAA/subtle bloom, fixed UniversalCamera at the classic side angle, squash-and-stretch fort feedback, confetti + floating text, FPS watchdog. | **In tuning** | Third testbed; validate that the treatment works for a 2D-physics-in-3D artillery game with a locked camera and country-themed fort scenery. |
 
 Rules for experiments:
 - Keep gameplay logic untouched; visual changes must live in the scene/renderer layer.
