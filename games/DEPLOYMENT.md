@@ -67,7 +67,7 @@
 ### 2.2 Initial Setup
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm install
 npx playwright install chromium
 ```
@@ -75,7 +75,7 @@ npx playwright install chromium
 ### 2.3 Verify Setup
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm test
 npm run e2e
 ```
@@ -94,7 +94,7 @@ Both must pass before any production work begins.
    ```
 2. Run unit tests in watch mode while developing logic:
    ```bash
-   cd /root/website && npm run test:watch
+   cd /root/games/website && npm run test:watch
    ```
 
 ### 3.2 Branching (Recommended)
@@ -133,7 +133,7 @@ Testing is **mandatory** and non-negotiable. See `FRAMEWORK.md` section 11 for t
 Every game's logic must live in a pure TypeScript file (`*Logic.ts`) with matching unit tests (`*Logic.test.ts`).
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm test
 ```
 
@@ -147,7 +147,7 @@ npm test
 E2E tests run the production build in a real Chromium browser and fail on any console/page error.
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm run e2e
 ```
 
@@ -159,7 +159,7 @@ npm run e2e
 ### 4.3 Type Checking
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm run check
 ```
 
@@ -199,7 +199,7 @@ Before merging:
 ## 6. Building for Production
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm run build
 ```
 
@@ -207,7 +207,7 @@ Output is written to `website/build/`.
 
 **Verify the build:**
 ```bash
-ls -la /root/website/build
+ls -la /root/games/website/build
 ```
 
 The build directory should contain:
@@ -240,7 +240,7 @@ https://games.aldoolab.com
 1. Ensure you are on the latest `main` and all gates pass:
    ```bash
    cd /root && git pull
-   cd /root/website
+   cd /root/games/website
    npm test
    npm run e2e
    npm run build
@@ -249,7 +249,7 @@ https://games.aldoolab.com
 2. Copy the build output to the web server:
    ```bash
    rm -rf /var/www/games.aldoolab.com/* /var/www/games.aldoolab.com/.[!.]*
-   cp -a /root/website/build/. /var/www/games.aldoolab.com/
+   cp -a /root/games/website/build/. /var/www/games.aldoolab.com/
    ```
 
 3. Verify the deployment:
@@ -267,12 +267,12 @@ For convenience, you can save this as `scripts/deploy.sh` (optional):
 ```bash
 #!/bin/bash
 set -e
-cd /root/website
+cd /root/games/website
 npm test
 npm run e2e
 npm run build
 rm -rf /var/www/games.aldoolab.com/* /var/www/games.aldoolab.com/.[!.]*
-cp -a /root/website/build/. /var/www/games.aldoolab.com/
+cp -a /root/games/website/build/. /var/www/games.aldoolab.com/
 echo "Deployed to https://games.aldoolab.com"
 ```
 
@@ -303,7 +303,7 @@ bash /root/scripts/deploy.sh
 ### 8.3 Updating Dependencies
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm update
 npm test
 npm run e2e
@@ -358,10 +358,10 @@ If a deployment causes issues:
 
 3. Rebuild and redeploy:
    ```bash
-   cd /root/website
+   cd /root/games/website
    npm run build
    rm -rf /var/www/games.aldoolab.com/* /var/www/games.aldoolab.com/.[!.]*
-   cp -a /root/website/build/. /var/www/games.aldoolab.com/
+   cp -a /root/games/website/build/. /var/www/games.aldoolab.com/
    ```
 
 4. Verify the rollback:
@@ -391,7 +391,7 @@ Use this checklist before every release:
 
 ```bash
 # Development
-cd /root/website
+cd /root/games/website
 npm run dev              # Start dev server
 npm run test:watch       # Watch unit tests
 
@@ -403,6 +403,6 @@ npm run build            # Build for production
 
 # Deployment
 rm -rf /var/www/games.aldoolab.com/* /var/www/games.aldoolab.com/.[!.]*
-cp -a /root/website/build/. /var/www/games.aldoolab.com/
+cp -a /root/games/website/build/. /var/www/games.aldoolab.com/
 curl -s -o /dev/null -w "HTTP %{http_code}\n" https://games.aldoolab.com/
 ```

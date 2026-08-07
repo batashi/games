@@ -79,7 +79,7 @@ The active implementation lives under `website/` and uses the following stack:
 All build and test commands are run from `website/`:
 
 ```bash
-cd /root/website
+cd /root/games/website
 npm install
 npm run dev              # Start the Vite dev server
 npm run build          # Production build; output goes to website/build/

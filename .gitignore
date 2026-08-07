@@ -12,3 +12,9 @@
 .config/
 .local/
 .npm/
+
+# Directories kept outside the games project root
+souq/
+.android/
+.gradle/
+
