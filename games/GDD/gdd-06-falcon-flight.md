@@ -29,6 +29,7 @@ Soar over the golden dunes of the Gulf as a trained falcon. Dip through canyons,
 | **Estimated Effort** | Low–Medium |
 | **Session Length** | 1–3 minutes per run |
 | **Accessibility** | One-touch play, large touch targets, optional reduced-speed mode |
+| **Visual Treatment** | Experimental high-polish Babylon.js scene (see §7.2) |
 
 ### 2.1 GameConfig Contract
 
@@ -158,6 +159,28 @@ At the end of every flight the falcon returns to the falconer’s glove, earning
 | UI | Score counter, energy bar, distance marker, mute button, power-up icons, result screen |
 | Particles | Sand dust, wing puffs, prey sparkle, wind streaks |
 
+### 7.2 Visual Upgrade Experiment
+
+`FalconFlightGame.ts` currently contains an **experimental high-polish Babylon.js visual treatment**. It is isolated to this game while we evaluate performance, readability, and child-friendly feel before approving it as a platform-wide standard. See `FRAMEWORK.md` §10.1.7 for the experiment record.
+
+| Feature | Implementation |
+|---------|----------------|
+| **Material model** | Low-poly PBR (`PBRMaterial`) with bright, flat-shaded pastel colours tuned for children. |
+| **Lighting** | Strong ambient fill (`HemisphericLight`) + warm directional sun (`DirectionalLight`) with real-time shadow mapping. |
+| **Colour grading** | ACES tone mapping through `ImageProcessingConfiguration` for a warm, cinematic desert look. |
+| **Post-processing** | Subtle bloom + FXAA via `DefaultRenderingPipeline`; used sparingly to keep readability high. |
+| **Animation** | Squash-and-stretch feedback on the falcon (wing flaps, catch bursts) and pickups. |
+| **Particles** | Confetti-like bursts for prey collection and power-ups; sand/wind particles for environment motion. |
+| **UI overlay** | `Babylon.GUI` in-scene touch overlay with large, child-friendly buttons. |
+| **Performance guard** | FPS watchdog that can scale quality/post-process settings if the frame rate drops on lower-end tablets. |
+| **Palette** | High-contrast pastels: falcon body `#f3722c`, hood `#9d4edd`, wings/tail `#f8961e`, dunes `#f4a261`, sky/sun warm yellows. |
+
+**Rules of the experiment**
+- Gameplay logic remains untouched in `FalconFlightLogic.ts`.
+- All visual changes live in the scene/renderer layer (`FalconFlightGame.ts`).
+- The full validation gate (`npm run check && npm test && npm run build && npm run e2e`) must pass before each deploy.
+- Do **not** copy this approach to other games until the experiment is approved and documented as the platform-wide visual standard.
+
 ---
 
 ## 8. Controls
@@ -270,6 +293,7 @@ At the end of every flight the falcon returns to the falconer’s glove, earning
 - World scroll is simulated by moving environment chunks left and recycling them.
 - Collision is simple bounding-sphere checks between the falcon and prey/hazards.
 - Audio is synthesized at runtime via the Web Audio API; a mute toggle is exposed through the game header.
+- **Visual upgrade experiment:** `FalconFlightGame.ts` adds low-poly PBR, real-time shadows, ACES tone mapping, bloom/FXAA, squash-and-stretch animations, confetti particles, Babylon.GUI touch overlay, and an FPS watchdog. See §7.2 and `FRAMEWORK.md` §10.1.7.
 
 ---
 
