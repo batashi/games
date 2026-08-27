@@ -16,6 +16,8 @@
 	let falconFlightRef: import('$lib/components/games/FalconFlight.svelte').default | null = $state(null);
 	let MajlisHost = $state<typeof import('$lib/components/games/MajlisHost.svelte').default | null>(null);
 	let majlisHostRef: import('$lib/components/games/MajlisHost.svelte').default | null = $state(null);
+	let NumberVault = $state<typeof import('$lib/components/games/NumberVault.svelte').default | null>(null);
+	let numberVaultRef: import('$lib/components/games/NumberVault.svelte').default | null = $state(null);
 	let muted = $state(false);
 
 	onMount(() => {
@@ -39,6 +41,11 @@
 				MajlisHost = m.default;
 			});
 		}
+		if (game.id === 'number-vault') {
+			import('$lib/components/games/NumberVault.svelte').then((m) => {
+				NumberVault = m.default;
+			});
+		}
 
 		const handler = () => {
 			isFullscreen = document.fullscreenElement === gameContainer;
@@ -60,6 +67,9 @@
 		} else if (game.id === 'majlis-host') {
 			majlisHostRef?.toggleMute();
 			muted = majlisHostRef?.isMuted() ?? false;
+		} else if (game.id === 'number-vault') {
+			numberVaultRef?.toggleMute();
+			muted = numberVaultRef?.isMuted() ?? false;
 		}
 	}
 
@@ -146,6 +156,8 @@
 			<FalconFlight bind:this={falconFlightRef} />
 		{:else if game.id === 'majlis-host' && MajlisHost}
 			<MajlisHost bind:this={majlisHostRef} />
+		{:else if game.id === 'number-vault' && NumberVault}
+			<NumberVault bind:this={numberVaultRef} />
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
 				<div>
