@@ -3,11 +3,11 @@ export {
 	NumberVaultLogic,
 	NUMBER_VAULT_LEVELS,
 	generateNumber,
+	generatePuzzle,
 	generatePlaceValuePuzzle,
 	generateOrderPuzzle,
 	generateRoundPuzzle,
-	generateSequencePuzzle,
-	numberToArabicWords
+	generateSequencePuzzle
 } from './NumberVaultLogic';
 export type {
 	NumberVaultState,
@@ -15,5 +15,7 @@ export type {
 	NumberVaultLevelConfig,
 	NumberVaultPuzzle,
 	PuzzleType,
+	GhoulType,
+	Ghoul,
 	NumberVaultCallbacks
 } from './NumberVaultLogic';

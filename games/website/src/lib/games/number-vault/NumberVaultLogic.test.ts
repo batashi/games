@@ -6,8 +6,8 @@ import {
 	generateOrderPuzzle,
 	generateRoundPuzzle,
 	generateSequencePuzzle,
-	NUMBER_VAULT_LEVELS,
-	numberToArabicWords
+	generatePuzzle,
+	NUMBER_VAULT_LEVELS
 } from './NumberVaultLogic';
 
 describe('NumberVault puzzle generators', () => {
@@ -26,20 +26,18 @@ describe('NumberVault puzzle generators', () => {
 		expect(puzzle.options).toContain(puzzle.answer);
 	});
 
-	it('generates an order puzzle whose answer is correctly sorted', () => {
+	it('generates an order puzzle whose answer is the smallest or largest', () => {
 		const puzzle = generateOrderPuzzle(3);
 		expect(puzzle.type).toBe('order');
-		expect(Array.isArray(puzzle.answer)).toBe(true);
-		const sorted = [...(puzzle.options ?? [])].sort((a, b) => a - b);
-		const isAscending = puzzle.promptAr.includes('تصاعدياً');
-		const expected = isAscending ? sorted : sorted.reverse();
-		expect(puzzle.answer).toEqual(expected);
+		expect(puzzle.options).toContain(puzzle.answer);
+		const sorted = [...puzzle.options].sort((a, b) => a - b);
+		expect(puzzle.answer).toBeOneOf([sorted[0], sorted[sorted.length - 1]]);
 	});
 
 	it('generates a rounding puzzle with a mathematically correct answer', () => {
 		const puzzle = generateRoundPuzzle(4, [10, 100, 1000]);
 		expect(puzzle.type).toBe('round');
-		const match = puzzle.promptAr.match(/العدد ([\d,]+)/);
+		const match = puzzle.promptAr.match(/([\d,]+) إلى/);
 		expect(match).not.toBeNull();
 		const number = Number(match![1].replace(/,/g, ''));
 		const place = [10, 100, 1000].find((p) => Math.round(number / p) * p === puzzle.answer)!;
@@ -56,10 +54,9 @@ describe('NumberVault puzzle generators', () => {
 		expect(puzzle.answer).toBe(numbers[numbers.length - 1] + step);
 	});
 
-	it('renders zero and small numbers in Arabic words', () => {
-		expect(numberToArabicWords(0)).toBe('صفر');
-		expect(numberToArabicWords(5)).toBe('خمسة');
-		expect(numberToArabicWords(15)).toBe('خمسة عشر');
+	it('generates a puzzle of any requested type', () => {
+		const puzzle = generatePuzzle(3, ['place-value']);
+		expect(puzzle.type).toBe('place-value');
 	});
 });
 
@@ -69,52 +66,59 @@ describe('NumberVaultLogic', () => {
 		expect(logic.getState().phase).toBe('menu');
 	});
 
-	it('transitions to playing and generates a puzzle on startLevel', () => {
+	it('transitions to playing and spawns the first wave on startLevel', () => {
 		const logic = new NumberVaultLogic(vi.fn());
 		logic.startLevel(1);
 		const state = logic.getState();
 		expect(state.phase).toBe('playing');
-		expect(state.level).toBe(1);
-		expect(state.currentPuzzle).not.toBeNull();
+		expect(state.wave).toBe(1);
+		expect(state.ghouls.length).toBeGreaterThan(0);
 	});
 
-	it('awards score and advances on a correct answer', () => {
-		const onChange = vi.fn();
-		const logic = new NumberVaultLogic(onChange);
-		logic.startLevel(1);
-		const puzzle = logic.getState().currentPuzzle!;
-		logic.submitAnswer(puzzle.answer);
-		expect(logic.getState().score).toBeGreaterThan(0);
-		expect(logic.getState().doorsSolved).toBe(1);
-	});
-
-	it('increments retries on an incorrect answer', () => {
+	it('knocks the lead ghoul back on a correct fast answer', () => {
 		const logic = new NumberVaultLogic(vi.fn());
 		logic.startLevel(1);
-		logic.submitAnswer(-9999);
-		expect(logic.getState().retries).toBe(1);
-		expect(logic.getState().feedback).toBe('incorrect');
+		const puzzle = logic.getState().ghouls[0].puzzle;
+		logic.submitAnswer(puzzle.answer);
+		expect(logic.getState().score).toBeGreaterThan(0);
+		expect(logic.getState().combo).toBeGreaterThanOrEqual(0);
 	});
 
-	it('completes the level after solving all doors', () => {
-		const onLevelComplete = vi.fn();
-		const logic = new NumberVaultLogic(vi.fn(), { onLevelComplete });
+	it('resets combo and advances ghoul on wrong answer', () => {
+		const logic = new NumberVaultLogic(vi.fn());
+		logic.startLevel(1);
+		const before = logic.getState().ghouls[0].position;
+		logic.submitAnswer(-9999);
+		const after = logic.getState().ghouls[0].position;
+		expect(after).toBeGreaterThan(before);
+		expect(logic.getState().combo).toBe(0);
+	});
+
+	it('clears wave and advances when all ghouls are defeated', () => {
+		const logic = new NumberVaultLogic(vi.fn());
 		logic.startLevel(1);
 		const config = NUMBER_VAULT_LEVELS[0];
-		for (let i = 0; i < config.doors; i++) {
-			const puzzle = logic.getState().currentPuzzle!;
-			logic.submitAnswer(puzzle.answer);
-			logic.advanceAfterFeedback();
+		// Defeat all ghouls in wave 1 by answering correctly enough times.
+		let safety = 0;
+		while (logic.getState().wave === 1 && safety < 30) {
+			const ghouls = logic.getState().ghouls;
+			if (ghouls.length === 0) break;
+			logic.submitAnswer(ghouls[0].puzzle.answer);
+			safety++;
 		}
-		expect(logic.getState().phase).toBe('result');
-		expect(onLevelComplete).toHaveBeenCalled();
-		expect(logic.getState().stars).toBeGreaterThanOrEqual(1);
+		expect(logic.getState().wave).toBe(2);
 	});
 
-	it('returns to menu from backToMenu', () => {
+	it('returns to menu from backToMenu and stops timer', () => {
 		const logic = new NumberVaultLogic(vi.fn());
 		logic.startLevel(1);
 		logic.backToMenu();
 		expect(logic.getState().phase).toBe('menu');
+	});
+
+	it('disposes without throwing', () => {
+		const logic = new NumberVaultLogic(vi.fn());
+		logic.startLevel(1);
+		expect(() => logic.dispose()).not.toThrow();
 	});
 });

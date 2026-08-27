@@ -1,7 +1,7 @@
 <script lang="ts">
 	// @ts-nocheck
 	import { onDestroy } from 'svelte';
-	import type { NumberVaultState, NumberVaultPuzzle, PuzzleType } from '$lib/games/number-vault';
+	import type { NumberVaultState, Ghoul, PuzzleType } from '$lib/games/number-vault';
 	import { NUMBER_VAULT_LEVELS } from '$lib/games/number-vault';
 
 	let canvas: HTMLCanvasElement;
@@ -10,17 +10,7 @@
 	let muted = $state(false);
 	let phase = $state<'menu' | 'playing' | 'result'>('menu');
 	let selectedLevel = $state(1);
-
-	// Order puzzle state
-	let orderSlots = $state<number[]>([]);
-	let orderPool = $state<number[]>([]);
-
-	$effect(() => {
-		if (state?.currentPuzzle?.type === 'order') {
-			orderSlots = [];
-			orderPool = [...(state.currentPuzzle.options ?? [])];
-		}
-	});
+	let trapAnim = $state<'none' | 'gate' | 'sand' | 'smoke' | 'stone'>('none');
 
 	onDestroy(() => {
 		game?.dispose();
@@ -33,6 +23,9 @@
 		game = new NumberVaultGame(
 			(s) => {
 				state = s;
+				if (s.feedback === 'correct' || s.feedback === 'slow') {
+					triggerTrap();
+				}
 				if (s.phase === 'result') {
 					phase = 'result';
 				}
@@ -58,10 +51,6 @@
 		game?.submitAnswer(answer);
 	}
 
-	function advance() {
-		game?.advanceAfterFeedback();
-	}
-
 	function showHint() {
 		game?.showHint();
 	}
@@ -73,6 +62,14 @@
 
 	export function isMuted(): boolean {
 		return muted;
+	}
+
+	function triggerTrap() {
+		const traps: ('gate' | 'sand' | 'smoke' | 'stone')[] = ['gate', 'sand', 'smoke', 'stone'];
+		trapAnim = traps[Math.floor(Math.random() * traps.length)];
+		setTimeout(() => {
+			trapAnim = 'none';
+		}, 500);
 	}
 
 	function starLabel(count: number): string {
@@ -89,29 +86,23 @@
 		return icons[type];
 	}
 
-	function puzzleLabel(type: PuzzleType): string {
-		const labels: Record<PuzzleType, string> = {
-			'place-value': 'القيمة المكانية',
-			order: 'ترتيب الأعداد',
-			round: 'التقريب',
-			sequence: 'المتتاليات'
+	function ghoulIcon(type: Ghoul['type']): string {
+		const icons: Record<Ghoul['type'], string> = {
+			sand: '👤',
+			wind: '💨',
+			echo: '👥',
+			boss: '👹'
 		};
-		return labels[type];
+		return icons[type];
 	}
 
-	function handleOrderTileClick(value: number) {
-		if (!state?.currentPuzzle) return;
-		orderSlots = [...orderSlots, value];
-		orderPool = orderPool.filter((v) => v !== value);
-		if (orderPool.length === 0) {
-			submitAnswer(orderSlots);
-		}
+	function treasureIcon(index: number): string {
+		const icons = ['🗡️', '☕', '🌿', '🗺️', '🦪', '🏺'];
+		return icons[index % icons.length];
 	}
 
-	function removeOrderSlot(index: number) {
-		const value = orderSlots[index];
-		orderSlots = orderSlots.filter((_, i) => i !== index);
-		orderPool = [...orderPool, value];
+	function formatCombo(n: number): string {
+		return n > 1 ? `×${n}` : '';
 	}
 </script>
 
@@ -121,10 +112,10 @@
 	{#if phase === 'menu'}
 		<div class="absolute inset-0 flex items-center justify-center bg-black/50 px-4">
 			<div class="bg-amber-50 text-stone-900 rounded-2xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl border-4 border-amber-700">
-				<div class="text-5xl mb-3">🔐</div>
-				<h2 class="font-display font-bold text-2xl mb-2">خزنة الأرقام</h2>
+				<div class="text-5xl mb-3">🛡️</div>
+				<h2 class="font-display font-bold text-2xl mb-2">حارس الخزنة</h2>
 				<p class="text-sm opacity-80 mb-6">
-					افتح أبواب الخزنة القديمة بحل ألغاز القيمة المكانية والترتيب والتقريب والمتتاليات.
+					الغول العدديّ يتسلل نحو خزنة القلعة. حلّ الألغاز بسرعة لتفعيل الفخاخ وتدافع عن كنوز عُمان.
 				</p>
 
 				<div class="grid grid-cols-3 gap-3">
@@ -136,7 +127,7 @@
 							onclick={() => startLevel(level.level)}
 						>
 							<div class="text-lg">{level.level}</div>
-							<div class="text-xs opacity-90">{level.doors} أبواب</div>
+							<div class="text-xs opacity-90">{level.waves} موجات</div>
 						</button>
 					{/each}
 				</div>
@@ -152,123 +143,114 @@
 				<div class="font-bold">{state.level}</div>
 			</div>
 			<div class="bg-stone-900/80 text-amber-50 px-4 py-2 rounded-xl text-center">
-				<div class="text-xs opacity-80">الأبواب</div>
-				<div class="font-bold">{state.doorsSolved} / {state.totalDoors}</div>
+				<div class="text-xs opacity-80">الموجة</div>
+				<div class="font-bold">{state.wave} / {state.totalWaves}</div>
 			</div>
 			<div class="bg-stone-900/80 text-amber-50 px-4 py-2 rounded-xl text-center">
 				<div class="text-xs opacity-80">النقاط</div>
 				<div class="font-bold">{state.score}</div>
 			</div>
+			<div class="bg-stone-900/80 text-amber-50 px-4 py-2 rounded-xl text-center">
+				<div class="text-xs opacity-80">الكنوز</div>
+				<div class="font-bold">
+					{#each Array(state.maxTreasures) as _, i}
+						<span class={i < state.treasures ? '' : 'opacity-30 grayscale'}>{treasureIcon(i)}</span>
+					{/each}
+				</div>
+			</div>
 		</div>
 
-		<!-- Vault door panel -->
-		<div class="absolute inset-0 flex items-center justify-center px-4 pointer-events-none">
-			<div class="bg-amber-900 rounded-2xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl border-8 border-amber-950 pointer-events-auto">
-				{#if state.currentPuzzle}
-					<div class="text-center mb-4">
-						<div class="inline-flex items-center gap-2 bg-amber-950/60 text-amber-100 px-3 py-1 rounded-full text-sm mb-2">
-							<span>{puzzleIcon(state.currentPuzzle.type)}</span>
-							<span>{puzzleLabel(state.currentPuzzle.type)}</span>
-						</div>
-						<p class="text-xl font-bold text-amber-50 leading-relaxed">{state.currentPuzzle.promptAr}</p>
-					</div>
+		<!-- Combo -->
+		{#if state.combo > 1}
+			<div class="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-none">
+				<div class="bg-orange-500/90 text-amber-50 px-5 py-2 rounded-2xl text-lg font-bold shadow-xl animate-pulse">
+					سلسلة {formatCombo(state.combo)} 🔥
+				</div>
+			</div>
+		{/if}
 
-					<div class="min-h-[180px] flex items-center justify-center">
-						{#if state.currentPuzzle.type === 'place-value'}
-							<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
-								{#each state.currentPuzzle.options ?? [] as option}
-									<button
-										type="button"
-										class="bg-amber-50 text-stone-900 font-bold text-2xl py-4 rounded-xl hover:bg-amber-200 transition-colors shadow"
-										onclick={() => submitAnswer(option)}
-									>
-										{option}
-									</button>
-								{/each}
+		<!-- Tunnel / Game area -->
+		<div class="absolute inset-0 flex flex-col justify-end px-4 pb-4 pointer-events-none">
+			<!-- Vault door and treasures -->
+			<div class="absolute right-4 top-1/2 -translate-y-1/2 w-24 sm:w-32 h-64 bg-amber-900 rounded-l-3xl border-4 border-amber-950 shadow-2xl flex flex-col items-center justify-center gap-2">
+				<div class="text-3xl">🚪</div>
+				<div class="text-xs text-amber-100 text-center font-bold">خزنة القلعة</div>
+			</div>
+
+			<!-- Ghouls -->
+			{#each state.ghouls as ghoul, i (ghoul.id)}
+				<div
+					class="absolute bottom-28 sm:bottom-32 transition-all duration-500 ease-linear"
+					style="left: {Math.min(ghoul.position, 88)}%;"
+				>
+					<div class="relative flex flex-col items-center">
+						{#if i === 0}
+							<div class="absolute -top-16 left-1/2 -translate-x-1/2 bg-stone-900/90 text-amber-50 text-xs sm:text-sm px-3 py-1.5 rounded-xl whitespace-nowrap text-center font-bold shadow-lg">
+								{ghoul.puzzle.promptAr}
 							</div>
-						{:else if state.currentPuzzle.type === 'order'}
-							<div class="w-full">
-								<div class="flex flex-wrap justify-center gap-2 min-h-[64px] mb-4 p-3 bg-amber-950/40 rounded-xl">
-									{#each orderSlots as value, index}
-										<button
-											type="button"
-											class="bg-amber-500 text-stone-900 font-bold text-xl px-4 py-2 rounded-lg hover:bg-amber-400 transition-colors"
-											onclick={() => removeOrderSlot(index)}
-										>
-											{value.toLocaleString('en')}
-										</button>
-									{/each}
-								</div>
-								<div class="flex flex-wrap justify-center gap-2">
-									{#each orderPool as value}
-										<button
-											type="button"
-											class="bg-amber-100 text-stone-900 font-bold text-xl px-4 py-2 rounded-lg hover:bg-amber-200 transition-colors"
-											onclick={() => handleOrderTileClick(value)}
-										>
-											{value.toLocaleString('en')}
-										</button>
-									{/each}
-								</div>
-							</div>
-						{:else if state.currentPuzzle.type === 'round'}
-							<div class="grid grid-cols-2 gap-3 w-full">
-								{#each state.currentPuzzle.options ?? [] as option}
-									<button
-										type="button"
-										class="bg-amber-50 text-stone-900 font-bold text-xl py-4 rounded-xl hover:bg-amber-200 transition-colors shadow"
-										onclick={() => submitAnswer(option)}
-									>
-										{option.toLocaleString('en')}
-									</button>
-								{/each}
-							</div>
-						{:else if state.currentPuzzle.type === 'sequence'}
-							<div class="grid grid-cols-2 gap-3 w-full">
-								{#each state.currentPuzzle.options ?? [] as option}
-									<button
-										type="button"
-										class="bg-amber-50 text-stone-900 font-bold text-xl py-4 rounded-xl hover:bg-amber-200 transition-colors shadow"
-										onclick={() => submitAnswer(option)}
-									>
-										{option.toLocaleString('en')}
-									</button>
-								{/each}
+						{/if}
+						<div class="text-4xl sm:text-5xl filter drop-shadow-lg">{ghoulIcon(ghoul.type)}</div>
+						{#if ghoul.type === 'boss'}
+							<div class="w-16 h-2 bg-stone-800 rounded-full mt-1 overflow-hidden">
+								<div class="h-full bg-red-500" style="width: {(ghoul.health / ghoul.maxHealth) * 100}%"></div>
 							</div>
 						{/if}
 					</div>
+				</div>
+			{/each}
 
-					<div class="flex justify-between items-center mt-6">
+			<!-- Trap animation -->
+			{#if trapAnim !== 'none'}
+				<div class="absolute bottom-28 sm:bottom-32 left-1/2 -translate-x-1/2 pointer-events-none">
+					<div class="text-6xl animate-bounce">
+						{#if trapAnim === 'gate'}🚪{/if}
+						{#if trapAnim === 'sand'}🌪️{/if}
+						{#if trapAnim === 'smoke'}💨{/if}
+						{#if trapAnim === 'stone'}🪨{/if}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Answer stones -->
+			{#if state.ghouls.length > 0}
+				<div class="bg-stone-900/70 rounded-2xl p-3 sm:p-4 mb-2 pointer-events-auto">
+					<div class="flex items-center justify-between mb-2">
+						<div class="flex items-center gap-2 text-amber-50 text-sm font-bold">
+							<span>{puzzleIcon(state.ghouls[0].puzzle.type)}</span>
+							<span>{state.waveMessage}</span>
+						</div>
 						<button
 							type="button"
-							class="bg-stone-700 hover:bg-stone-600 text-amber-50 font-bold py-2 px-4 rounded-xl transition-colors text-sm"
+							class="text-amber-200 hover:text-amber-50 text-sm font-bold"
 							onclick={showHint}
-							disabled={state.feedback === 'correct'}
 						>
 							💡 تلميح
 						</button>
-
-						{#if state.feedback !== 'none'}
+					</div>
+					<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+						{#each state.ghouls[0].puzzle.options as option}
 							<button
 								type="button"
-								class="{state.feedback === 'correct' ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'} text-amber-50 font-bold py-2 px-6 rounded-xl transition-colors"
-								onclick={advance}
+								class="bg-amber-100 text-stone-900 font-bold text-2xl py-4 rounded-xl hover:bg-amber-200 active:bg-amber-300 transition-colors shadow"
+								onclick={() => submitAnswer(option)}
 							>
-								{state.feedback === 'correct' ? 'الباب التالي →' : 'حاول مرة أخرى'}
+								{typeof option === 'number' ? option.toLocaleString('en') : option}
 							</button>
-						{/if}
+						{/each}
 					</div>
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Feedback overlay -->
 		{#if state.feedback !== 'none'}
-			<div class="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-none">
+			<div class="absolute bottom-1/2 left-1/2 -translate-x-1/2 translate-y-1/2 pointer-events-none">
 				<div
 					class="{state.feedback === 'correct'
 						? 'bg-green-600/90'
-						: 'bg-amber-700/90'} text-amber-50 px-6 py-3 rounded-2xl shadow-xl text-center font-bold animate-bounce"
+						: state.feedback === 'slow'
+							? 'bg-amber-600/90'
+							: 'bg-red-600/90'} text-amber-50 px-6 py-3 rounded-2xl shadow-xl text-center font-bold text-lg animate-bounce"
 				>
 					{state.feedbackMessage}
 				</div>
@@ -277,13 +259,15 @@
 	{/if}
 
 	{#if phase === 'result' && state}
-		<div class="absolute inset-0 flex items-center justify-center bg-black/60 px-4">
+		<div class="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
 			<div class="bg-amber-50 text-stone-900 rounded-2xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl border-4 border-amber-700">
-				<div class="text-5xl mb-3">🏆</div>
-				<h2 class="font-display font-bold text-2xl mb-2">اكتمل المستوى!</h2>
+				<div class="text-5xl mb-3">{state.stars > 0 ? '🏆' : '💔'}</div>
+				<h2 class="font-display font-bold text-2xl mb-2">
+					{state.stars > 0 ? 'حمايت الخزنة!' : 'الخزنة سُرقت!'}
+				</h2>
 				<div class="text-3xl mb-4">{starLabel(state.stars)}</div>
 				<p class="text-sm opacity-80 mb-6">
-					فتحت {state.doorsSolved} أبواب وحصلت على {state.score} نقطة.
+					نقاطك: {state.score} — أعلى سلسلة: ×{state.maxCombo}
 				</p>
 
 				<div class="flex gap-3 justify-center">

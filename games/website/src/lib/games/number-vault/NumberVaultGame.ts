@@ -17,8 +17,9 @@ export class NumberVaultGame {
 				this.onChange(state);
 			},
 			{
-				onDoorSolved: () => this.playSound('unlock'),
-				onLevelComplete: () => this.playSound('complete')
+				onWaveCleared: () => this.playSound('wave'),
+				onLevelComplete: () => this.playSound('complete'),
+				onTreasureStolen: () => this.playSound('steal')
 			}
 		);
 		this.logic.startLevel(options.level ?? 1);
@@ -34,10 +35,6 @@ export class NumberVaultGame {
 
 	submitAnswer(answer: number | number[]): void {
 		this.logic.submitAnswer(answer);
-	}
-
-	advanceAfterFeedback(): void {
-		this.logic.advanceAfterFeedback();
 	}
 
 	showHint(): void {
@@ -56,7 +53,7 @@ export class NumberVaultGame {
 		this.logic.dispose();
 	}
 
-	private playSound(type: 'unlock' | 'complete'): void {
+	private playSound(type: 'wave' | 'complete' | 'steal'): void {
 		if (this.muted) return;
 		// Sounds are placeholders; synthesis or procedural audio can be wired here.
 		void type;

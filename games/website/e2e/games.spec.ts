@@ -192,7 +192,7 @@ test.describe('game smoke tests', () => {
 
 		// The HUD should appear once the level starts.
 		await expect(page.getByText('المستوى', { exact: true })).toBeVisible();
-		await expect(page.getByText('الأبواب', { exact: true })).toBeVisible();
+		await expect(page.getByText('الموجة', { exact: true })).toBeVisible();
 		await expect(page.getByText('النقاط', { exact: true })).toBeVisible();
 
 		// Give async game initialization a moment to finish.
