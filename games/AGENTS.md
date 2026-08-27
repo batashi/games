@@ -8,19 +8,20 @@ This repository is the planning and design home for **Sahara Play / صحراء �
 
 The project has evolved from a documentation-only repository into an active SvelteKit + Babylon.js implementation. The website and the first two playable games (Fort Battle and Souq Al-Fereej) are now built, tested, and deployed. Internal documentation remains the authoritative source for architecture and process.
 
-Seven games are specified in the repository:
+Seven original games are specified in the repository, and a new **Math / رياضيات** section is now being added:
 
 | ID | English Name | Arabic Name | Status |
 |---|---|---|---|
 | `frankincense` | Frankincense Collector Runner | مغامرة جامع اللبان | Ready (design) |
 | `tictactoe` | Gulf Tic-Tac-Toe | تحدي إكس-أو الخليجي | Ready (design) |
-| `archery` | Fort Battle | معركة القلاع | Ready (design + playable prototype) |
+| `archery` | Fort Battle | معركة القلاع | Ready (design + playable) |
 | `luban-sorter` | Luban Sorter | فرز اللبان | Ready (design) |
-| `souq-alfereej` | Souq Al-Fereej | سوق الفريج | Ready (design + playable prototype + visual experiment) |
-| `falcon` | Falcon Flight | رحلة الصقر | Ready (design + playable prototype + visual experiment) |
-| `majlis-host` | Majlis Host | ضيافة المجلس | Ready (design + playable prototype) |
+| `souq-alfereej` | Souq Al-Fereej | سوق الفريج | Ready (design + playable) |
+| `falcon` | Falcon Flight | رحلة الصقر | Ready (design + playable) |
+| `majlis-host` | Majlis Host | ضيافة المجلس | Ready (design + playable) |
+| `number-vault` | Number Vault | خزنة الأرقام | Beta (educational math prototype) |
 
-Additional games may be added to `data/games.json` as the catalogue grows.
+The math section targets Grade 5 (age 9–11) and is aligned with the Cambridge / Oman MOE mathematics scope. Additional games may be added to `data/games.json` as the catalogue grows.
 
 > **Pending rebrand:** Existing game names are under review. New titles will follow the culture-first, place-second convention (e.g. *Falcon Flight — Dubai / رحلة الصقر — دبي*) while keeping stable English URL slugs. Existing IDs, slugs, and code folders will not change until the rebrand is finalized per game.
 
@@ -40,7 +41,14 @@ Additional games may be added to `data/games.json` as the catalogue grows.
 │   ├── gdd-03-fort-battle.md
 │   ├── gdd-04-luban-sorter.md
 │   ├── gdd-05-souq-alfereej.md
-│   └── gdd-06-falcon-flight.md
+│   ├── gdd-06-falcon-flight.md
+│   ├── gdd-07-majlis-host.md
+│   └── gdd-08-number-vault.md
+├── math/                       # Mathematics curriculum source material and planning
+│   ├── grade-5-toc.md
+│   ├── math-games-proposal.md
+│   ├── a.pdf
+│   └── a.txt
 └── website/                    # SvelteKit + Vite + Babylon.js application
     ├── src/
     │   ├── lib/
@@ -132,6 +140,7 @@ Key fields for each game entry:
 | `modes` | Array of modes: `single`, `local`, `online`, `async`, `daily`, `practice`, `coop`, `team` |
 | `countries` | GCC country codes: `OM`, `SA`, `AE`, `QA`, `BH`, `KW` |
 | `status` | `ready`, `beta`, or `coming-soon` |
+| `subject` | Optional: `games` (default) or `math` — used to group catalogue entries by subject |
 | `supportedPlatforms` | `desktop`, `tablet`, `mobile` — surfaced in the website as device badges, a catalogue filter, and a detail-page section |
 | `heroImage` / `thumbnail` / `video` | Asset paths |
 | `howToPlayAr` / `howToPlayEn` | Step-by-step instructions |
@@ -146,7 +155,7 @@ The JSON file declares `"$schema": "./games.schema.json"`, but that schema file 
 - **Primary language for docs:** English. The framework and internal documentation are maintained in English; the public-facing platform, games, and website remain **Arabic-first**.
 - **Game design documents:** Use the existing `GDD/*.md` structure (Elevator Pitch, Game Identity, GameConfig Contract, Core Loop, Mechanics, Controls, UI/Feedback, Audio, Safety, Monetization, Technical Notes).
 - **Commit style:** The project uses conventional commit prefixes such as `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`, etc. Continue using them.
-- **Game metadata:** When a new game is designed, add it to `data/games.json` and create a matching `GDD/gdd-NN-game-name.md` file.
+- **Game metadata:** When a new game is designed, add it to `data/games.json` and create a matching `GDD/gdd-NN-game-name.md` file. For math educational games, use `subject: "math"` and place curriculum planning notes under `math/`. 
 - **File naming:** Use lowercase, hyphens, and descriptive names (e.g., `gdd-01-frankincense-runner.md`).
 - **Code changes:** Run the validation gates in `DEPLOYMENT.md` before merging or deploying.
 

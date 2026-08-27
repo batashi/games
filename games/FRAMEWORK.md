@@ -290,6 +290,7 @@ export const runnerConfig: GameConfig = {
 3. **Short sessions:** Aim for 1–3 minute play sessions.
 4. **Clear feedback:** Every action should have visual and audio feedback.
 5. **Touch-first:** All games must be fully playable on a 10-inch tablet without a keyboard.
+6. **Educational prototypes:** Educational mini-games (e.g., the Math / رياضيات section) may start as 2D Svelte prototypes while keeping the same logic layer (`*Logic.ts`) and test coverage. They can be promoted to full Babylon.js scenes once the learning loop is validated.
 
 ### 5.4 Babylon.js Standards & Constraints
 

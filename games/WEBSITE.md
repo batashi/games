@@ -51,7 +51,7 @@ The website must be fast, SEO-friendly, culturally authentic, and fully complian
 | Page | URL | Purpose |
 |------|-----|---------|
 | **Home** | `/` | Hero, game grid, trust badges, CTA to play, latest news. |
-| **Games** | `/games` | Catalogue of all 20 games with filters by country, genre, mode. |
+| **Games** | `/games` | Catalogue of all games with filters by country, genre, mode, and subject (`games` or `math`). |
 | **Game Detail** | `/games/:id` | Deep dive for one game: trailer, description, how to play, play button. |
 | **Play** | `/play/:id` | Lightweight launcher that embeds or redirects to the game app. |
 | **Parents** | `/parents` | Safety features, parental controls, data privacy, content rating. |
@@ -218,6 +218,7 @@ Each game object contains:
 | `modes` | string[] | `single`, `local`, `online`, `async`, `daily`, `practice`, `coop`, `team`. |
 | `countries` | string[] | GCC country codes for country-specific variants. |
 | `status` | string | `ready`, `beta`, `coming-soon`. |
+| `subject` | string | Optional: `games` (default) or `math`. Used to group catalogue entries by subject. |
 | `supportedPlatforms` | string[] | `desktop`, `tablet`, `mobile`. |
 | `heroImage` / `thumbnail` / `video` | string | Paths to media assets. |
 | `howToPlayAr` / `howToPlayEn` | string[] | Step-by-step instructions. |
