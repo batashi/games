@@ -18,6 +18,8 @@
 	let majlisHostRef: import('$lib/components/games/MajlisHost.svelte').default | null = $state(null);
 	let NumberVault = $state<typeof import('$lib/components/games/NumberVault.svelte').default | null>(null);
 	let numberVaultRef: import('$lib/components/games/NumberVault.svelte').default | null = $state(null);
+	let SouqArithmetic = $state<typeof import('$lib/components/games/SouqArithmetic.svelte').default | null>(null);
+	let souqArithmeticRef: import('$lib/components/games/SouqArithmetic.svelte').default | null = $state(null);
 	let muted = $state(false);
 
 	onMount(() => {
@@ -46,6 +48,11 @@
 				NumberVault = m.default;
 			});
 		}
+		if (game.id === 'souq-arithmetic') {
+			import('$lib/components/games/SouqArithmetic.svelte').then((m) => {
+				SouqArithmetic = m.default;
+			});
+		}
 
 		const handler = () => {
 			isFullscreen = document.fullscreenElement === gameContainer;
@@ -70,6 +77,9 @@
 		} else if (game.id === 'number-vault') {
 			numberVaultRef?.toggleMute();
 			muted = numberVaultRef?.isMuted() ?? false;
+		} else if (game.id === 'souq-arithmetic') {
+			souqArithmeticRef?.toggleMute();
+			muted = souqArithmeticRef?.isMuted() ?? false;
 		}
 	}
 
@@ -158,6 +168,8 @@
 			<MajlisHost bind:this={majlisHostRef} />
 		{:else if game.id === 'number-vault' && NumberVault}
 			<NumberVault bind:this={numberVaultRef} />
+		{:else if game.id === 'souq-arithmetic' && SouqArithmetic}
+			<SouqArithmetic bind:this={souqArithmeticRef} />
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center text-center px-4">
 				<div>

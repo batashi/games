@@ -296,6 +296,50 @@
       "metaTitleEn": "Number Vault — Place Value Math Game for Kids",
       "metaDescriptionAr": "العب خزنة الأرقام مجاناً. تعلم القيمة المكانية والتقريب والمتتاليات في لعبة تعليمية داخل قلعة عمانية.",
       "metaDescriptionEn": "Play Number Vault for free. Learn place value, rounding, and sequences in an educational game set inside an Omani fort."
+    },
+    {
+      "id": "souq-arithmetic",
+      "slug": "souq-arithmetic",
+      "nameAr": "حسابات السوق",
+      "nameEn": "Souq Arithmetic",
+      "taglineAr": "احسب وبيع في سوق عُماني تقليدي",
+      "taglineEn": "Calculate and sell in a traditional Omani market",
+      "descriptionAr": "افتحstallاً في سوق عُماني تقليدي. احسب حسابات الزبائن بسرعة، أعطِ الباقي الصحيح، وأعد تزويد البضاعة قبل انتهاء اليوم.",
+      "descriptionEn": "Open a stall in a traditional Omani souq. Calculate customer totals quickly, give the correct change, and restock goods before the market closes.",
+      "icon": "🧮",
+      "genre": "educational-puzzle",
+      "genreLabelAr": "لغز تعليمي",
+      "genreLabelEn": "Educational Puzzle",
+      "ageRange": "9-11",
+      "sessionLength": "2-4 min",
+      "modes": ["single", "practice"],
+      "countries": ["OM", "SA", "AE", "QA", "BH", "KW"],
+      "status": "beta",
+      "subject": "math",
+      "supportedPlatforms": ["desktop", "tablet", "mobile"],
+      "heroImage": "/images/games/souq-arithmetic-hero.webp",
+      "thumbnail": "/images/games/souq-arithmetic-thumb.webp",
+      "video": "/videos/souq-arithmetic-loop.webm",
+      "howToPlayAr": [
+        "اقرأ طلب الزبون في فقاعة الحوار",
+        "اضغط على السلع في الرف لتضيفها إلى السلة",
+        "عندما تكتمل السلة، اضغط على العملات لإعطاء الباقي",
+        "اضغط على الجرس لإنهاء البيعة",
+        "أعد تزويد البضاعة عند ظهور لغز التزويد"
+      ],
+      "howToPlayEn": [
+        "Read the customer's order in the speech bubble",
+        "Tap goods on the shelf to add them to the cart",
+        "When the cart is complete, tap coins to give change",
+        "Ring the bell to finish the sale",
+        "Restock when the restock puzzle appears"
+      ],
+      "culturalNoteAr": "الأسواق التقليدية في عُمان كانت مراكز التجارة والتفاعل الاجتماعي. التجار الصغار يتعلمون الحساب والباقي والتعامل مع العملات منذ الصغر.",
+      "culturalNoteEn": "Traditional markets in Oman were centers of trade and social interaction. Young merchants learned arithmetic, change, and currency handling from an early age.",
+      "metaTitleAr": "حسابات السوق - لعبة حساب وباقي للصف الخامس",
+      "metaTitleEn": "Souq Arithmetic — Money Math Game for Kids",
+      "metaDescriptionAr": "العب حسابات السوق مجاناً. تعلم الجمع والطرح والضرب والباقي في لعبة تعليمية داخل سوق عُماني.",
+      "metaDescriptionEn": "Play Souq Arithmetic for free. Learn addition, subtraction, multiplication, and change in an educational game set in an Omani souq."
     }
   ]
 }
