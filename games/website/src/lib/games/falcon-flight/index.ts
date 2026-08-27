@@ -13,3 +13,25 @@ export type {
 	PowerUpType
 } from './FalconFlightLogic';
 export type { FalconFlightGameOptions } from './FalconFlightGame';
+export {
+	DEFAULT_FALCON_FLIGHT_VISUAL_CONFIG,
+	DEFAULT_FALCON_FLIGHT_PALETTE,
+	getQualityPreset,
+	qualityTierNames
+} from './FalconFlightVisualConfig';
+export type {
+	FalconFlightVisualConfig,
+	FalconFlightPalette,
+	QualityPreset,
+	QualityTierName,
+	DepthPlacement,
+	FogBandConfig,
+	ShadowConfig,
+	BloomConfig,
+	CameraConfig,
+	SunConfig,
+	AmbientConfig,
+	ToneMappingConfig
+} from './FalconFlightVisualConfig';
+export { FalconFlightPresentation } from './FalconFlightPresentation';
+export { FalconFlightTuningOverlay } from './FalconFlightTuningOverlay';
