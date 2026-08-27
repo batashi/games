@@ -30,3 +30,11 @@ export function getGamesByCountry(countryCode: string): Game[] {
 export function getGenres(): string[] {
 	return [...new Set(data.games.map((game) => game.genre))];
 }
+
+export function getGamesBySubject(subject: 'games' | 'math'): Game[] {
+	return data.games.filter((game) => (game.subject ?? 'games') === subject);
+}
+
+export function getSubjects(): ('games' | 'math')[] {
+	return [...new Set(data.games.map((game) => game.subject ?? 'games'))];
+}

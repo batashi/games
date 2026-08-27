@@ -16,6 +16,7 @@ export interface Game {
 	modes: string[];
 	countries: string[];
 	status: 'ready' | 'beta' | 'coming-soon';
+	subject?: 'games' | 'math';
 	supportedPlatforms: ('desktop' | 'tablet' | 'mobile')[];
 	heroImage: string;
 	thumbnail: string;
@@ -61,4 +62,9 @@ export const PLATFORM_LABELS: Record<'desktop' | 'tablet' | 'mobile', { ar: stri
 	desktop: { ar: 'كمبيوتر', icon: '🖥️' },
 	tablet: { ar: 'تابلت', icon: '📱' },
 	mobile: { ar: 'جوال', icon: '📲' }
+};
+
+export const SUBJECT_LABELS: Record<'games' | 'math', { ar: string; en: string }> = {
+	games: { ar: 'ألعاب', en: 'Games' },
+	math: { ar: 'رياضيات', en: 'Math' }
 };

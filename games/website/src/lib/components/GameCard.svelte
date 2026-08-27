@@ -9,6 +9,7 @@
 	let { game }: Props = $props();
 
 	let isReady = $derived(game.status === 'ready');
+	let isPlayable = $derived(game.status === 'ready' || game.status === 'beta');
 	let modeLabels = $derived(game.modes.map((mode) => MODE_LABELS[mode]?.ar ?? mode).join(' • '));
 	let platformLabels = $derived(game.supportedPlatforms.map((p) => PLATFORM_LABELS[p]));
 
@@ -84,19 +85,19 @@
 			<p class="text-sm text-charcoal/60 font-medium">{modeLabels}</p>
 
 			<div class="flex gap-3">
-				{#if isReady}
+				{#if isPlayable}
 					<a
 						href="/play/{game.id}"
 						class="flex-1 bg-sun hover:bg-sun-dark text-charcoal text-center font-bold py-3 px-4 rounded-2xl btn-bounce text-lg inline-flex items-center justify-center gap-2"
 					>
-						🎮 العب الآن
+						{isReady ? '🎮 العب الآن' : '🧪 جرّب التجريبية'}
 					</a>
 				{/if}
 				<a
 					href="/games/{game.slug}"
-					class="{isReady ? 'flex-1' : 'w-full'} bg-sand hover:bg-sand-dark text-charcoal text-center font-bold py-3 px-4 rounded-2xl transition-colors text-lg"
+					class="{isPlayable ? 'flex-1' : 'w-full'} bg-sand hover:bg-sand-dark text-charcoal text-center font-bold py-3 px-4 rounded-2xl transition-colors text-lg"
 				>
-					{isReady ? '🔍 التفاصيل' : 'اعرف المزيد'}
+					{isPlayable ? '🔍 التفاصيل' : 'اعرف المزيد'}
 				</a>
 			</div>
 		</div>

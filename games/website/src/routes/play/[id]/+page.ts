@@ -9,7 +9,7 @@ export const load: PageLoad = ({ params }) => {
 		error(404, 'اللعبة غير موجودة');
 	}
 
-	if (game.status !== 'ready') {
+	if (game.status === 'coming-soon') {
 		error(403, 'اللعبة غير متاحة بعد');
 	}
 

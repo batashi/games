@@ -1,21 +1,24 @@
 <script lang="ts">
 	import { getAllGames } from '$lib/data/games';
 	import GameCard from '$lib/components/GameCard.svelte';
-	import { COUNTRY_LABELS, PLATFORM_LABELS } from '$lib/types/game';
+	import { COUNTRY_LABELS, PLATFORM_LABELS, SUBJECT_LABELS } from '$lib/types/game';
 
 	const games = getAllGames();
 	const countries = ['ALL', 'OM', 'SA', 'AE', 'QA', 'BH', 'KW'] as const;
 	const platforms = ['ALL', 'desktop', 'tablet', 'mobile'] as const;
+	const subjects = ['ALL', 'games', 'math'] as const;
 	type Platform = 'desktop' | 'tablet' | 'mobile';
 
 	let selectedCountry = $state<string>('ALL');
 	let selectedPlatform = $state<typeof platforms[number]>('ALL');
+	let selectedSubject = $state<typeof subjects[number]>('ALL');
 
 	const filteredGames = $derived(
 		games.filter((game) => {
 			const countryMatch = selectedCountry === 'ALL' || game.countries.includes(selectedCountry);
 			const platformMatch = selectedPlatform === 'ALL' || game.supportedPlatforms.includes(selectedPlatform as Platform);
-			return countryMatch && platformMatch;
+			const subjectMatch = selectedSubject === 'ALL' || (game.subject ?? 'games') === selectedSubject;
+			return countryMatch && platformMatch && subjectMatch;
 		})
 	);
 
@@ -72,6 +75,22 @@
 							📱 كل الأجهزة
 						{:else}
 							{PLATFORM_LABELS[platform].icon} {PLATFORM_LABELS[platform].ar}
+						{/if}
+					</button>
+				{/each}
+			</div>
+
+			<div class="flex flex-wrap gap-2">
+				{#each subjects as subject}
+					<button
+						type="button"
+						class="px-4 py-2 min-h-[44px] rounded-full text-base font-bold transition-colors inline-flex items-center gap-1.5 {selectedSubject === subject ? 'bg-sea text-cream' : 'bg-sand text-charcoal hover:bg-sand-dark'}"
+						onclick={() => selectedSubject = subject}
+					>
+						{#if subject === 'ALL'}
+							🎲 كل الأقسام
+						{:else}
+							{SUBJECT_LABELS[subject].ar}
 						{/if}
 					</button>
 				{/each}
