@@ -37,7 +37,7 @@ describe('NumberVault puzzle generators', () => {
 	it('generates a rounding puzzle with a mathematically correct answer', () => {
 		const puzzle = generateRoundPuzzle(4, [10, 100, 1000]);
 		expect(puzzle.type).toBe('round');
-		const match = puzzle.promptAr.match(/([\d,]+) إلى/);
+		const match = puzzle.promptAr.match(/([\d,]+) ≈/);
 		expect(match).not.toBeNull();
 		const number = Number(match![1].replace(/,/g, ''));
 		const place = [10, 100, 1000].find((p) => Math.round(number / p) * p === puzzle.answer)!;

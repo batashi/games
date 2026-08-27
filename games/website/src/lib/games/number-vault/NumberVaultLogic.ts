@@ -135,12 +135,12 @@ export function generatePlaceValuePuzzle(digits: number): NumberVaultPuzzle {
 
 	return {
 		type: 'place-value',
-		promptAr: `ما الرقم في خانة ${placeNameAr}؟`,
-		promptEn: `What is the digit in the ${placeNameAr} place?`,
+		promptAr: `${number.toLocaleString('en')} — خانة ${placeNameAr}؟`,
+		promptEn: `${number.toLocaleString('en')} — ${placeNameAr} digit?`,
 		answer: digit,
 		options,
-		hintAr: `العدد هو ${number.toLocaleString('en')}. ابحث عن خانة ${placeNameAr}.`,
-		hintEn: `The number is ${number.toLocaleString('en')}. Find the ${placeNameAr} place.`
+		hintAr: `ابحث عن خانة ${placeNameAr} في ${number.toLocaleString('en')}.`,
+		hintEn: `Find the ${placeNameAr} digit in ${number.toLocaleString('en')}.`
 	};
 }
 
@@ -153,12 +153,12 @@ export function generateOrderPuzzle(digits: number): NumberVaultPuzzle {
 
 	return {
 		type: 'order',
-		promptAr: `أيُّ عدد هو ${isAscending ? 'الأصغر' : 'الأكبر'}؟`,
-		promptEn: `Which number is ${isAscending ? 'smallest' : 'largest'}?`,
+		promptAr: `${isAscending ? 'الأصغر' : 'الأكبر'}؟`,
+		promptEn: `${isAscending ? 'Smallest' : 'Largest'}?`,
 		answer,
 		options: shuffle([...numbers]),
-		hintAr: `قارن الأعداد من اليسار إلى اليمين.`,
-		hintEn: `Compare the numbers from left to right.`
+		hintAr: `اختر ${isAscending ? 'الأصغر' : 'الأكبر'}.`,
+		hintEn: `Pick the ${isAscending ? 'smallest' : 'largest'}.`
 	};
 }
 
@@ -186,12 +186,12 @@ export function generateRoundPuzzle(
 
 	return {
 		type: 'round',
-		promptAr: `قَرِّب ${number.toLocaleString('en')} إلى ${placeNameAr[place]}.`,
-		promptEn: `Round ${number.toLocaleString('en')} to the nearest ${placeNameAr[place]}.`,
+		promptAr: `${number.toLocaleString('en')} ≈ ؟ (${placeNameAr[place]})`,
+		promptEn: `${number.toLocaleString('en')} ≈ ? (${placeNameAr[place]})`,
 		answer: rounded,
 		options,
-		hintAr: `ابحث عن أقرب حد وقرّب حسب المنتصف.`,
-		hintEn: `Find the nearest boundary and round by the midpoint.`
+		hintAr: `أقرب حد لـ ${placeNameAr[place]}.`,
+		hintEn: `Nearest ${placeNameAr[place]}.`
 	};
 }
 
@@ -223,15 +223,12 @@ export function generateSequencePuzzle(
 
 	return {
 		type: 'sequence',
-		promptAr: `أكمل: ${sequence.map((n) => n.toLocaleString('en')).join('، ')}، ؟`,
-		promptEn: `Complete: ${sequence.map((n) => n.toLocaleString('en')).join(', ')}, ?`,
+		promptAr: `${sequence.map((n) => n.toLocaleString('en')).join(' → ')} → ؟`,
+		promptEn: `${sequence.map((n) => n.toLocaleString('en')).join(' → ')} → ?`,
 		answer,
 		options: shuffle([answer, answer + step, answer - step, answer + step * 2]),
-		hintAr: type === 'multiple' ? 'ابحث عن العملية بين كل عددين.' : 'احسب الفرق بين كل عددين.',
-		hintEn:
-			type === 'multiple'
-				? 'Find the operation between each pair.'
-				: 'Calculate the difference between each pair.'
+		hintAr: type === 'multiple' ? 'ما العملية؟' : 'ما الفرق؟',
+		hintEn: type === 'multiple' ? 'What is the operation?' : 'What is the difference?'
 	};
 }
 
@@ -347,7 +344,7 @@ export class NumberVaultLogic {
 
 	private startTick(): void {
 		this.stopTick();
-		this.tickTimer = setInterval(() => this.tick(), 1000);
+		this.tickTimer = setInterval(() => this.tick(), 700);
 	}
 
 	private stopTick(): void {
@@ -363,11 +360,11 @@ export class NumberVaultLogic {
 		// Ghouls advance slowly over time if player is idle.
 		this.ghouls.forEach((ghoul) => {
 			if (ghoul.type === 'wind') {
-				ghoul.position += 1.5;
+				ghoul.position += 2.5;
 			} else if (ghoul.type === 'sand') {
-				ghoul.position += 1;
+				ghoul.position += 1.8;
 			} else {
-				ghoul.position += 0.8;
+				ghoul.position += 1.5;
 			}
 		});
 
@@ -427,7 +424,7 @@ export class NumberVaultLogic {
 			this.ghouls = this.ghouls.filter((g) => g.position < 100);
 			this.combo = 0;
 			this.feedback = 'incorrect';
-			this.feedbackMessage = 'فقدتَ كنزاً!';
+			this.feedbackMessage = 'سُرق كنز! 😢';
 
 			if (this.treasures <= 0) {
 				this.completeLevel();
@@ -468,7 +465,7 @@ export class NumberVaultLogic {
 			this.score += baseScore + comboBonus;
 
 			lead.health--;
-			const knockback = fast ? 35 : 20;
+			const knockback = fast ? 55 : 30;
 			lead.position = Math.max(0, lead.position - knockback);
 
 			if (lead.health <= 0) {
@@ -476,16 +473,20 @@ export class NumberVaultLogic {
 			}
 
 			this.feedback = fast ? 'correct' : 'slow';
-			this.feedbackMessage = fast
-				? this.combo >= 3
-					? 'ضربة قوية! 🔥'
-					: 'صحيح!'
-				: 'صحيح، لكن أسرع قليلاً.';
+			if (fast && this.combo >= 5) {
+				this.feedbackMessage = 'هجوم أسطوري! ⚡🔥';
+			} else if (fast && this.combo >= 3) {
+				this.feedbackMessage = 'ضربة مدمرة! 💥';
+			} else if (fast) {
+				this.feedbackMessage = 'صحيح! 💥';
+			} else {
+				this.feedbackMessage = 'صحيح، لكن أسرع! ⏱️';
+			}
 		} else {
 			this.combo = 0;
-			lead.position += 15;
+			lead.position += 25;
 			this.feedback = 'incorrect';
-			this.feedbackMessage = 'خطأ! تقدّم الغول.';
+			this.feedbackMessage = 'خطأ! تقدّم الغول 👿';
 		}
 
 		this.checkVaultCollision();
@@ -496,7 +497,7 @@ export class NumberVaultLogic {
 		if (this.ghouls.length === 0) return;
 		this.feedback = 'slow';
 		this.feedbackMessage = this.ghouls[0].puzzle.hintAr;
-		this.ghouls[0].position += 5; // small time penalty
+		this.ghouls[0].position += 10; // small time penalty
 		this.emit();
 	}
 
